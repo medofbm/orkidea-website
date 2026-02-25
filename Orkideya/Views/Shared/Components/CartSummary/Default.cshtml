@@ -1,0 +1,11 @@
+@model List<Orkideya.Models.CartItem>
+@{
+    int count = Model.Sum(item => item.Quantity);
+}
+
+<a class="cart-icon-btn" asp-area="" asp-controller="Cart" asp-action="Index" aria-label="سلة التسوق (@count منتج)">
+    <i class="fas fa-bag-shopping" aria-hidden="true"></i>
+    <span id="cartBadge"
+          class="cart-badge @(count == 0 ? "cart-badge--hidden" : "")"
+          aria-live="polite">@count</span>
+</a>

@@ -1,0 +1,56 @@
+@using Microsoft.AspNetCore.Identity
+
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+
+@if (SignInManager.IsSignedIn(User))
+{
+    <div class="login-partial-wrapper d-flex align-items-center gap-2">
+        <a id="manage"
+           class="login-partial-btn"
+           asp-area="Identity"
+           asp-page="/Account/Manage/Index"
+           title="إدارة الحساب"
+           aria-label="إدارة حسابك">
+            <i class="fas fa-user" aria-hidden="true"></i>
+            <span>حسابي</span>
+        </a>
+        <form id="logoutForm"
+              asp-area="Identity"
+              asp-page="/Account/Logout"
+              asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })"
+              method="post"
+              style="margin:0;">
+            <button id="logout"
+                    type="submit"
+                    class="login-partial-btn login-partial-btn-outline"
+                    aria-label="تسجيل الخروج">
+                <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+                <span>خروج</span>
+            </button>
+        </form>
+    </div>
+}
+else
+{
+    <div class="login-partial-wrapper d-flex align-items-center gap-2">
+        <a class="login-partial-btn"
+           id="register"
+           asp-area="Identity"
+           asp-page="/Account/Register"
+           title="إنشاء حساب جديد"
+           aria-label="إنشاء حساب جديد">
+            <i class="fas fa-user-plus" aria-hidden="true"></i>
+            <span>إنشاء حساب</span>
+        </a>
+        <a class="login-partial-btn login-partial-btn-primary"
+           id="login"
+           asp-area="Identity"
+           asp-page="/Account/Login"
+           title="تسجيل الدخول"
+           aria-label="تسجيل الدخول">
+            <i class="fas fa-arrow-right-to-bracket" aria-hidden="true"></i>
+            <span>دخول</span>
+        </a>
+    </div>
+}

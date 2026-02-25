@@ -1,0 +1,268 @@
+@model IEnumerable<Orkideya.Models.Review>
+@{
+    ViewData["Title"] = "آراء العملاء";
+    var totalCount  = Model.Count();
+    var visibleCount = Model.Count(r => r.IsVisible);
+    var hiddenCount  = totalCount - visibleCount;
+    var avg = Model.Any() && Model.Any(x => x.Rating > 0)
+        ? Model.Where(x => x.Rating > 0).Average(x => x.Rating)
+        : 0.0;
+}
+
+<!-- ── Page Header ── -->
+<div class="rev-page-header">
+    <div class="rev-header-info">
+        <div class="rev-header-icon"><i class="fas fa-star" aria-hidden="true"></i></div>
+        <div>
+            <h1 class="rev-title">آراء العملاء</h1>
+            <p class="rev-subtitle">إدارة ومراجعة تقييمات وتعليقات الزبائن</p>
+        </div>
+    </div>
+    <a asp-action="Create" class="btn rev-add-btn">
+        <i class="fas fa-plus me-1"></i> إضافة رأي
+    </a>
+</div>
+
+<!-- ── Stats Row ── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="rev-stat-card rev-stat-total">
+            <div class="rev-stat-icon"><i class="fas fa-comments"></i></div>
+            <div class="rev-stat-value">@totalCount</div>
+            <div class="rev-stat-label">إجمالي الآراء</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="rev-stat-card rev-stat-visible">
+            <div class="rev-stat-icon"><i class="fas fa-eye"></i></div>
+            <div class="rev-stat-value">@visibleCount</div>
+            <div class="rev-stat-label">ظاهرة</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="rev-stat-card rev-stat-hidden">
+            <div class="rev-stat-icon"><i class="fas fa-eye-slash"></i></div>
+            <div class="rev-stat-value">@hiddenCount</div>
+            <div class="rev-stat-label">مخفية</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="rev-stat-card rev-stat-avg">
+            <div class="rev-stat-icon"><i class="fas fa-star-half-alt"></i></div>
+            <div class="rev-stat-value">@avg.ToString("0.0")<small>/5</small></div>
+            <div class="rev-stat-label">متوسط التقييم</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Reviews Grid / Empty State ── -->
+@if (Model.Any())
+{
+    <div class="rev-grid">
+        @foreach (var review in Model)
+        {
+            <div class="rev-card @(review.IsVisible ? "" : "rev-card--hidden")">
+                <!-- Header -->
+                <div class="rev-card-top">
+                    <div class="rev-avatar">
+                        <i class="fas fa-user-circle" aria-hidden="true"></i>
+                    </div>
+                    <div class="rev-customer-info">
+                        <div class="rev-customer-name">@review.CustomerName</div>
+                        <!-- Stars -->
+                        <div class="rev-stars" aria-label="تقييم @review.Rating من 5">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                if (i <= review.Rating)
+                                {
+                                    <i class="fas fa-star rev-star rev-star--filled"></i>
+                                }
+                                else
+                                {
+                                    <i class="far fa-star rev-star rev-star--empty"></i>
+                                }
+                            }
+                            <span class="rev-rating-num">(@review.Rating)</span>
+                        </div>
+                    </div>
+                    <!-- Status badge -->
+                    @if (review.IsVisible)
+                    {
+                        <span class="rev-status-badge rev-status-badge--visible">
+                            <i class="fas fa-circle"></i> مرئي
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="rev-status-badge rev-status-badge--hidden">
+                            <i class="fas fa-circle"></i> مخفي
+                        </span>
+                    }
+                </div>
+
+                <!-- Message -->
+                <div class="rev-message">"@review.Message"</div>
+
+                <!-- Actions -->
+                <div class="rev-actions">
+                    <a asp-action="Edit" asp-route-id="@review.Id"
+                       class="rev-btn rev-btn--edit" title="تعديل">
+                        <i class="fas fa-pen"></i> تعديل
+                    </a>
+                    <a asp-action="Delete" asp-route-id="@review.Id"
+                       class="rev-btn rev-btn--delete" title="حذف">
+                        <i class="fas fa-trash-can"></i> حذف
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="rev-empty">
+        <i class="fas fa-star fa-3x mb-3 text-muted"></i>
+        <h4>لا توجد آراء حتى الآن</h4>
+        <p class="text-muted">ابدأ بإضافة أول رأي للعملاء</p>
+        <a asp-action="Create" class="btn rev-add-btn mt-2">
+            <i class="fas fa-plus me-1"></i> إضافة رأي
+        </a>
+    </div>
+}
+
+@section Styles {
+<style>
+/* ── Page header ── */
+.rev-page-header {
+    display: flex; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.rev-header-info { display: flex; align-items: center; gap: 1rem; }
+.rev-header-icon {
+    width: 50px; height: 50px; border-radius: 14px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-light));
+    color: white; font-size: 1.3rem;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px rgba(106,27,154,0.25);
+}
+.rev-title { font-size: 1.6rem; font-weight: 800; color: var(--text-primary); margin: 0; }
+.rev-subtitle { color: var(--text-secondary); font-size: 0.88rem; margin: 0; }
+.rev-add-btn {
+    background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-light));
+    color: white; border: none; border-radius: 10px;
+    padding: 0.65rem 1.25rem; font-weight: 600;
+    font-family: 'Cairo', sans-serif; font-size: 0.9rem;
+    box-shadow: 0 3px 10px rgba(106,27,154,0.25);
+    transition: all 0.25s ease; white-space: nowrap;
+}
+.rev-add-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(106,27,154,0.35); color: white; }
+
+/* ── Stat cards ── */
+.rev-stat-card {
+    border-radius: 14px; padding: 1.1rem 1rem;
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; gap: 0.3rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    transition: transform 0.25s;
+}
+.rev-stat-card:hover { transform: translateY(-3px); }
+.rev-stat-icon { font-size: 1.4rem; }
+.rev-stat-value { font-size: 1.6rem; font-weight: 800; }
+.rev-stat-value small { font-size: 0.8rem; font-weight: 500; }
+.rev-stat-label { font-size: 0.78rem; font-weight: 600; opacity: 0.8; }
+
+.rev-stat-total  { background: linear-gradient(135deg,#6a1b9a,#9c4dcc); color:white; }
+.rev-stat-visible{ background: linear-gradient(135deg,#1b5e20,#4caf50); color:white; }
+.rev-stat-hidden { background: linear-gradient(135deg,#616161,#9e9e9e); color:white; }
+.rev-stat-avg    { background: linear-gradient(135deg,#e65100,#ff9800); color:white; }
+
+/* ── Reviews grid ── */
+.rev-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+}
+
+/* ── Review card ── */
+.rev-card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    padding: 1.25rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    display: flex; flex-direction: column; gap: 1rem;
+    transition: box-shadow 0.25s, transform 0.25s;
+}
+.rev-card:hover { box-shadow: 0 6px 22px rgba(106,27,154,0.12); transform: translateY(-2px); }
+.rev-card--hidden { opacity: 0.55; }
+
+/* Card top row */
+.rev-card-top { display: flex; align-items: flex-start; gap: 0.85rem; }
+.rev-avatar {
+    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(106,27,154,0.1), rgba(224,176,255,0.2));
+    color: var(--admin-primary); font-size: 1.35rem;
+    display: flex; align-items: center; justify-content: center;
+}
+.rev-customer-info { flex: 1; min-width: 0; }
+.rev-customer-name { font-size: 0.97rem; font-weight: 700; color: var(--text-primary); }
+.rev-stars { display: flex; align-items: center; gap: 1px; margin-top: 2px; }
+.rev-star { font-size: 0.75rem; }
+.rev-star--filled { color: #f59e0b; }
+.rev-star--empty  { color: #d1d5db; }
+.rev-rating-num   { font-size: 0.72rem; color: var(--text-secondary); margin-right: 3px; }
+
+/* Status badge */
+.rev-status-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 0.72rem; font-weight: 700;
+    padding: 0.25rem 0.65rem; border-radius: 20px;
+    white-space: nowrap; flex-shrink: 0;
+}
+.rev-status-badge i { font-size: 0.45rem; }
+.rev-status-badge--visible { background: #dcfce7; color: #15803d; }
+.rev-status-badge--hidden  { background: #f3f4f6; color: #6b7280; }
+
+/* Message */
+.rev-message {
+    font-size: 0.9rem; color: var(--text-secondary);
+    line-height: 1.7; font-style: italic;
+    border-right: 3px solid rgba(106,27,154,0.15);
+    padding-right: 0.75rem;
+    flex: 1;
+    word-break: break-word;
+}
+
+/* Actions */
+.rev-actions { display: flex; gap: 0.6rem; }
+.rev-btn {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.45rem 0.9rem; border-radius: 8px;
+    font-size: 0.82rem; font-weight: 600;
+    font-family: 'Cairo', sans-serif;
+    text-decoration: none; transition: all 0.2s;
+    border: none; cursor: pointer;
+}
+.rev-btn--edit   { background: rgba(106,27,154,0.08); color: var(--admin-primary); }
+.rev-btn--edit:hover { background: var(--admin-primary); color: white; }
+.rev-btn--delete { background: rgba(220,53,69,0.08); color: #dc3545; }
+.rev-btn--delete:hover { background: #dc3545; color: white; }
+
+/* Empty state */
+.rev-empty {
+    text-align: center; padding: 4rem 1rem;
+    background: #fff; border-radius: 16px;
+    border: 1px solid var(--border-color);
+}
+
+/* Responsive */
+@@media (max-width: 575.98px) {
+    .rev-grid { grid-template-columns: 1fr; }
+    .rev-page-header { flex-direction: column; align-items: flex-start; }
+    .rev-stat-value { font-size: 1.3rem; }
+}
+</style>
+}

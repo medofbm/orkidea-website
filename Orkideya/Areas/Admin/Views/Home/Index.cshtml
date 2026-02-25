@@ -1,0 +1,454 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "لوحة التحكم";
+}
+
+<!-- Page Title -->
+<div class="page-title-section">
+    <h1 class="page-title">
+        <i class="fas fa-chart-line me-3"></i>
+        لوحة التحكم
+    </h1>
+    <p class="page-subtitle">مرحباً بك في مركز القيادة - نظرة شاملة على نشاط متجرك</p>
+</div>
+
+<!-- Stats Cards Row -->
+<div class="row g-4 mb-4">
+    <!-- Total Sales Card -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stats-card primary">
+            <div class="icon">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="value">@Model.TotalSales.ToString("N2")</div>
+            <div class="label">إجمالي المبيعات (30 يوم)</div>
+            <div class="change @(Model.SalesChangePercentage >= 0 ? "positive" : "negative")">
+                <i class="fas fa-arrow-@(Model.SalesChangePercentage >= 0 ? "up" : "down")"></i>
+                @Math.Abs(Model.SalesChangePercentage).ToString("N1")%
+                <span class="text-muted small">مقارنة بالأسبوع السابق</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Orders Card -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stats-card warning">
+            <div class="icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="value">@Model.PendingOrdersCount</div>
+            <div class="label">طلبات جديدة (7 أيام)</div>
+            @if (Model.PendingOrdersCount > 0)
+            {
+                <div class="change">
+                    <a href="@Url.Action("Index", "Orders")" class="text-warning text-decoration-none">
+                        <i class="fas fa-eye me-1"></i>
+                        عرض الطلبات
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Low Stock Card -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stats-card danger">
+            <div class="icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="value">@Model.LowStockProductsCount</div>
+            <div class="label">منتجات تحتاج اهتمام</div>
+            @if (Model.LowStockProductsCount > 0)
+            {
+                <div class="change">
+                    <a href="@Url.Action("Index", "Products")" class="text-danger text-decoration-none">
+                        <i class="fas fa-tasks me-1"></i>
+                        إدارة المخزون
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Total Users Card -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stats-card success">
+            <div class="icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="value">@Model.TotalUsersCount</div>
+            <div class="label">إجمالي المستخدمين</div>
+            <div class="change">
+                <span class="text-muted small">مستخدمون مسجلون</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-4 mb-4">
+    <!-- Sales Chart -->
+    <div class="col-xl-8">
+        <div class="chart-container">
+            <div class="chart-header">
+                <h5 class="chart-title">
+                    <i class="fas fa-chart-area me-2"></i>
+                    <span id="chartTimeRangeLabel">المبيعات - آخر 30 يوم</span>
+                </h5>
+                <div class="btn-group" role="group">
+                    <button type="button" 
+                            class="btn btn-sm btn-outline-secondary active" 
+                            id="btn30Days"
+                            onclick="loadSalesChart(30)">
+                        30 يوم
+                    </button>
+                    <button type="button" 
+                            class="btn btn-sm btn-outline-secondary" 
+                            id="btn7Days"
+                            onclick="loadSalesChart(7)">
+                        7 أيام
+                    </button>
+                </div>
+            </div>
+            <canvas id="salesChart" height="80"></canvas>
+        </div>
+    </div>
+
+    <!-- Categories Distribution Chart -->
+    <div class="col-xl-4">
+        <div class="chart-container">
+            <div class="chart-header">
+                <h5 class="chart-title">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    توزيع المنتجات حسب الفئة
+                </h5>
+            </div>
+            <canvas id="categoriesChart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity and Quick Actions Row -->
+<div class="row g-4">
+    <!-- Recent Orders -->
+    <div class="col-xl-8">
+        <div class="card-admin">
+            <div class="card-header-admin">
+                <h5 class="card-title-admin">
+                    <i class="fas fa-history me-2"></i>
+                    آخر الطلبات
+                </h5>
+                <a href="@Url.Action("Index", "Orders")" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-list me-1"></i>
+                    عرض الكل
+                </a>
+            </div>
+
+            @if (Model.RecentOrders.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>رقم الطلب</th>
+                                <th>العميل</th>
+                                <th>التاريخ</th>
+                                <th>المبلغ</th>
+                                <th>الحالة</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model.RecentOrders)
+                            {
+                                <tr>
+                                    <td class="fw-bold">#@order.OrderId</td>
+                                    <td>
+                                        <div>
+                                            <i class="fas fa-user me-2 text-muted"></i>
+                                            @order.CustomerName
+                                        </div>
+                                        <small class="text-muted">
+                                            <i class="fab fa-whatsapp me-1"></i>
+                                            @order.WhatsAppNumber
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            @order.OrderDate.ToString("dd/MM/yyyy")
+                                            <br />
+                                            <i class="far fa-clock me-1"></i>
+                                            @order.OrderDate.ToString("HH:mm")
+                                        </small>
+                                    </td>
+                                    <td class="fw-bold text-success">
+                                        @order.TotalAmount.ToString("N2") د.ل
+                                    </td>
+                                    <td>
+                                        <span class="status-badge pending">جديد</span>
+                                    </td>
+                                    <td>
+                                        <a href="@Url.Action("Details", "Orders", new { id = order.OrderId })" 
+                                           class="btn btn-action view btn-sm"
+                                           title="عرض التفاصيل">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                    <p>لا توجد طلبات حديثة</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-xl-4">
+        <div class="quick-actions">
+            <h5 class="card-title-admin mb-3">
+                <i class="fas fa-bolt me-2"></i>
+                إجراءات سريعة
+            </h5>
+
+            <a href="@Url.Action("Create", "Products")" class="quick-action-btn">
+                <i class="fas fa-plus-circle"></i>
+                <span>إضافة منتج جديد</span>
+            </a>
+
+            <a href="@Url.Action("Index", "Orders")" class="quick-action-btn">
+                <i class="fas fa-shopping-cart"></i>
+                <span>إدارة الطلبات</span>
+            </a>
+
+            <a href="@Url.Action("Create", "Categories")" class="quick-action-btn">
+                <i class="fas fa-tags"></i>
+                <span>إضافة فئة جديدة</span>
+            </a>
+
+            <a href="@Url.Action("Index", "Reviews")" class="quick-action-btn">
+                <i class="fas fa-star"></i>
+                <span>مراجعة التقييمات</span>
+            </a>
+
+            <a href="@Url.Action("Index", "ContactMessages")" class="quick-action-btn">
+                <i class="fas fa-envelope"></i>
+                <span>رسائل التواصل</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <script>
+        let salesChart; // Global reference to chart
+        
+        // Initialize Sales Chart
+        function initSalesChart(labels, data) {
+            const salesCtx = document.getElementById('salesChart').getContext('2d');
+            
+            if (salesChart) {
+                salesChart.destroy(); // Destroy existing chart before creating new one
+            }
+            
+            salesChart = new Chart(salesCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'المبيعات (د.ل)',
+                    data: data,
+                    borderColor: '#6a1b9a',
+                    backgroundColor: 'rgba(106, 27, 154, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#6a1b9a',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 6,
+                    pointHoverBackgroundColor: '#6a1b9a',
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            font: {
+                                family: 'Cairo',
+                                size: 12
+                            },
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: {
+                            family: 'Cairo',
+                            size: 14
+                        },
+                        bodyFont: {
+                            family: 'Cairo',
+                            size: 13
+                        },
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                return 'المبيعات: ' + context.parsed.y.toFixed(2) + ' د.ل';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            font: {
+                                family: 'Cairo',
+                                size: 11
+                            },
+                            callback: function(value) {
+                                return value.toFixed(0) + ' د.ل';
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                family: 'Cairo',
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        }
+        
+        // Load Sales Chart Data via AJAX
+        async function loadSalesChart(days) {
+            try {
+                // Update button states
+                document.getElementById('btn30Days').classList.toggle('active', days === 30);
+                document.getElementById('btn7Days').classList.toggle('active', days === 7);
+                
+                // Update label
+                const label = document.getElementById('chartTimeRangeLabel');
+                label.textContent = `المبيعات - آخر ${days} يوم`;
+                
+                // Fetch data
+                const response = await fetch(`@Url.Action("GetSalesChartData")?days=${days}`);
+                const chartData = await response.json();
+                
+                // Update chart
+                initSalesChart(chartData.labels, chartData.data);
+                
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+                AdminUtils.showToast('فشل في تحميل البيانات', 'error');
+            }
+        }
+        
+        // Initialize with default data
+        initSalesChart(
+            @Html.Raw(Json.Serialize(Model.SalesChartData.Labels)),
+            @Html.Raw(Json.Serialize(Model.SalesChartData.Data))
+        );
+
+        // Categories Chart - Doughnut Chart
+        const categoriesCtx = document.getElementById('categoriesChart').getContext('2d');
+        const categoriesChart = new Chart(categoriesCtx, {
+            type: 'doughnut',
+            data: {
+                labels: @Html.Raw(Json.Serialize(Model.CategoriesData.Labels)),
+                datasets: [{
+                    data: @Html.Raw(Json.Serialize(Model.CategoriesData.Data)),
+                    backgroundColor: [
+                        '#6a1b9a',
+                        '#9c4dcc',
+                        '#e0b0ff',
+                        '#ba68c8',
+                        '#ab47bc'
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 3,
+                    hoverBorderWidth: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: {
+                                family: 'Cairo',
+                                size: 12
+                            },
+                            padding: 15,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: {
+                            family: 'Cairo',
+                            size: 14
+                        },
+                        bodyFont: {
+                            family: 'Cairo',
+                            size: 13
+                        },
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return label + ': ' + value + ' منتج (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+}
+
+@section Styles {
+    <style>
+        .chart-container canvas {
+            max-height: 300px;
+        }
+    </style>
+}

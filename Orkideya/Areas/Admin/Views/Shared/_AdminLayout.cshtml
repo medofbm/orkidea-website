@@ -1,0 +1,290 @@
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    
+    <title>@ViewData["Title"] - Orkideya Admin</title>
+    
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+    
+    <!-- Stylesheets -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.min.css" />
+    
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="admin-body">
+    
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="adminSidebar">
+        <div class="sidebar-header">
+            <div class="brand-logo">
+                <i class="fas fa-seedling me-2"></i>
+                <span class="brand-text">Orkideya</span>
+                <small class="admin-badge">Admin</small>
+            </div>
+            <button class="sidebar-toggle d-lg-none" id="sidebarToggle">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar-user">
+            <div class="user-avatar">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <div class="user-info">
+                <h6 class="user-name">@User.Identity?.Name</h6>
+                <span class="user-role">مدير النظام</span>
+            </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")" 
+                       asp-area="Admin" 
+                       asp-controller="Home" 
+                       asp-action="Index">
+                        <i class="fas fa-chart-line"></i>
+                        <span>لوحة التحكم</span>
+                    </a>
+                </li>
+                
+                <li class="nav-divider">
+                    <span>إدارة المحتوى</span>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Orders" ? "active" : "")" 
+                       asp-area="Admin" 
+                       asp-controller="Orders" 
+                       asp-action="Index">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>الطلبات</span>
+                        <span class="badge bg-danger ms-auto">جديد</span>
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Products" ? "active" : "")" 
+                       asp-area="Admin" 
+                       asp-controller="Products" 
+                       asp-action="Index">
+                        <i class="fas fa-box-open"></i>
+                        <span>المنتجات</span>
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Categories" ? "active" : "")" 
+                       asp-area="Admin" 
+                       asp-controller="Categories" 
+                       asp-action="Index">
+                        <i class="fas fa-tags"></i>
+                        <span>الفئات</span>
+                    </a>
+                </li>
+                
+                <li class="nav-divider">
+                    <span>التواصل والآراء</span>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reviews" ? "active" : "")" 
+                       asp-area="Admin" 
+                       asp-controller="Reviews" 
+                       asp-action="Index">
+                        <i class="fas fa-star"></i>
+                        <span>آراء العملاء</span>
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "ContactMessages" ? "active" : "")" 
+                       asp-area="Admin" 
+                       asp-controller="ContactMessages" 
+                       asp-action="Index">
+                        <i class="fas fa-envelope"></i>
+                        <span>رسائل التواصل</span>
+                    </a>
+                </li>
+                
+                <li class="nav-divider">
+                    <span>الموقع</span>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link" 
+                       asp-area="" 
+                       asp-controller="Home" 
+                       asp-action="Index" 
+                       target="_blank">
+                        <i class="fas fa-external-link-alt"></i>
+                        <span>عرض الموقع</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" method="post" class="w-100">
+                <button type="submit" class="btn btn-logout w-100">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    <span>تسجيل الخروج</span>
+                </button>
+            </form>
+        </div>
+    </aside>
+    
+    <!-- Main Content Area -->
+    <div class="admin-content">
+        
+        <!-- Top Navbar -->
+        <header class="admin-header">
+            <div class="header-left">
+                <button class="sidebar-toggle-btn d-lg-none" id="mobileSidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                
+                <nav aria-label="breadcrumb" class="d-none d-md-block">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a asp-area="Admin" asp-controller="Home" asp-action="Index">
+                                <i class="fas fa-home"></i>
+                            </a>
+                        </li>
+                        @if (ViewContext.RouteData.Values["controller"]?.ToString() != "Home")
+                        {
+                            <li class="breadcrumb-item active" aria-current="page">
+                                @ViewContext.RouteData.Values["controller"]
+                            </li>
+                        }
+                        @if (ViewContext.RouteData.Values["action"]?.ToString() != "Index")
+                        {
+                            <li class="breadcrumb-item active" aria-current="page">
+                                @ViewContext.RouteData.Values["action"]
+                            </li>
+                        }
+                    </ol>
+                </nav>
+            </div>
+            
+            <div class="header-right">
+                <div class="header-actions">
+                    <a asp-area="" asp-controller="Home" asp-action="Index" 
+                       class="btn btn-sm btn-outline-primary" 
+                       target="_blank"
+                       title="عرض الموقع">
+                        <i class="fas fa-globe me-1"></i>
+                        <span class="d-none d-md-inline">الموقع</span>
+                    </a>
+                </div>
+                
+                <div class="header-user">
+                    <div class="dropdown">
+                        <button class="btn btn-user dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle me-2"></i>
+                            <span class="d-none d-md-inline">@User.Identity?.Name</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li>
+                                <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">
+                                    <i class="fas fa-user-cog me-2"></i>
+                                    إعدادات الحساب
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" method="post">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="fas fa-sign-out-alt me-2"></i>
+                                        تسجيل الخروج
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Page Content -->
+        <main class="admin-main" role="main">
+            <div class="container-fluid">
+                @RenderBody()
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="admin-footer">
+            <div class="container-fluid">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <p class="mb-0 text-muted">
+                            <i class="far fa-copyright me-1"></i>
+                            @DateTime.Now.Year Orkideya. جميع الحقوق محفوظة.
+                        </p>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <p class="mb-0 text-muted">
+                            <i class="fas fa-code me-1"></i>
+                            نسخة 2.0 | مصنوعة بـ <i class="fas fa-heart text-danger"></i>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    <!-- Scripts -->
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.all.min.js"></script>
+    <script src="~/js/admin.js" asp-append-version="true"></script>
+    
+    @await RenderSectionAsync("Scripts", required: false)
+    
+    <script>
+        // Sidebar toggle functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('adminSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const mobileToggle = document.getElementById('mobileSidebarToggle');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            
+            function toggleSidebar() {
+                sidebar.classList.toggle('active');
+                overlay.classList.toggle('active');
+                document.body.classList.toggle('sidebar-open');
+            }
+            
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', toggleSidebar);
+            }
+            
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', toggleSidebar);
+            }
+            
+            if (overlay) {
+                overlay.addEventListener('click', toggleSidebar);
+            }
+        });
+    </script>
+</body>
+</html>

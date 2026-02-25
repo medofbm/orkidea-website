@@ -1,0 +1,46 @@
+﻿@{
+    ViewData["Title"] = "تم استلام طلبك!";
+}
+
+<section class="confirm-section">
+    <div class="confirm-bg-decor" aria-hidden="true">
+        <div class="confirm-circle confirm-circle-1"></div>
+        <div class="confirm-circle confirm-circle-2"></div>
+    </div>
+
+    <div class="container py-5 position-relative text-center">
+        <!-- أيقونة النجاح -->
+        <div class="confirm-icon-wrap">
+            <div class="confirm-icon">
+                <i class="fas fa-circle-check" aria-hidden="true"></i>
+            </div>
+            <!-- تأثير الحلقات -->
+            <div class="confirm-ring confirm-ring-1"></div>
+            <div class="confirm-ring confirm-ring-2"></div>
+        </div>
+
+        <h1 class="confirm-title">شكراً لك! 🌸</h1>
+        <p class="confirm-msg">لقد تم استلام طلبك بنجاح.<br />سنتواصل معك عبر الواتساب قريباً لتأكيد الطلب والتوصيل.</p>
+
+        <!-- بطاقة المعلومات -->
+        <div class="confirm-card">
+            <div class="confirm-card-row">
+                <i class="fas fa-truck-fast" aria-hidden="true"></i>
+                <span>سيتم التوصيل خلال 2–5 أيام عمل</span>
+            </div>
+            <div class="confirm-card-row">
+                <i class="fas fa-wallet" aria-hidden="true"></i>
+                <span>الدفع عند الاستلام</span>
+            </div>
+            <div class="confirm-card-row">
+                <i class="fab fa-whatsapp" aria-hidden="true"></i>
+                <span>سنتواصل معك عبر الواتساب للتأكيد</span>
+            </div>
+        </div>
+
+        <a asp-controller="Home" asp-action="Index" class="btn confirm-home-btn btn-glowing">
+            <i class="fas fa-house me-2" aria-hidden="true"></i>
+            العودة للصفحة الرئيسية
+        </a>
+    </div>
+</section>

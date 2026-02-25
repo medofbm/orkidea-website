@@ -1,0 +1,207 @@
+@model Orkideya.Models.Product
+
+@{
+    ViewData["Title"] = "تعديل المنتج";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 fw-bold text-primary">
+            <i class="fas fa-edit me-2"></i>تعديل المنتج
+        </h1>
+        <p class="text-muted">تحديث بيانات: @Model.Name</p>
+    </div>
+    <a asp-action="Index" class="btn btn-light border">
+        <i class="fas fa-arrow-right me-2"></i>عودة للقائمة
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="fas fa-info-circle me-2 text-primary"></i>البيانات الأساسية
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="Edit" method="post" enctype="multipart/form-data" id="editProductForm">
+                    <input type="hidden" asp-for="ProductId" />
+                    <input type="hidden" asp-for="ImageUrl" id="existingImageUrl" />
+                    
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="alert alert-danger shadow-sm" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>يرجى مراجعة البيانات المدخلة</strong>
+                        </div>
+                    }
+
+                    <div class="mb-4">
+                        <label asp-for="Name" class="form-label fw-bold">اسم المنتج <span class="text-danger">*</span></label>
+                        <input asp-for="Name" class="form-control form-control-lg bg-light" placeholder="أدخل اسم المنتج بوضوح" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="CategoryId" class="form-label fw-bold">الفئة <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="fas fa-tag text-muted"></i></span>
+                            <select asp-for="CategoryId" class="form-select form-select-lg bg-light" asp-items="ViewBag.CategoryId">
+                                <option value="">-- اختر التصنيف --</option>
+                            </select>
+                        </div>
+                        <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="Description" class="form-label fw-bold">وصف المنتج</label>
+                        <textarea asp-for="Description" class="form-control bg-light" rows="6" placeholder="اكتب وصف المنتج هنا...">@Model.Description</textarea>
+                        <span asp-validation-for="Description" class="text-danger small"></span>
+                        <small class="text-muted mt-1 d-block">
+                            <i class="fas fa-pen-nib me-1"></i>
+                            يمكنك إضافة تفاصيل حول المنتج في الخانة أعلاه.
+                        </small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">صورة المنتج</label>
+                        <div class="card bg-light border-dashed text-center p-3">
+                            <div class="row align-items-center">
+                                <div class="col-md-4 border-end">
+                                    <div class="position-relative d-inline-block">
+                                        @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                                        {
+                                            <img src="@Model.ImageUrl" id="mainPreview" class="img-thumbnail rounded shadow-sm" style="width: 120px; height: 120px; object-fit: cover;" onerror="this.src='/images/placeholder.png'">
+                                        }
+                                        else
+                                        {
+                                            <img src="https://via.placeholder.com/150" id="mainPreview" class="img-thumbnail rounded" style="width: 120px; height: 120px; object-fit: cover;">
+                                        }
+                                        <span class="badge bg-primary position-absolute top-0 start-0 m-1">الحالية</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label for="imageFile" class="btn btn-outline-primary w-100 mb-2">
+                                            <i class="fas fa-cloud-upload-alt me-2"></i>تغيير الصورة (رفع ملف)
+                                        </label>
+                                        <input type="file" id="imageFile" name="imageFile" class="d-none" accept="image/*" onchange="previewImage(this)">
+                                    </div>
+                                    
+                                    <div class="divider text-muted small my-2"><span>أو</span></div>
+                                    
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text"><i class="fas fa-link"></i></span>
+                                        <input type="text" class="form-control" id="urlInput" placeholder="لصق رابط خارجي هنا" onchange="updateUrlPreview(this)">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm">
+                            <i class="fas fa-save me-2"></i>حفظ التعديلات
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-dark"><i class="fas fa-layer-group me-2 text-info"></i>الأحجام والأسعار</h6>
+            </div>
+            <div class="card-body p-0">
+                @if (ViewBag.Variants != null)
+                {
+                    <div class="list-group list-group-flush">
+                        @foreach (var variant in ViewBag.Variants)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+                                <div>
+                                    <span class="fw-bold d-block">@variant.Size</span>
+                                    <span class="text-success small fw-bold">@variant.Price.ToString("N2") د.ل</span>
+                                </div>
+                                <form asp-controller="ProductVariants" asp-action="Delete" asp-route-id="@variant.ProductVariantId" asp-area="Admin" method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذا الحجم؟');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger border-0 rounded-circle p-2">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                }
+                
+                <div class="p-3 bg-light border-top">
+                    <p class="small text-muted mb-2 fw-bold">إضافة حجم جديد:</p>
+                    <form asp-action="AddVariant" method="post" class="row g-2">
+                        <input type="hidden" name="ProductId" value="@Model.ProductId" />
+                        <div class="col-4">
+                            <input name="Size" class="form-control form-control-sm" placeholder="الحجم" required />
+                        </div>
+                        <div class="col-4">
+                            <input name="Price" type="number" step="0.01" class="form-control form-control-sm" placeholder="السعر" required />
+                        </div>
+                        <div class="col-4">
+                            <button type="submit" class="btn btn-success btn-sm w-100">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .border-dashed { border: 2px dashed #dee2e6; }
+        .divider { display: flex; align-items: center; text-align: center; }
+        .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid #dee2e6; }
+        .divider span { padding: 0 10px; }
+    </style>
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        // Image Preview Logic
+        function previewImage(input) {
+            try {
+                if (input.files && input.files[0]) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('mainPreview').src = e.target.result;
+                        // Clear URL input if file is selected
+                        document.getElementById('urlInput').value = '';
+                    }
+                    reader.readAsDataURL(input.files[0]);
+                }
+            } catch (_) {
+                // ignore
+            }
+        }
+        function updateUrlPreview(input) {
+            try {
+                var url = input.value;
+                if(url) {
+                    document.getElementById('mainPreview').src = url;
+                    // Update hidden field so controller knows we want to use URL
+                    document.getElementById('existingImageUrl').value = url; 
+                    // Clear file input
+                    document.getElementById('imageFile').value = ''; 
+                }
+            } catch (_) {
+                // ignore
+            }
+        }
+    </script>
+}

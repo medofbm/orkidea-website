@@ -1,0 +1,294 @@
+@model IEnumerable<Orkideya.Models.ContactMessage>
+
+@{
+    ViewData["Title"] = "رسائل التواصل";
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-title-section">
+        <h1 class="page-title">
+            <i class="fas fa-envelope me-3"></i>
+            رسائل التواصل
+        </h1>
+        <p class="page-subtitle">إدارة رسائل العملاء والاستفسارات</p>
+    </div>
+    
+    <div>
+        <span class="badge bg-primary" style="font-size: 1rem; padding: 0.5rem 1rem;">
+            <i class="fas fa-envelope me-2"></i>
+            @Model.Count() رسالة
+        </span>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+    </div>
+}
+
+<!-- Messages Table -->
+<div class="admin-table">
+    @if (Model.Any())
+    {
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>المرسل</th>
+                    <th>معلومات الاتصال</th>
+                    <th>الرسالة</th>
+                    <th>تاريخ الاستلام</th>
+                    <th style="width: 200px;">إجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="user-avatar-sm me-2">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">@item.Name</div>
+                                    <small class="text-muted">#@item.Id</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column gap-1">
+                                <a href="mailto:@item.Email" class="text-decoration-none" title="إرسال بريد">
+                                    <i class="fas fa-envelope me-1 text-primary"></i>
+                                    @item.Email
+                                </a>
+                                <a href="tel:@item.PhoneNumber" class="text-decoration-none" title="اتصال">
+                                    <i class="fas fa-phone me-1 text-success"></i>
+                                    @item.PhoneNumber
+                                </a>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 300px;" title="@item.Message">
+                                @(item.Message.Length > 60 ? item.Message.Substring(0, 60) + "..." : item.Message)
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column">
+                                <span class="fw-semibold">@item.ReceivedAt.ToString("dd/MM/yyyy")</span>
+                                <small class="text-muted">
+                                    <i class="far fa-clock me-1"></i>
+                                    @item.ReceivedAt.ToString("hh:mm tt")
+                                </small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button type="button" 
+                                        class="btn btn-action view btn-sm"
+                                        onclick="viewMessage(@item.Id)"
+                                        title="عرض التفاصيل">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                
+                                <form asp-action="AddToReviews" asp-route-id="@item.Id" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" 
+                                            class="btn btn-sm" 
+                                            style="background: rgba(40, 167, 69, 0.1); color: #28a745;"
+                                            title="إضافة كتقييم">
+                                        <i class="fas fa-star"></i>
+                                    </button>
+                                </form>
+                                
+                                <button type="button" 
+                                        class="btn btn-action delete btn-sm"
+                                        onclick="deleteMessage(@item.Id, '@item.Name')"
+                                        title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+            <h4 class="text-muted">لا توجد رسائل</h4>
+            <p class="text-muted">ستظهر رسائل العملاء هنا</p>
+        </div>
+    }
+</div>
+
+<!-- Message Details Modal -->
+<div class="modal fade" id="messageModal" tabindex="-1" aria-labelledby="messageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-purple text-white">
+                <h5 class="modal-title" id="messageModalLabel">
+                    <i class="fas fa-envelope-open me-2"></i>
+                    تفاصيل الرسالة
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading -->
+                <div id="modalLoading" class="text-center py-4">
+                    <div class="spinner-border text-purple" role="status">
+                        <span class="visually-hidden">جاري التحميل...</span>
+                    </div>
+                </div>
+                
+                <!-- Content -->
+                <div id="modalContent" style="display: none;">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">اسم المرسل</label>
+                            <div class="fw-semibold fs-5">
+                                <i class="fas fa-user me-2 text-purple"></i>
+                                <span id="modalName"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">تاريخ الاستلام</label>
+                            <div class="fw-semibold">
+                                <i class="far fa-calendar me-2 text-info"></i>
+                                <span id="modalDate"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">البريد الإلكتروني</label>
+                            <div>
+                                <a href="#" id="modalEmailLink" class="text-decoration-none">
+                                    <i class="fas fa-envelope me-2 text-primary"></i>
+                                    <span id="modalEmail"></span>
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">رقم الهاتف</label>
+                            <div>
+                                <a href="#" id="modalPhoneLink" class="text-decoration-none">
+                                    <i class="fas fa-phone me-2 text-success"></i>
+                                    <span id="modalPhone"></span>
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label text-muted small fw-bold">الرسالة</label>
+                            <div class="p-3 bg-light rounded border">
+                                <p id="modalMessage" class="mb-0" style="white-space: pre-wrap;"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="mailto:" 
+                   id="replyEmailBtn" 
+                   class="btn btn-success me-auto"
+                   rel="noopener">
+                    <i class="fas fa-reply me-2"></i>
+                    الرد عبر البريد
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Delete Form -->
+<form id="deleteMessageForm" method="post" style="display: none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script>
+        // View message in modal
+        async function viewMessage(id) {
+            // Show modal and loading
+            const modal = new bootstrap.Modal(document.getElementById('messageModal'));
+            modal.show();
+            
+            document.getElementById('modalLoading').style.display = 'block';
+            document.getElementById('modalContent').style.display = 'none';
+            
+            try {
+                const response = await fetch('@Url.Action("GetMessage")?id=' + id);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const data = result.data;
+                    
+                    // Populate modal
+                    document.getElementById('modalName').textContent = data.name;
+                    document.getElementById('modalEmail').textContent = data.email;
+                    document.getElementById('modalEmailLink').href = 'mailto:' + data.email + '?subject=رد على رسالتك من Orkideya';
+                    document.getElementById('modalPhone').textContent = data.phoneNumber;
+                    document.getElementById('modalPhoneLink').href = 'tel:' + data.phoneNumber;
+                    document.getElementById('modalMessage').textContent = data.message;
+                    document.getElementById('modalDate').textContent = data.receivedAt;
+                    
+                    // Reply button
+                    const replyBtn = document.getElementById('replyEmailBtn');
+                    replyBtn.href = `mailto:${data.email}?subject=رد على رسالتك من Orkideya&body=مرحباً ${data.name}،%0D%0A%0D%0A`;
+                    
+                    // Show content
+                    document.getElementById('modalLoading').style.display = 'none';
+                    document.getElementById('modalContent').style.display = 'block';
+                } else {
+                    AdminUtils.showToast(result.message, 'error');
+                    modal.hide();
+                }
+            } catch (error) {
+                console.error('Error loading message:', error);
+                AdminUtils.showToast('فشل في تحميل الرسالة', 'error');
+                modal.hide();
+            }
+        }
+        
+        // Delete message
+        async function deleteMessage(id, name) {
+            const confirmed = await AdminUtils.confirm(
+                `سيتم حذف رسالة "${name}" نهائياً!`,
+                'هل تريد حذف هذه الرسالة؟'
+            );
+            
+            if (!confirmed) return;
+            
+            const form = document.getElementById('deleteMessageForm');
+            form.action = '@Url.Action("Delete")/' + id;
+            form.submit();
+        }
+    </script>
+}
+
+@section Styles {
+    <style>
+        .user-avatar-sm {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(106, 27, 154, 0.1), rgba(224, 176, 255, 0.1));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6a1b9a;
+        }
+    </style>
+}

@@ -1,0 +1,178 @@
+@model CheckoutViewModel
+@{
+    ViewData["Title"] = "إتمام الطلب";
+}
+
+<div class="checkout-container">
+    <div class="row">
+        <div class="col-lg-7">
+            <h3 class="mb-4">
+                <i class="fas fa-shipping-fast me-2" aria-hidden="true"></i>
+                بيانات الشحن
+            </h3>
+            <form asp-action="PlaceOrder" method="post" novalidate aria-label="نموذج إتمام الطلب">
+                @* CSRF Protection Token *@
+                @Html.AntiForgeryToken()
+                
+                <div class="form-group mb-3">
+                    <label for="whatsAppNumber" class="control-label">رقم الواتساب <span class="text-danger">*</span></label>
+                    <input type="tel" 
+                           id="whatsAppNumber"
+                           name="whatsAppNumber" 
+                           class="form-control" 
+                           placeholder="+218 XX XXX XXXX"
+                           required 
+                           maxlength="20"
+                           pattern="[0-9+\-\s()]+"
+                           aria-required="true"
+                           autocomplete="tel" />
+                    <div class="invalid-feedback">الرجاء إدخال رقم واتساب صحيح</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 form-group mb-3">
+                        <label for="firstName" class="control-label">الاسم الأول <span class="text-danger">*</span></label>
+                        <input type="text"
+                               id="firstName"
+                               name="firstName" 
+                               class="form-control" 
+                               placeholder="الاسم الأول"
+                               required 
+                               maxlength="50"
+                               aria-required="true"
+                               autocomplete="given-name" />
+                        <div class="invalid-feedback">الرجاء إدخال الاسم الأول</div>
+                    </div>
+                    <div class="col-md-6 form-group mb-3">
+                        <label for="lastName" class="control-label">اسم العائلة <span class="text-danger">*</span></label>
+                        <input type="text"
+                               id="lastName"
+                               name="lastName" 
+                               class="form-control" 
+                               placeholder="اسم العائلة"
+                               required 
+                               maxlength="50"
+                               aria-required="true"
+                               autocomplete="family-name" />
+                        <div class="invalid-feedback">الرجاء إدخال اسم العائلة</div>
+                    </div>
+                </div>
+                <div class="form-group mb-3">
+                    <label for="shippingAddress" class="control-label">العنوان بالتفصيل <span class="text-danger">*</span></label>
+                    <textarea id="shippingAddress"
+                              name="shippingAddress" 
+                              class="form-control" 
+                              rows="2"
+                              placeholder="الشارع، رقم المنزل، معلومات إضافية..."
+                              required 
+                              maxlength="200"
+                              aria-required="true"
+                              autocomplete="street-address"></textarea>
+                    <div class="invalid-feedback">الرجاء إدخال عنوان الشحن</div>
+                </div>
+
+                <h4 class="mt-5 mb-3">
+                    <i class="fas fa-map-marker-alt me-2" aria-hidden="true"></i>
+                    اختيار مدينة التوصيل <span class="text-danger">*</span>
+                </h4>
+                <fieldset>
+                    <legend class="visually-hidden">خيارات مدينة التوصيل</legend>
+                    @foreach (var rate in Model.ShippingRates)
+                    {
+                        <div class="form-check shipping-option">
+                            <input class="form-check-input" 
+                                   type="radio" 
+                                   name="shippingRateId" 
+                                   id="city@(rate.ShippingRateId)" 
+                                   value="@rate.ShippingRateId" 
+                                   required 
+                                   aria-required="true"
+                                   onchange="toggleOtherCity(false)">
+                            <label class="form-check-label w-100" for="city@(rate.ShippingRateId)">
+                                <i class="fas fa-city me-2" aria-hidden="true"></i>
+                                @rate.CityName
+                                <span class="shipping-price">@rate.Price.ToString("0.00") د.ل</span>
+                            </label>
+                        </div>
+                    }
+                    <div class="form-check shipping-option">
+                        <input class="form-check-input" 
+                               type="radio" 
+                               name="shippingRateId" 
+                               id="otherCityRadio" 
+                               value="0" 
+                               required 
+                               aria-required="true"
+                               onchange="toggleOtherCity(true)">
+                        <label class="form-check-label w-100" for="otherCityRadio">
+                            <i class="fas fa-map-marked-alt me-2" aria-hidden="true"></i>
+                            مدينة أخرى
+                            <span class="shipping-price">سيتم تحديده لاحقاً</span>
+                        </label>
+                    </div>
+                    <div class="invalid-feedback d-block" id="shippingError" style="display: none !important;">
+                        الرجاء اختيار مدينة التوصيل
+                    </div>
+                </fieldset>
+
+                <div id="otherCityGroup" class="form-group mt-3" style="display:none;">
+                    <label for="otherCityInput" class="control-label">الرجاء كتابة اسم المدينة <span class="text-danger">*</span></label>
+                    <input type="text"
+                           name="otherCity" 
+                           id="otherCityInput" 
+                           class="form-control" 
+                           placeholder="اكتب اسم مدينتك"
+                           maxlength="50"
+                           autocomplete="address-level2" />
+                    <div class="invalid-feedback">الرجاء إدخال اسم المدينة</div>
+                </div>
+
+                <div class="form-group text-center mt-5">
+                    <button type="submit" class="btn btn-success btn-lg w-100">
+                        <i class="fas fa-check-circle me-2" aria-hidden="true"></i>
+                        إتمام الطلب
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-lg-5 order-summary-col">
+            <div class="order-summary-box">
+                <h4>ملخص الطلب</h4>
+                <hr />
+                @foreach (var item in Model.CartItems)
+                {
+                    <div class="summary-item">
+                        <img src="@item.ImageUrl" class="summary-item-img" />
+                        <div class="summary-item-details">
+                            <div>@item.ProductName</div>
+                            <small>الكمية: @item.Quantity</small>
+                        </div>
+                        <div class="summary-item-price">@item.SubTotal.ToString("0.00") د.ل</div>
+                    </div>
+                }
+                <hr />
+                <div class="summary-total">
+                    <span>الإجمالي</span>
+                    <span>@Model.CartTotal.ToString("0.00") د.ل</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script>
+        function toggleOtherCity(show) {
+            const otherCityGroup = document.getElementById('otherCityGroup');
+            const otherCityInput = document.getElementById('otherCityInput');
+            if (show) {
+                otherCityGroup.style.display = 'block';
+                otherCityInput.required = true;
+            } else {
+                otherCityGroup.style.display = 'none';
+                otherCityInput.required = false;
+            }
+        }
+    </script>
+}

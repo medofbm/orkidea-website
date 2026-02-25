@@ -1,0 +1,17 @@
+﻿@* Simplified navigation - only what the customer actually needs *@
+<nav class="manage-sidenav" aria-label="قائمة الحساب">
+    <div class="manage-sidenav-title">
+        <i class="fas fa-sliders me-2" aria-hidden="true"></i>
+        الإعدادات
+    </div>
+    <a class="manage-sidenav-link @ManageNavPages.IndexNavClass(ViewContext)"
+       asp-page="./Index" id="profile">
+        <span class="manage-sidenav-icon"><i class="fas fa-user"></i></span>
+        الملف الشخصي
+    </a>
+    <a class="manage-sidenav-link @ManageNavPages.ChangePasswordNavClass(ViewContext)"
+       asp-page="./ChangePassword" id="change-password">
+        <span class="manage-sidenav-icon"><i class="fas fa-lock"></i></span>
+        كلمة المرور
+    </a>
+</nav>

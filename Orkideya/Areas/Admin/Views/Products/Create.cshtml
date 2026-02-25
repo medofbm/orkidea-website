@@ -1,0 +1,291 @@
+@model Orkideya.Models.Product
+
+@{
+    ViewData["Title"] = "إضافة منتج جديد";
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-title-section">
+        <h1 class="page-title">
+            <i class="fas fa-plus-circle me-3"></i>
+            إضافة منتج جديد
+        </h1>
+        <p class="page-subtitle">أضف منتجاً جديداً إلى متجرك</p>
+    </div>
+    
+    <div>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-2"></i>
+            العودة للقائمة
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <!-- Product Information Card -->
+        <div class="card-admin">
+            <div class="card-header-admin">
+                <h5 class="card-title-admin">
+                    <i class="fas fa-info-circle me-2"></i>
+                    معلومات المنتج
+                </h5>
+            </div>
+            
+            <form asp-action="Create" method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label asp-for="Name" class="form-label fw-semibold">
+                            اسم المنتج <span class="text-danger">*</span>
+                        </label>
+                        <input asp-for="Name" 
+                               class="form-control form-control-lg" 
+                               placeholder="مثال: زيت الأرغان المغربي" 
+                               required />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="col-md-12">
+                        <label asp-for="Description" class="form-label fw-semibold">
+                            وصف المنتج
+                        </label>
+                        
+                        <!-- Hidden textarea for Quill content -->
+                        <textarea asp-for="Description" 
+                                  id="descriptionHidden" 
+                                  style="display: none;"></textarea>
+                        
+                        <!-- Quill Editor Container -->
+                        <div id="quillEditor" style="min-height: 200px; background: white;"></div>
+                        
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            استخدم المحرر لتنسيق النص (غامق، قوائم، روابط)
+                        </small>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            صورة المنتج
+                        </label>
+                        
+                        <!-- File Upload (Recommended) -->
+                        <div class="mb-3">
+                            <label for="imageFile" class="form-label small text-muted">
+                                <i class="fas fa-cloud-upload-alt me-1"></i>
+                                رفع صورة من جهازك (مستحسن)
+                            </label>
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="imageFile" 
+                                   name="imageFile"
+                                   accept="image/*"
+                                   onchange="previewUploadedImage(event)">
+                        </div>
+                        
+                        <!-- OR URL Input -->
+                        <div class="text-center my-2 text-muted small">
+                            <span>— أو —</span>
+                        </div>
+                        
+                        <div>
+                            <label asp-for="ImageUrl" class="form-label small text-muted">
+                                <i class="fas fa-link me-1"></i>
+                                رابط صورة خارجي
+                            </label>
+                            <input asp-for="ImageUrl" 
+                                   class="form-control" 
+                                   id="imageUrlInput"
+                                   placeholder="https://example.com/image.jpg"
+                                   onchange="previewUrlImage()" />
+                            <span asp-validation-for="ImageUrl" class="text-danger"></span>
+                        </div>
+                        
+                        <!-- Image Preview -->
+                        <div class="mt-3" id="imagePreviewContainer" style="display: none;">
+                            <label class="form-label fw-semibold small text-muted">معاينة الصورة:</label>
+                            <div class="border rounded p-2 text-center bg-light">
+                                <img id="imagePreview" 
+                                     src="" 
+                                     alt="معاينة" 
+                                     class="img-fluid rounded"
+                                     style="max-height: 200px;" 
+                                     onerror="this.parentElement.innerHTML='<i class=\'fas fa-image fa-3x text-muted\'></i><p class=\'text-muted mt-2\'>فشل تحميل الصورة</p>';" />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label asp-for="CategoryId" class="form-label fw-semibold">
+                            الفئة <span class="text-danger">*</span>
+                        </label>
+                        <select asp-for="CategoryId" 
+                                class="form-select form-select-lg" 
+                                asp-items="ViewBag.CategoryId" 
+                                required>
+                            <option value="">-- اختر فئة --</option>
+                        </select>
+                        <span asp-validation-for="CategoryId" class="text-danger"></span>
+                        
+                        <div class="mt-2">
+                            <a href="@Url.Action("Create", "Categories")" 
+                               class="btn btn-sm btn-outline-primary" 
+                               target="_blank">
+                                <i class="fas fa-plus-circle me-1"></i>
+                                إضافة فئة جديدة
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 pt-4 border-top">
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>
+                            إلغاء
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg px-5">
+                            <i class="fas fa-plus-circle me-2"></i>
+                            إضافة المنتج
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="col-xl-4">
+        <!-- Help Card -->
+        <div class="card-admin">
+            <div class="card-header-admin">
+                <h5 class="card-title-admin">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    نصائح للبدء
+                </h5>
+            </div>
+            
+            <div class="d-flex flex-column gap-3">
+                <div class="alert alert-info border-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>تذكير:</strong> بعد إضافة المنتج، ستحتاج إلى إضافة الأحجام والأسعار في صفحة التعديل.
+                </div>
+                
+                <div class="d-flex align-items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1"></i>
+                    <div>
+                        <strong>الاسم الواضح:</strong>
+                        <p class="small text-muted mb-0">استخدم اسماً وصفياً للمنتج يسهل على العملاء فهمه</p>
+                    </div>
+                </div>
+                
+                <div class="d-flex align-items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1"></i>
+                    <div>
+                        <strong>الوصف المفصل:</strong>
+                        <p class="small text-muted mb-0">اشرح فوائد المنتج، مكوناته، وطريقة استخدامه</p>
+                    </div>
+                </div>
+                
+                <div class="d-flex align-items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1"></i>
+                    <div>
+                        <strong>صورة عالية الجودة:</strong>
+                        <p class="small text-muted mb-0">استخدم صوراً واضحة بدقة عالية لجذب العملاء</p>
+                    </div>
+                </div>
+                
+                <div class="d-flex align-items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1"></i>
+                    <div>
+                        <strong>الفئة المناسبة:</strong>
+                        <p class="small text-muted mb-0">اختر الفئة الصحيحة لسهولة البحث</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <!-- Quill Editor CSS -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+}
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    
+    <!-- Quill Editor JS -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    
+    <script>
+        // Initialize Quill Editor
+        const quill = new Quill('#quillEditor', {
+            theme: 'snow',
+            placeholder: 'اكتب وصف المنتج هنا... يمكنك استخدام التنسيق لجعل النص أكثر جاذبية',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'align': [] }],
+                    ['link'],
+                    ['clean']
+                ]
+            }
+        });
+        
+        // Sync Quill content to hidden textarea on form submit
+        document.querySelector('form').addEventListener('submit', function() {
+            document.getElementById('descriptionHidden').value = quill.root.innerHTML;
+        });
+        
+        // Preview uploaded image file
+        function previewUploadedImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('imagePreview').src = e.target.result;
+                    document.getElementById('imagePreviewContainer').style.display = 'block';
+                    // Clear URL input when file is selected
+                    document.getElementById('imageUrlInput').value = '';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        // Preview image from URL
+        function previewUrlImage() {
+            const url = document.getElementById('imageUrlInput').value.trim();
+            if (url) {
+                document.getElementById('imagePreview').src = url;
+                document.getElementById('imagePreviewContainer').style.display = 'block';
+                // Clear file input when URL is entered
+                document.getElementById('imageFile').value = '';
+            } else {
+                document.getElementById('imagePreviewContainer').style.display = 'none';
+            }
+        }
+        
+        // Bootstrap form validation
+        (function () {
+            'use strict';
+            const forms = document.querySelectorAll('.needs-validation');
+            Array.from(forms).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        })();
+    </script>
+}

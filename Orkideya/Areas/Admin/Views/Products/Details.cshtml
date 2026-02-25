@@ -1,0 +1,382 @@
+@model Orkideya.Models.Product
+
+@{
+    ViewData["Title"] = "تفاصيل المنتج";
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-title-section">
+        <h1 class="page-title">
+            <i class="fas fa-box me-3"></i>
+            تفاصيل المنتج
+        </h1>
+        <p class="page-subtitle">معلومات كاملة عن: @Model.Name</p>
+    </div>
+    
+    <div class="btn-group">
+        <a href="@Url.Action("Edit", new { id = Model.ProductId })" class="btn btn-primary">
+            <i class="fas fa-edit me-2"></i>
+            تعديل المنتج
+        </a>
+        <button type="button" 
+                class="btn btn-danger" 
+                onclick="deleteProduct(@Model.ProductId, '@Model.Name')">
+            <i class="fas fa-trash me-2"></i>
+            حذف
+        </button>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-2"></i>
+            العودة للقائمة
+        </a>
+    </div>
+</div>
+
+<!-- Product Profile Card -->
+<div class="row g-4">
+    <!-- Left Side: Product Image -->
+    <div class="col-lg-4">
+        <div class="card-admin sticky-top" style="top: 100px;">
+            <div class="product-image-container text-center">
+                @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                {
+                    <img src="@Model.ImageUrl" 
+                         alt="@Model.Name" 
+                         class="img-fluid rounded shadow-sm"
+                         style="max-width: 100%; height: auto; border: 3px solid #e0b0ff;"
+                         onerror="this.src='https://via.placeholder.com/400x400?text=No+Image';" />
+                }
+                else
+                {
+                    <div class="bg-light rounded p-5 border border-2 border-dashed">
+                        <i class="fas fa-image fa-5x text-muted"></i>
+                        <p class="text-muted mt-3">لا توجد صورة</p>
+                    </div>
+                }
+            </div>
+            
+            <div class="mt-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">رقم المنتج</span>
+                    <span class="badge bg-secondary">#@Model.ProductId</span>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">الفئة</span>
+                    @if (Model.Category != null)
+                    {
+                        <span class="badge" style="background: rgba(106, 27, 154, 0.1); color: #6a1b9a; font-size: 0.9rem;">
+                            <i class="fas fa-tag me-1"></i>
+                            @Model.Category.Name
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">بدون فئة</span>
+                    }
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted">عدد الأحجام</span>
+                    @if (Model.ProductVariants.Any())
+                    {
+                        <span class="badge bg-success">
+                            <i class="fas fa-layer-group me-1"></i>
+                            @Model.ProductVariants.Count حجم
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning text-dark">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            لا توجد أحجام
+                        </span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Side: Product Information -->
+    <div class="col-lg-8">
+        <!-- Product Name & Price -->
+        <div class="card-admin mb-4">
+            <h2 class="mb-3 fw-bold text-purple">
+                <i class="fas fa-box-open me-2"></i>
+                @Model.Name
+            </h2>
+            
+            @if (Model.ProductVariants.Any())
+            {
+                <div class="price-range mb-3">
+                    <span class="text-muted">نطاق السعر:</span>
+                    <span class="h4 fw-bold text-success ms-2">
+                        @Model.ProductVariants.Min(v => v.Price).ToString("N2") - 
+                        @Model.ProductVariants.Max(v => v.Price).ToString("N2") د.ل
+                    </span>
+                </div>
+            }
+        </div>
+        
+        <!-- Tabbed Content -->
+        <div class="card-admin">
+            <ul class="nav nav-tabs nav-fill border-bottom mb-4" id="productTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" 
+                            id="description-tab" 
+                            data-bs-toggle="tab" 
+                            data-bs-target="#description" 
+                            type="button" 
+                            role="tab">
+                        <i class="fas fa-align-left me-2"></i>
+                        الوصف
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" 
+                            id="variants-tab" 
+                            data-bs-toggle="tab" 
+                            data-bs-target="#variants" 
+                            type="button" 
+                            role="tab">
+                        <i class="fas fa-layer-group me-2"></i>
+                        الأحجام والأسعار
+                        <span class="badge bg-primary ms-1">@Model.ProductVariants.Count</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" 
+                            id="info-tab" 
+                            data-bs-toggle="tab" 
+                            data-bs-target="#info" 
+                            type="button" 
+                            role="tab">
+                        <i class="fas fa-info-circle me-2"></i>
+                        معلومات إضافية
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="productTabsContent">
+                <!-- Description Tab -->
+                <div class="tab-pane fade show active" id="description" role="tabpanel">
+                    @if (!string.IsNullOrEmpty(Model.Description))
+                    {
+                        <div class="description-content">
+                            @Html.Raw(Model.Description)
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-file-alt fa-3x mb-3"></i>
+                            <p>لا يوجد وصف لهذا المنتج</p>
+                            <a href="@Url.Action("Edit", new { id = Model.ProductId })" class="btn btn-sm btn-primary">
+                                <i class="fas fa-plus me-1"></i>
+                                إضافة وصف
+                            </a>
+                        </div>
+                    }
+                </div>
+                
+                <!-- Variants Tab -->
+                <div class="tab-pane fade" id="variants" role="tabpanel">
+                    @if (Model.ProductVariants.Any())
+                    {
+                        <div class="row g-3">
+                            @foreach (var variant in Model.ProductVariants.OrderBy(v => v.Price))
+                            {
+                                <div class="col-md-6">
+                                    <div class="variant-card p-3 border rounded">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h5 class="mb-1 fw-bold">@variant.Size</h5>
+                                                <small class="text-muted">رقم الحجم: #@variant.ProductVariantId</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="h4 mb-0 text-success fw-bold">
+                                                    @variant.Price.ToString("N2") د.ل
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-layer-group fa-3x mb-3"></i>
+                            <p>لا توجد أحجام لهذا المنتج</p>
+                            <a href="@Url.Action("Edit", new { id = Model.ProductId })" class="btn btn-sm btn-primary">
+                                <i class="fas fa-plus me-1"></i>
+                                إضافة أحجام
+                            </a>
+                        </div>
+                    }
+                </div>
+                
+                <!-- Additional Info Tab -->
+                <div class="tab-pane fade" id="info" role="tabpanel">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label class="text-muted small fw-bold">رقم المنتج</label>
+                                <div class="fw-semibold fs-5">#@Model.ProductId</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label class="text-muted small fw-bold">الفئة</label>
+                                <div class="fw-semibold fs-5">
+                                    @if (Model.Category != null)
+                                    {
+                                        <i class="fas fa-tag me-2 text-purple"></i>
+                                        @Model.Category.Name
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">بدون فئة</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label class="text-muted small fw-bold">عدد الأحجام المتوفرة</label>
+                                <div class="fw-semibold fs-5">
+                                    <i class="fas fa-layer-group me-2 text-success"></i>
+                                    @Model.ProductVariants.Count حجم
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label class="text-muted small fw-bold">نطاق السعر</label>
+                                <div class="fw-semibold fs-5">
+                                    @if (Model.ProductVariants.Any())
+                                    {
+                                        <i class="fas fa-dollar-sign me-2 text-success"></i>
+                                        <span>@Model.ProductVariants.Min(v => v.Price).ToString("N2") - @Model.ProductVariants.Max(v => v.Price).ToString("N2") د.ل</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">لا توجد أحجام</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                        {
+                            <div class="col-12">
+                                <div class="info-item">
+                                    <label class="text-muted small fw-bold">رابط الصورة</label>
+                                    <div class="input-group">
+                                        <input type="text" 
+                                               class="form-control" 
+                                               value="@Model.ImageUrl" 
+                                               readonly>
+                                        <button class="btn btn-outline-secondary" 
+                                                type="button" 
+                                                onclick="copyToClipboard('@Model.ImageUrl')">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Delete Form -->
+<form id="deleteProductForm" method="post" style="display: none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script>
+        // Copy to clipboard
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                AdminUtils.showToast('تم نسخ الرابط', 'success');
+            }).catch(() => {
+                AdminUtils.showToast('فشل النسخ', 'error');
+            });
+        }
+        
+        // Delete product
+        async function deleteProduct(productId, productName) {
+            const confirmed = await AdminUtils.confirm(
+                `سيتم حذف المنتج "${productName}" نهائياً مع جميع أحجامه!`,
+                'هل تريد حذف هذا المنتج؟'
+            );
+            
+            if (!confirmed) return;
+            
+            const form = document.getElementById('deleteProductForm');
+            form.action = '@Url.Action("Delete")/' + productId;
+            form.submit();
+        }
+    </script>
+}
+
+@section Styles {
+    <style>
+        .product-image-container {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, rgba(106, 27, 154, 0.03), rgba(224, 176, 255, 0.05));
+            border-radius: 12px;
+        }
+        
+        .variant-card {
+            background: linear-gradient(135deg, rgba(106, 27, 154, 0.03), transparent);
+            border-color: #e0b0ff !important;
+            transition: all 0.3s ease;
+        }
+        
+        .variant-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(106, 27, 154, 0.15);
+            border-color: #6a1b9a !important;
+        }
+        
+        .description-content {
+            font-size: 1.05rem;
+            line-height: 1.8;
+            color: #555;
+        }
+        
+        .info-item {
+            padding: 1rem;
+            background: rgba(106, 27, 154, 0.02);
+            border-radius: 8px;
+        }
+        
+        .nav-tabs .nav-link {
+            color: #6c757d;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            color: #6a1b9a;
+            border-bottom-color: #e0b0ff;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: #6a1b9a;
+            background: none;
+            border-bottom-color: #6a1b9a;
+        }
+    </style>
+}

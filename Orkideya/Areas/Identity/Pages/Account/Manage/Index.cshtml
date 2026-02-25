@@ -1,0 +1,60 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "الملف الشخصي";
+    ViewData["ActivePage"] = ManageNavPages.Index;
+}
+
+<div class="manage-inner">
+    <div class="manage-inner-header">
+        <div class="manage-inner-icon">
+            <i class="fas fa-user" aria-hidden="true"></i>
+        </div>
+        <div>
+            <h2 class="manage-inner-title">الملف الشخصي</h2>
+            <p class="manage-inner-sub">تحديث معلوماتك الشخصية</p>
+        </div>
+    </div>
+
+    <partial name="_StatusMessage" for="StatusMessage" />
+    <div asp-validation-summary="ModelOnly" class="manage-alert" role="alert"></div>
+
+    <form id="profile-form" method="post" class="manage-form">
+        <div class="manage-field">
+            <label class="manage-label">
+                <i class="fas fa-at" aria-hidden="true"></i>
+                البريد الإلكتروني / اسم المستخدم
+            </label>
+            <div class="manage-input-locked">
+                <input asp-for="Username" class="manage-input" disabled />
+                <span class="manage-lock-badge">
+                    <i class="fas fa-lock"></i>
+                </span>
+            </div>
+            <span class="manage-hint">لا يمكن تغيير البريد الإلكتروني</span>
+        </div>
+
+        <div class="manage-field">
+            <label asp-for="Input.PhoneNumber" class="manage-label">
+                <i class="fas fa-phone" aria-hidden="true"></i>
+                رقم الهاتف
+            </label>
+            <input asp-for="Input.PhoneNumber"
+                   class="manage-input"
+                   placeholder="+218 9X XXX XXXX"
+                   type="tel"
+                   dir="ltr" />
+            <span asp-validation-for="Input.PhoneNumber" class="manage-error"></span>
+        </div>
+
+        <button id="update-profile-button" type="submit"
+                class="btn manage-btn-primary btn-glowing">
+            <i class="fas fa-floppy-disk me-2" aria-hidden="true"></i>
+            حفظ التغييرات
+        </button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

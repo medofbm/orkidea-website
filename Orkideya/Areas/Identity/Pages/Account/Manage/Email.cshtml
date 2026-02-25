@@ -1,0 +1,84 @@
+﻿@page
+@model EmailModel
+@{
+    ViewData["Title"] = "البريد الإلكتروني";
+    ViewData["ActivePage"] = ManageNavPages.Email;
+}
+
+<div class="manage-section-header">
+    <i class="fas fa-envelope" aria-hidden="true"></i>
+    <div>
+        <h2 class="manage-section-title">البريد الإلكتروني</h2>
+        <p class="manage-section-sub">إدارة عنوان بريدك الإلكتروني</p>
+    </div>
+</div>
+
+<partial name="_StatusMessage" for="StatusMessage" />
+
+<div asp-validation-summary="All" class="auth-alert" role="alert"></div>
+
+<form id="email-form" method="post" class="manage-form">
+
+    @* Current email *@
+    <div class="manage-field">
+        <label class="manage-label">
+            <i class="fas fa-envelope" aria-hidden="true"></i>
+            البريد الحالي
+        </label>
+        <div class="manage-email-row">
+            <input asp-for="Email"
+                   class="manage-input"
+                   disabled
+                   dir="ltr" />
+            @if (Model.IsEmailConfirmed)
+            {
+                <span class="manage-email-badge confirmed">
+                    <i class="fas fa-circle-check me-1"></i>مؤكد
+                </span>
+            }
+            else
+            {
+                <div class="d-flex flex-column gap-1">
+                    <span class="manage-email-badge unconfirmed">
+                        <i class="fas fa-circle-exclamation me-1"></i>غير مؤكد
+                    </span>
+                    <button id="email-verification"
+                            type="submit"
+                            asp-page-handler="SendVerificationEmail"
+                            class="manage-link-btn">
+                        <i class="fas fa-paper-plane me-1"></i>إرسال رسالة التأكيد
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* New email *@
+    <div class="manage-field">
+        <label asp-for="Input.NewEmail" class="manage-label">
+            <i class="fas fa-pen" aria-hidden="true"></i>
+            البريد الجديد
+        </label>
+        <input asp-for="Input.NewEmail"
+               class="manage-input"
+               autocomplete="email"
+               aria-required="true"
+               placeholder="example@email.com"
+               type="email"
+               dir="ltr" />
+        <span asp-validation-for="Input.NewEmail" class="auth-error"></span>
+    </div>
+
+    <button id="change-email-button"
+            type="submit"
+            asp-page-handler="ChangeEmail"
+            class="btn auth-btn-primary btn-glowing mt-2">
+        <i class="fas fa-envelope-circle-check me-2" aria-hidden="true"></i>
+        تغيير البريد الإلكتروني
+    </button>
+
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

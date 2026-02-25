@@ -1,0 +1,126 @@
+﻿@page
+@model LoginModel
+@{
+    ViewData["Title"] = "تسجيل الدخول";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<section class="auth-section">
+    <div class="auth-bg-decor" aria-hidden="true">
+        <div class="auth-circle auth-circle-1"></div>
+        <div class="auth-circle auth-circle-2"></div>
+    </div>
+
+    <div class="container position-relative">
+        <div class="row justify-content-center align-items-center min-vh-80">
+            <div class="col-md-5 col-lg-4">
+
+                <div class="auth-card">
+                    @* Logo + Title *@
+                    <div class="auth-card-header">
+                        <div class="auth-logo-wrap">
+                            <img src="~/images/logo.jpg" alt="شعار أوركيديا" class="auth-logo" />
+                        </div>
+                        <h1 class="auth-title">مرحباً بعودتك</h1>
+                        <p class="auth-subtitle">سجّلي دخولك للمتابعة</p>
+                    </div>
+
+                    @* Validation errors *@
+                    <div asp-validation-summary="ModelOnly" class="auth-alert" role="alert"></div>
+
+                    @* Login Form *@
+                    <form id="account" method="post" class="auth-form" novalidate>
+                        <div class="auth-field">
+                            <label asp-for="Input.Email" class="auth-label">
+                                <i class="fas fa-envelope" aria-hidden="true"></i>
+                                البريد الإلكتروني
+                            </label>
+                            <input asp-for="Input.Email"
+                                   class="auth-input"
+                                   autocomplete="username"
+                                   aria-required="true"
+                                   placeholder="example@email.com"
+                                   type="email"
+                                   dir="ltr" />
+                            <span asp-validation-for="Input.Email" class="auth-error"></span>
+                        </div>
+
+                        <div class="auth-field">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <label asp-for="Input.Password" class="auth-label">
+                                    <i class="fas fa-lock" aria-hidden="true"></i>
+                                    كلمة المرور
+                                </label>
+                                <a id="forgot-password"
+                                   asp-page="./ForgotPassword"
+                                   class="auth-link-small">نسيتِ كلمة المرور؟</a>
+                            </div>
+                            <div class="auth-input-wrapper">
+                                <input asp-for="Input.Password"
+                                       id="passwordInput"
+                                       class="auth-input"
+                                       autocomplete="current-password"
+                                       aria-required="true"
+                                       placeholder="••••••••"
+                                       type="password"
+                                       dir="ltr" />
+                                <button type="button"
+                                        class="auth-password-toggle"
+                                        onclick="togglePassword('passwordInput', this)"
+                                        aria-label="إظهار/إخفاء كلمة المرور">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="Input.Password" class="auth-error"></span>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <input class="form-check-input auth-checkbox"
+                                   asp-for="Input.RememberMe"
+                                   id="rememberMe"
+                                   type="checkbox" />
+                            <label class="auth-check-label" for="rememberMe">
+                                تذكّريني
+                            </label>
+                        </div>
+
+                        <button id="login-submit"
+                                type="submit"
+                                class="btn auth-btn-primary w-100 btn-glowing">
+                            <i class="fas fa-arrow-right-to-bracket me-2" aria-hidden="true"></i>
+                            تسجيل الدخول
+                        </button>
+                    </form>
+
+                    <div class="auth-card-footer">
+                        <p class="mb-0">
+                            ليس لديكِ حساب؟
+                            <a asp-page="./Register"
+                               asp-route-returnUrl="@Model.ReturnUrl"
+                               class="auth-link">
+                                إنشاء حساب جديد
+                            </a>
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function togglePassword(id, btn) {
+            const input = document.getElementById(id);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.querySelector('i').className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                btn.querySelector('i').className = 'fas fa-eye';
+            }
+        }
+    </script>
+}

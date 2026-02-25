@@ -1,0 +1,354 @@
+@model IEnumerable<Order>
+@{
+    ViewData["Title"] = "إدارة الطلبات";
+    var currentStatus = ViewBag.CurrentStatus as string ?? "all";
+    var searchTerm = ViewBag.SearchTerm as string ?? "";
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-title-section">
+        <h1 class="page-title">
+            <i class="fas fa-shopping-cart me-3"></i>
+            إدارة الطلبات
+        </h1>
+        <p class="page-subtitle">إدارة شاملة لجميع طلبات العملاء</p>
+    </div>
+    
+    <div>
+        <a href="@Url.Action("ExportToExcel", new { status = currentStatus, search = searchTerm })" 
+           class="btn btn-success"
+           target="_blank"
+           title="تنزيل ملف Excel">
+            <i class="fas fa-file-excel me-2"></i>
+            تصدير Excel
+        </a>
+    </div>
+</div>
+
+<!-- Filters and Search -->
+<div class="card-admin mb-4">
+    <div class="row g-3 align-items-center">
+        <div class="col-md-8">
+            <!-- Status Filter Tabs -->
+            <ul class="nav nav-pills">
+                <li class="nav-item">
+                    <a class="nav-link @(currentStatus == "all" ? "active" : "")" 
+                       href="@Url.Action("Index", new { status = "all" })">
+                        <i class="fas fa-list me-1"></i>
+                        الكل
+                        <span class="badge bg-secondary ms-2">@ViewBag.AllCount</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentStatus == "pending" ? "active" : "")" 
+                       href="@Url.Action("Index", new { status = "pending", search = searchTerm })">
+                        <i class="fas fa-clock me-1"></i>
+                        جديد
+                        <span class="badge bg-warning ms-2">@ViewBag.PendingCount</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentStatus == "processing" ? "active" : "")" 
+                       href="@Url.Action("Index", new { status = "processing", search = searchTerm })">
+                        <i class="fas fa-cog me-1"></i>
+                        قيد المعالجة
+                        <span class="badge bg-primary ms-2">@ViewBag.ProcessingCount</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentStatus == "shipped" ? "active" : "")" 
+                       href="@Url.Action("Index", new { status = "shipped", search = searchTerm })">
+                        <i class="fas fa-truck me-1"></i>
+                        تم الشحن
+                        <span class="badge bg-info ms-2">@ViewBag.ShippedCount</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentStatus == "delivered" ? "active" : "")" 
+                       href="@Url.Action("Index", new { status = "delivered", search = searchTerm })">
+                        <i class="fas fa-check-circle me-1"></i>
+                        مكتمل
+                        <span class="badge bg-success ms-2">@ViewBag.DeliveredCount</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentStatus == "cancelled" ? "active" : "")" 
+                       href="@Url.Action("Index", new { status = "cancelled", search = searchTerm })">
+                        <i class="fas fa-ban me-1"></i>
+                        ملغي
+                        <span class="badge bg-danger ms-2">@ViewBag.CancelledCount</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Search Bar -->
+            <form method="get" action="@Url.Action("Index")">
+                <input type="hidden" name="status" value="@currentStatus" />
+                <div class="input-group">
+                    <input type="text" 
+                           name="search" 
+                           class="form-control" 
+                           placeholder="بحث بالاسم، رقم الهاتف، المدينة..." 
+                           value="@searchTerm"
+                           aria-label="بحث في الطلبات">
+                    <button class="btn btn-primary" type="submit">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Orders Table -->
+<div class="admin-table">
+    @if (Model.Any())
+    {
+        <table class="table table-hover align-middle mb-0" id="ordersTable">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">رقم الطلب</th>
+                    <th>معلومات العميل</th>
+                    <th>المدينة</th>
+                    <th>تاريخ الطلب</th>
+                    <th>المبلغ الإجمالي</th>
+                    <th>الحالة</th>
+                    <th style="width: 200px;">إجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Model)
+                {
+                    // Get status information
+                    var statusInfo = GetStatusInfo(order.Status);
+                    var statusClass = statusInfo.CssClass;
+                    var statusIcon = statusInfo.Icon;
+                    var statusText = statusInfo.Text;
+                    
+                    @functions {
+                        public (string CssClass, string Icon, string Text) GetStatusInfo(string status)
+                        {
+                            return status?.ToLower() switch
+                            {
+                                "pending" => ("pending", "clock", "جديد"),
+                                "processing" => ("processing", "cog", "قيد المعالجة"),
+                                "shipped" => ("shipped", "truck", "تم الشحن"),
+                                "delivered" => ("delivered", "check-circle", "مكتمل"),
+                                "cancelled" => ("cancelled", "ban", "ملغي"),
+                                _ => ("pending", "clock", "جديد")
+                            };
+                        }
+                    }
+                    
+                    <tr>
+                        <td class="fw-bold text-purple">
+                            #@order.OrderId
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column">
+                                <span class="fw-semibold">
+                                    <i class="fas fa-user me-2 text-muted"></i>
+                                    @order.CustomerName
+                                </span>
+                                <small class="text-muted">
+                                    <i class="fab fa-whatsapp me-1 text-success"></i>
+                                    @order.WhatsAppNumber
+                                </small>
+                            </div>
+                        </td>
+                        <td>
+                            <i class="fas fa-map-marker-alt me-1 text-muted"></i>
+                            @order.City
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column">
+                                <span class="fw-semibold">@order.OrderDate.ToString("dd/MM/yyyy")</span>
+                                <small class="text-muted">
+                                    <i class="far fa-clock me-1"></i>
+                                    @order.OrderDate.ToString("hh:mm tt")
+                                </small>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="fw-bold text-success fs-6">
+                                @order.TotalAmount.ToString("N2") د.ل
+                            </span>
+                            @if (order.ShippingCost > 0)
+                            {
+                                <small class="d-block text-muted">
+                                    + @order.ShippingCost.ToString("N2") شحن
+                                </small>
+                            }
+                        </td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="status-badge @statusClass dropdown-toggle" 
+                                        type="button" 
+                                        id="statusDropdown@(order.OrderId)" 
+                                        data-bs-toggle="dropdown" 
+                                        aria-expanded="false"
+                                        style="border: none; cursor: pointer;">
+                                    <i class="fas fa-@statusIcon me-1"></i>
+                                    @statusText
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="statusDropdown@(order.OrderId)">
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'pending'); return false;">
+                                            <i class="fas fa-clock text-warning me-2"></i>
+                                            جديد
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'processing'); return false;">
+                                            <i class="fas fa-cog text-primary me-2"></i>
+                                            قيد المعالجة
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'shipped'); return false;">
+                                            <i class="fas fa-truck text-info me-2"></i>
+                                            تم الشحن
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'delivered'); return false;">
+                                            <i class="fas fa-check-circle text-success me-2"></i>
+                                            مكتمل
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="#" onclick="updateOrderStatus(@order.OrderId, 'cancelled'); return false;">
+                                            <i class="fas fa-times-circle me-2"></i>
+                                            ملغي
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="@Url.Action("Details", new { id = order.OrderId })" 
+                                   class="btn btn-action view btn-sm"
+                                   title="عرض التفاصيل">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                
+                                <a href="https://wa.me/@order.WhatsAppNumber.Replace("+", "")" 
+                                   class="btn btn-sm" 
+                                   style="background: rgba(37, 211, 102, 0.1); color: #25d366;"
+                                   target="_blank"
+                                   title="مراسلة العميل">
+                                    <i class="fab fa-whatsapp"></i>
+                                </a>
+                                
+                                <button type="button" 
+                                        class="btn btn-action delete btn-sm" 
+                                        onclick="deleteOrder(@order.OrderId)"
+                                        title="حذف الطلب">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+            <h4 class="text-muted">لا توجد طلبات</h4>
+            <p class="text-muted">لم يتم العثور على طلبات تطابق المعايير المحددة</p>
+        </div>
+    }
+</div>
+
+<!-- Hidden Delete Form Template -->
+<form id="deleteForm" method="post" style="display: none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script>
+        // Update Order Status
+        async function updateOrderStatus(orderId, status) {
+            const confirmed = await AdminUtils.confirm(
+                'سيتم تحديث حالة الطلب إلى حالة جديدة',
+                'هل تريد تحديث حالة الطلب؟'
+            );
+            
+            if (!confirmed) return;
+            
+            try {
+                const token = document.querySelector('[name="__RequestVerificationToken"]')?.value;
+                
+                const url = '@Url.Action("UpdateStatus")?id=' + orderId + '&status=' + status;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token || ''
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('HTTP error ' + response.status);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    AdminUtils.showToast(data.message, 'success');
+                    
+                    // Smooth UI update
+                    const currentFilter = '@currentStatus';
+                    
+                    if (currentFilter !== 'all' && currentFilter.toLowerCase() !== status.toLowerCase()) {
+                        // Row no longer matches filter - fade out and remove
+                        const row = document.querySelector(`button[onclick*="updateOrderStatus(${orderId}"]`).closest('tr');
+                        if (row) {
+                            row.style.transition = 'opacity 0.5s ease';
+                            row.style.opacity = '0';
+                            setTimeout(() => {
+                                row.remove();
+                                // If no rows left, show empty state or reload
+                                const tbody = document.querySelector('#ordersTable tbody');
+                                if (tbody && tbody.children.length === 0) {
+                                    window.location.reload();
+                                }
+                            }, 500);
+                        }
+                    } else {
+                        // Just reload to update counts and badge
+                        setTimeout(() => window.location.reload(), 1000);
+                    }
+                } else {
+                    AdminUtils.showToast(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                AdminUtils.showToast('حدث خطأ في تحديث الحالة', 'error');
+            }
+        }
+        
+        // Delete Order
+        async function deleteOrder(orderId) {
+            const confirmed = await AdminUtils.confirm(
+                'لن تتمكن من التراجع عن هذا الإجراء!',
+                'هل تريد حذف هذا الطلب؟'
+            );
+            
+            if (!confirmed) return;
+            
+            const form = document.getElementById('deleteForm');
+            form.action = '@Url.Action("Delete")/' + orderId;
+            form.submit();
+        }
+    </script>
+}

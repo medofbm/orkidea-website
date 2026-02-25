@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="description" content="أوركيديا - متجر متخصص في بيع الزيوت الطبيعية والصابون والمقشرات المصنوعة يدوياً بحب وشغف" />
+    <meta name="keywords" content="زيوت طبيعية, صابون طبيعي, مقشرات, عناية بالبشرة, منتجات عضوية" />
+    <meta name="author" content="Orkideya" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta property="og:title" content="@ViewData["Title"] - Orkideya" />
+    <meta property="og:description" content="متجر متخصص في بيع الزيوت الطبيعية والصابون والمقشرات المصنوعة يدوياً" />
+    <meta property="og:type" content="website" />
+    <title>@ViewData["Title"] - Orkideya</title>
+    <link rel="icon" type="image/jpeg" href="~/images/logo.jpg" />
+    <link rel="apple-touch-icon" href="~/images/logo.jpg" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/Orkideya.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main visually-hidden-focusable">الانتقال إلى المحتوى الرئيسي</a>
+
+    <!-- ============ HEADER ============ -->
+    <header class="sticky-header" role="banner">
+        <nav class="navbar" role="navigation" aria-label="القائمة الرئيسية">
+            <div class="container">
+
+                <!-- زر الهامبرغر (موبايل) -->
+                <button class="navbar-toggler-custom d-lg-none"
+                        type="button"
+                        id="sidebarToggleBtn"
+                        aria-label="فتح القائمة"
+                        aria-expanded="false"
+                        aria-controls="mobileOffcanvas">
+                    <span class="toggler-bar"></span>
+                    <span class="toggler-bar"></span>
+                    <span class="toggler-bar"></span>
+                </button>
+
+                <!-- الشعار -->
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <img src="~/images/logo.jpg" alt="شعار أوركيديا" class="site-logo" />
+                    <span class="brand-text">Orkideya</span>
+                </a>
+
+                <!-- روابط سطح المكتب -->
+                <div class="desktop-nav-area d-none d-lg-flex align-items-center gap-2">
+                    <a class="desktop-nav-link" asp-area="" asp-controller="Home" asp-action="Index">
+                        <i class="fas fa-home" aria-hidden="true"></i>
+                        الرئيسية
+                    </a>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <div class="dropdown">
+                            <a class="desktop-nav-link dropdown-toggle"
+                               href="#" role="button"
+                               data-bs-toggle="dropdown"
+                               aria-expanded="false">
+                                <i class="fas fa-tools" aria-hidden="true"></i>
+                                الصيانة
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" asp-area="Admin" asp-controller="Products" asp-action="Index"><i class="fas fa-box me-2 text-muted"></i>إدارة المنتجات</a></li>
+                                <li><a class="dropdown-item" asp-area="Admin" asp-controller="Categories" asp-action="Index"><i class="fas fa-tags me-2 text-muted"></i>إدارة الفئات</a></li>
+                                <li><a class="dropdown-item" asp-area="Admin" asp-controller="Reviews" asp-action="Index"><i class="fas fa-star me-2 text-warning"></i>إدارة الآراء</a></li>
+                                <li><a class="dropdown-item" asp-area="Admin" asp-controller="ContactMessages" asp-action="Index"><i class="fas fa-envelope me-2 text-muted"></i>رسائل التواصل</a></li>
+                            </ul>
+                        </div>
+                    }
+                </div>
+
+                <!-- أيقونات اليمين (ديسكتوب + موبايل) -->
+                <div class="header-right-icons d-flex align-items-center gap-2">
+                    <!-- أيقونة السلة -->
+                    <div class="nav-utility-icon">
+                        @await Component.InvokeAsync("CartSummary")
+                    </div>
+
+                    <!-- أزرار تسجيل الدخول (ديسكتوب فقط) -->
+                    <div class="d-none d-lg-flex align-items-center gap-2">
+                        <partial name="_LoginPartial" />
+                    </div>
+                </div>
+
+            </div>
+        </nav>
+    </header>
+
+    <!-- ============ MOBILE SIDEBAR (Offcanvas) ============ -->
+    <div class="offcanvas offcanvas-end d-lg-none"
+         tabindex="-1"
+         id="mobileOffcanvas"
+         aria-labelledby="mobileOffcanvasLabel">
+
+        <!-- رأس السايدبار -->
+        <div class="sidebar-head">
+            <div class="d-flex align-items-center gap-3">
+                <img src="~/images/logo.jpg" alt="شعار أوركيديا" class="sidebar-logo" />
+                <div>
+                    <div class="sidebar-brand-name" id="mobileOffcanvasLabel">Orkideya</div>
+                    <div class="sidebar-brand-sub">منتجات طبيعية</div>
+                </div>
+            </div>
+            <button type="button" class="sidebar-close-btn" data-bs-dismiss="offcanvas" aria-label="إغلاق">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- جسم السايدبار -->
+        <div class="sidebar-body">
+            <!-- روابط التنقل -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">القائمة</div>
+                <nav class="sidebar-nav">
+                    <a class="sidebar-nav-link" asp-area="" asp-controller="Home" asp-action="Index">
+                        <span class="sidebar-nav-icon bg-purple-soft">
+                            <i class="fas fa-home"></i>
+                        </span>
+                        <span>الرئيسية</span>
+                        <i class="fas fa-chevron-left sidebar-nav-arrow ms-auto"></i>
+                    </a>
+                    <a class="sidebar-nav-link" href="#shop-categories">
+                        <span class="sidebar-nav-icon bg-green-soft">
+                            <i class="fas fa-th-large"></i>
+                        </span>
+                        <span>التصنيفات</span>
+                        <i class="fas fa-chevron-left sidebar-nav-arrow ms-auto"></i>
+                    </a>
+                    <a class="sidebar-nav-link" href="#contact-section">
+                        <span class="sidebar-nav-icon bg-blue-soft">
+                            <i class="fas fa-envelope"></i>
+                        </span>
+                        <span>تواصل معنا</span>
+                        <i class="fas fa-chevron-left sidebar-nav-arrow ms-auto"></i>
+                    </a>
+
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <div class="sidebar-section-title mt-3">الإدارة</div>
+                        <a class="sidebar-nav-link" asp-area="Admin" asp-controller="Products" asp-action="Index">
+                            <span class="sidebar-nav-icon bg-orange-soft">
+                                <i class="fas fa-box"></i>
+                            </span>
+                            <span>إدارة المنتجات</span>
+                            <i class="fas fa-chevron-left sidebar-nav-arrow ms-auto"></i>
+                        </a>
+                        <a class="sidebar-nav-link" asp-area="Admin" asp-controller="Categories" asp-action="Index">
+                            <span class="sidebar-nav-icon bg-pink-soft">
+                                <i class="fas fa-tags"></i>
+                            </span>
+                            <span>إدارة الفئات</span>
+                            <i class="fas fa-chevron-left sidebar-nav-arrow ms-auto"></i>
+                        </a>
+                        <a class="sidebar-nav-link" asp-area="Admin" asp-controller="Reviews" asp-action="Index">
+                            <span class="sidebar-nav-icon bg-yellow-soft">
+                                <i class="fas fa-star"></i>
+                            </span>
+                            <span>إدارة الآراء</span>
+                            <i class="fas fa-chevron-left sidebar-nav-arrow ms-auto"></i>
+                        </a>
+                        <a class="sidebar-nav-link" asp-area="Admin" asp-controller="ContactMessages" asp-action="Index">
+                            <span class="sidebar-nav-icon bg-purple-soft">
+                                <i class="fas fa-envelope"></i>
+                            </span>
+                            <span>رسائل التواصل</span>
+                            <i class="fas fa-chevron-left sidebar-nav-arrow ms-auto"></i>
+                        </a>
+                    }
+                </nav>
+            </div>
+
+            <!-- روابط شبكات التواصل -->
+            <div class="sidebar-section sidebar-social">
+                <div class="sidebar-section-title">تابعينا</div>
+                <div class="d-flex gap-2">
+                    <a href="https://www.facebook.com/share/1AhWKR5Ph7/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" class="sidebar-social-btn facebook" aria-label="فيسبوك">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" target="_blank" rel="noopener noreferrer" class="sidebar-social-btn instagram" aria-label="إنستجرام">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://wa.me/218931457034" target="_blank" rel="noopener noreferrer" class="sidebar-social-btn whatsapp" aria-label="واتساب">
+                        <i class="fab fa-whatsapp"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- تذييل السايدبار -->
+        <div class="sidebar-foot">
+            <partial name="_LoginPartial" />
+            <div class="sidebar-copyright">
+                © @DateTime.Now.Year Orkideya · صنع بـ <i class="fas fa-heart text-danger"></i> في ليبيا
+            </div>
+        </div>
+    </div>
+
+    @Html.AntiForgeryToken()
+
+    <div class="container">
+        <main id="main-content" role="main" class="pb-3" tabindex="-1">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top site-footer" role="contentinfo">
+        <div class="container">
+            <div class="row align-items-start">
+                <div class="col-lg-8 col-md-7 mb-4 mb-md-0">
+                    <h6 class="footer-heading">
+                        <i class="fas fa-seedling me-2" aria-hidden="true"></i>
+                        عن أوركيديا
+                    </h6>
+                    <p class="text-justify footer-description">
+                        متجر متخصص في بيع الزيوت الطبيعية والصابون والمقشرات المصنوعة يدوياً بحب وشغف.
+                        نؤمن بأن الجمال الحقيقي ينبع من الطبيعة، ونلتزم بتقديم منتجات عضوية 100% لعناية صحية وطبيعية ببشرتك.
+                    </p>
+                    <div class="footer-features mt-3">
+                        <span class="badge footer-badge me-2">
+                            <i class="fas fa-leaf me-1" aria-hidden="true"></i>100% طبيعي
+                        </span>
+                        <span class="badge footer-badge me-2">
+                            <i class="fas fa-hand-holding-heart me-1" aria-hidden="true"></i>صنع يدوي
+                        </span>
+                        <span class="badge footer-badge">
+                            <i class="fas fa-award me-1" aria-hidden="true"></i>جودة عالية
+                        </span>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-5 text-center text-md-end">
+                    <h6 class="footer-heading">
+                        <i class="fas fa-share-nodes me-2" aria-hidden="true"></i>تواصل معنا
+                    </h6>
+                    <ul class="social-icons d-flex justify-content-center justify-content-md-end gap-3" role="list">
+                        <li>
+                            <a class="facebook" href="https://www.facebook.com/share/1AhWKR5Ph7/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" aria-label="تابعنا على فيسبوك">
+                                <i class="fab fa-facebook-f" aria-hidden="true"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="instagram" href="#" target="_blank" rel="noopener noreferrer" aria-label="تابعنا على إنستجرام">
+                                <i class="fab fa-instagram" aria-hidden="true"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="tiktok" href="#" target="_blank" rel="noopener noreferrer" aria-label="تابعنا على تيك توك">
+                                <i class="fab fa-tiktok" aria-hidden="true"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="whatsapp" href="https://wa.me/218931457034" target="_blank" rel="noopener noreferrer" aria-label="تواصل معنا عبر واتساب">
+                                <i class="fab fa-whatsapp" aria-hidden="true"></i>
+                            </a>
+                        </li>
+                    </ul>
+                    <div class="footer-contact mt-4">
+                        <p class="contact-info">
+                            <i class="fas fa-phone me-2" aria-hidden="true"></i>
+                            <a href="tel:+218931457034" class="text-white text-decoration-none">218931457034+</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <hr class="footer-divider my-4" />
+            <div class="row">
+                <div class="col-12 text-center">
+                    <p class="copyright mb-0">
+                        <i class="far fa-copyright me-1" aria-hidden="true"></i>
+                        @DateTime.Now.Year Orkideya. جميع الحقوق محفوظة.
+                        <span class="made-with-love">صنع بـ <i class="fas fa-heart text-danger" aria-hidden="true"></i> في ليبيا</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.all.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // ---- Sidebar (Offcanvas) ----
+            const toggleBtn = document.getElementById('sidebarToggleBtn');
+            const offcanvasEl = document.getElementById('mobileOffcanvas');
+
+            if (toggleBtn && offcanvasEl && typeof bootstrap !== 'undefined') {
+                const bsOffcanvas = new bootstrap.Offcanvas(offcanvasEl, {
+                    backdrop: true,
+                    scroll: false
+                });
+
+                toggleBtn.addEventListener('click', function () {
+                    bsOffcanvas.toggle();
+                    const expanded = this.getAttribute('aria-expanded') === 'true';
+                    this.setAttribute('aria-expanded', String(!expanded));
+                    this.classList.toggle('is-active');
+                });
+
+                offcanvasEl.addEventListener('hidden.bs.offcanvas', function () {
+                    toggleBtn.setAttribute('aria-expanded', 'false');
+                    toggleBtn.classList.remove('is-active');
+                });
+
+                // إغلاق السايدبار عند النقر على أي رابط داخله
+                offcanvasEl.querySelectorAll('a').forEach(function (link) {
+                    link.addEventListener('click', function () {
+                        bsOffcanvas.hide();
+                    });
+                });
+            }
+
+            // ---- Header Scroll Glass Effect ----
+            const header = document.querySelector('.sticky-header');
+            if (header) {
+                const onScroll = function () {
+                    header.classList.toggle('scrolled', window.scrollY > 30);
+                };
+                window.addEventListener('scroll', onScroll, { passive: true });
+                onScroll();
+            }
+
+            // ---- Keyboard Navigation ----
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Tab') document.body.classList.add('keyboard-navigation');
+            });
+            document.addEventListener('mousedown', function () {
+                document.body.classList.remove('keyboard-navigation');
+            });
+        });
+    </script>
+</body>
+</html>

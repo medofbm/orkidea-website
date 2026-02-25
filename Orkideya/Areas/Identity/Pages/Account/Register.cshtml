@@ -1,0 +1,140 @@
+﻿@page
+@model RegisterModel
+@{
+    ViewData["Title"] = "إنشاء حساب";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<section class="auth-section">
+    <div class="auth-bg-decor" aria-hidden="true">
+        <div class="auth-circle auth-circle-1"></div>
+        <div class="auth-circle auth-circle-2"></div>
+    </div>
+
+    <div class="container position-relative">
+        <div class="row justify-content-center align-items-center min-vh-80">
+            <div class="col-md-5 col-lg-4">
+
+                <div class="auth-card">
+                    @* Logo + Title *@
+                    <div class="auth-card-header">
+                        <div class="auth-logo-wrap">
+                            <img src="~/images/logo.jpg" alt="شعار أوركيديا" class="auth-logo" />
+                        </div>
+                        <h1 class="auth-title">انضمي إلينا</h1>
+                        <p class="auth-subtitle">أنشئي حسابك واستمتعي بتجربة تسوق مميزة</p>
+                    </div>
+
+                    @* Validation errors *@
+                    <div asp-validation-summary="ModelOnly" class="auth-alert" role="alert"></div>
+
+                    @* Register Form *@
+                    <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="auth-form" novalidate>
+
+                        <div class="auth-field">
+                            <label asp-for="Input.Email" class="auth-label">
+                                <i class="fas fa-envelope" aria-hidden="true"></i>
+                                البريد الإلكتروني
+                            </label>
+                            <input asp-for="Input.Email"
+                                   class="auth-input"
+                                   autocomplete="username"
+                                   aria-required="true"
+                                   placeholder="example@email.com"
+                                   type="email"
+                                   dir="ltr" />
+                            <span asp-validation-for="Input.Email" class="auth-error"></span>
+                        </div>
+
+                        <div class="auth-field">
+                            <label asp-for="Input.Password" class="auth-label">
+                                <i class="fas fa-lock" aria-hidden="true"></i>
+                                كلمة المرور
+                            </label>
+                            <div class="auth-input-wrapper">
+                                <input asp-for="Input.Password"
+                                       id="passwordInput"
+                                       class="auth-input"
+                                       autocomplete="new-password"
+                                       aria-required="true"
+                                       placeholder="••••••••"
+                                       type="password"
+                                       dir="ltr" />
+                                <button type="button"
+                                        class="auth-password-toggle"
+                                        onclick="togglePassword('passwordInput', this)"
+                                        aria-label="إظهار/إخفاء كلمة المرور">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="Input.Password" class="auth-error"></span>
+                        </div>
+
+                        <div class="auth-field">
+                            <label asp-for="Input.ConfirmPassword" class="auth-label">
+                                <i class="fas fa-shield-halved" aria-hidden="true"></i>
+                                تأكيد كلمة المرور
+                            </label>
+                            <div class="auth-input-wrapper">
+                                <input asp-for="Input.ConfirmPassword"
+                                       id="confirmPasswordInput"
+                                       class="auth-input"
+                                       autocomplete="new-password"
+                                       aria-required="true"
+                                       placeholder="••••••••"
+                                       type="password"
+                                       dir="ltr" />
+                                <button type="button"
+                                        class="auth-password-toggle"
+                                        onclick="togglePassword('confirmPasswordInput', this)"
+                                        aria-label="إظهار/إخفاء تأكيد كلمة المرور">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="Input.ConfirmPassword" class="auth-error"></span>
+                        </div>
+
+                        @* Password strength hints *@
+                        <div class="auth-hint-box mb-3">
+                            <i class="fas fa-circle-info me-1" aria-hidden="true"></i>
+                            كلمة المرور يجب أن تحتوي على 6 أحرف على الأقل
+                        </div>
+
+                        <button id="registerSubmit"
+                                type="submit"
+                                class="btn auth-btn-primary w-100 btn-glowing">
+                            <i class="fas fa-user-plus me-2" aria-hidden="true"></i>
+                            إنشاء الحساب
+                        </button>
+                    </form>
+
+                    <div class="auth-card-footer">
+                        <p class="mb-0">
+                            لديكِ حساب بالفعل؟
+                            <a asp-page="./Login" class="auth-link">
+                                تسجيل الدخول
+                            </a>
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function togglePassword(id, btn) {
+            const input = document.getElementById(id);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.querySelector('i').className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                btn.querySelector('i').className = 'fas fa-eye';
+            }
+        }
+    </script>
+}

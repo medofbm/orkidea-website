@@ -1,0 +1,42 @@
+﻿@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<div class="manage-page">
+    <!-- خلفية زخرفية -->
+    <div class="manage-bg-decor" aria-hidden="true">
+        <div class="manage-circle manage-circle-1"></div>
+        <div class="manage-circle manage-circle-2"></div>
+    </div>
+
+    <div class="container py-5 position-relative">
+        <!-- Page header -->
+        <div class="manage-header mb-5">
+            <div class="manage-header-avatar">
+                <i class="fas fa-user" aria-hidden="true"></i>
+            </div>
+            <div>
+                <h1 class="manage-header-title">حسابي</h1>
+                <p class="manage-header-sub">إدارة معلوماتك الشخصية وإعدادات الأمان</p>
+            </div>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            <!-- Sidebar nav -->
+            <div class="col-lg-3 col-md-4 col-12">
+                <partial name="_ManageNav" />
+            </div>
+
+            <!-- Content area -->
+            <div class="col-lg-7 col-md-8 col-12">
+                <div class="manage-card">
+                    @RenderBody()
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @RenderSection("Scripts", required: false)
+}

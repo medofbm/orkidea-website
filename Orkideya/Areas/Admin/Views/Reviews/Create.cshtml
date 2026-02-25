@@ -1,0 +1,241 @@
+@model Orkideya.Models.Review
+
+@{
+    ViewData["Title"] = "إضافة تقييم جديد";
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-title-section">
+        <h1 class="page-title">
+            <i class="fas fa-star me-3"></i>
+            إضافة تقييم جديد
+        </h1>
+        <p class="page-subtitle">إضافة تقييم عميل للظهور في الموقع</p>
+    </div>
+    
+    <div>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-2"></i>
+            العودة للقائمة
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card-admin">
+            <div class="card-header-admin">
+                <h5 class="card-title-admin">
+                    <i class="fas fa-info-circle me-2"></i>
+                    معلومات التقييم
+                </h5>
+            </div>
+            
+            <form asp-action="Create" class="needs-validation" novalidate>
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="CustomerName" class="form-label fw-semibold">
+                            اسم العميل <span class="text-danger">*</span>
+                        </label>
+                        <input asp-for="CustomerName" 
+                               class="form-control form-control-lg" 
+                               placeholder="مثال: أحمد علي"
+                               required />
+                        <span asp-validation-for="CustomerName" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label asp-for="Rating" class="form-label fw-semibold">
+                            التقييم <span class="text-danger">*</span>
+                        </label>
+                        <div class="star-rating-input">
+                            <input type="hidden" asp-for="Rating" id="ratingValue" value="5" />
+                            <div class="stars-selector" id="starsSelector">
+                                <i class="fas fa-star star-btn" data-rating="1" title="1 نجمة"></i>
+                                <i class="fas fa-star star-btn" data-rating="2" title="2 نجمة"></i>
+                                <i class="fas fa-star star-btn" data-rating="3" title="3 نجوم"></i>
+                                <i class="fas fa-star star-btn" data-rating="4" title="4 نجوم"></i>
+                                <i class="fas fa-star star-btn" data-rating="5" title="5 نجوم"></i>
+                            </div>
+                            <div class="mt-2 text-center">
+                                <span class="badge bg-warning text-dark" id="ratingDisplay">
+                                    <i class="fas fa-star me-1"></i>
+                                    <span id="ratingNumber">5</span> / 5
+                                </span>
+                            </div>
+                        </div>
+                        <span asp-validation-for="Rating" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="col-md-12">
+                        <label asp-for="Message" class="form-label fw-semibold">
+                            نص التقييم <span class="text-danger">*</span>
+                        </label>
+                        <textarea asp-for="Message" 
+                                  class="form-control" 
+                                  rows="5"
+                                  placeholder="اكتب تجربة العميل مع المنتج..."
+                                  required></textarea>
+                        <span asp-validation-for="Message" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="col-md-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   asp-for="IsVisible" 
+                                   id="isVisibleSwitch"
+                                   style="width: 3rem; height: 1.5rem;">
+                            <label class="form-check-label fw-semibold" for="isVisibleSwitch">
+                                <i class="fas fa-eye me-2"></i>
+                                @Html.DisplayNameFor(model => model.IsVisible)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 pt-4 border-top">
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>
+                            إلغاء
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg px-5">
+                            <i class="fas fa-plus-circle me-2"></i>
+                            إضافة التقييم
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card-admin">
+            <div class="card-header-admin">
+                <h5 class="card-title-admin">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    نصائح
+                </h5>
+            </div>
+            
+            <div class="d-flex flex-column gap-3">
+                <div class="alert alert-info border-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>تذكير:</strong> التقييمات الإيجابية تساعد في بناء ثقة العملاء الجدد.
+                </div>
+                
+                <div class="d-flex align-items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1"></i>
+                    <div>
+                        <strong>الاسم الحقيقي:</strong>
+                        <p class="small text-muted mb-0">استخدم أسماء حقيقية لزيادة المصداقية</p>
+                    </div>
+                </div>
+                
+                <div class="d-flex align-items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1"></i>
+                    <div>
+                        <strong>تجربة مفصلة:</strong>
+                        <p class="small text-muted mb-0">وصف واضح لتجربة العميل مع المنتج</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        // Star rating selector
+        document.addEventListener('DOMContentLoaded', () => {
+            const stars = document.querySelectorAll('.star-btn');
+            const ratingInput = document.getElementById('ratingValue');
+            
+            // Set initial rating (5 stars default for new review)
+            const initialRating = 5;
+            ratingInput.value = initialRating;
+            updateStars(initialRating);
+            document.getElementById('ratingNumber').textContent = initialRating;
+            
+            console.log('Review Create - Initial Rating:', initialRating);
+            
+            stars.forEach(star => {
+                star.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const rating = parseInt(this.dataset.rating);
+                    ratingInput.value = rating;
+                    updateStars(rating);
+                    // Update display badge
+                    document.getElementById('ratingNumber').textContent = rating;
+                    console.log('Rating set to:', rating); // Debug
+                });
+                
+                star.addEventListener('mouseenter', function() {
+                    const rating = parseInt(this.dataset.rating);
+                    highlightStars(rating);
+                });
+            });
+            
+            document.getElementById('starsSelector').addEventListener('mouseleave', function() {
+                const currentRating = parseInt(ratingInput.value);
+                updateStars(currentRating);
+            });
+            
+            function updateStars(rating) {
+                stars.forEach((star, index) => {
+                    if (index < rating) {
+                        star.classList.remove('far');
+                        star.classList.add('fas');
+                        star.style.color = '#ffc107';
+                    } else {
+                        star.classList.remove('fas');
+                        star.classList.add('far');
+                        star.style.color = '#d0d0d0';
+                    }
+                });
+            }
+            
+            function highlightStars(rating) {
+                stars.forEach((star, index) => {
+                    if (index < rating) {
+                        star.style.color = '#ffc107';
+                    } else {
+                        star.style.color = '#d0d0d0';
+                    }
+                });
+            }
+        });
+    </script>
+}
+
+@section Styles {
+    <style>
+        .stars-selector {
+            font-size: 2.5rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .star-btn {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .star-btn:hover {
+            transform: scale(1.2);
+        }
+        
+        .star-rating-input {
+            padding: 1rem;
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.05), rgba(255, 193, 7, 0.1));
+            border-radius: 12px;
+            border: 2px dashed #ffc107;
+        }
+    </style>
+}

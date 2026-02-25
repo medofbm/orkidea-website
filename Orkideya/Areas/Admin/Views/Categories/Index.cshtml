@@ -1,0 +1,298 @@
+@model IEnumerable<Orkideya.Models.Category>
+
+@{
+    ViewData["Title"] = "إدارة الفئات";
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-title-section">
+        <h1 class="page-title">
+            <i class="fas fa-tags me-3"></i>
+            إدارة الفئات
+        </h1>
+        <p class="page-subtitle">تنظيم منتجاتك في فئات لسهولة التصفح</p>
+    </div>
+    
+    <div>
+        <button type="button" 
+                class="btn btn-primary btn-lg" 
+                data-bs-toggle="modal" 
+                data-bs-target="#addCategoryModal">
+            <i class="fas fa-plus-circle me-2"></i>
+            إضافة فئة جديدة
+        </button>
+    </div>
+</div>
+
+<!-- Categories Cards Grid -->
+<div class="row g-4" id="categoriesGrid">
+    @foreach (var category in Model)
+    {
+        <div class="col-lg-3 col-md-4 col-sm-6" data-category-id="@category.CategoryId">
+            <div class="card-admin h-100">
+                <div class="text-center py-4">
+                    <div class="category-icon-large mb-3">
+                        <i class="fas fa-tag fa-3x text-purple"></i>
+                    </div>
+                    <h5 class="fw-bold mb-3">@category.Name</h5>
+                    
+                    <div class="product-count mb-3">
+                        @{
+                            var productCounts = ViewBag.ProductCounts as Dictionary<int, int>;
+                            var count = productCounts?.ContainsKey(category.CategoryId) == true 
+                                ? productCounts[category.CategoryId] 
+                                : 0;
+                        }
+                        <span class="badge bg-light text-dark border">
+                            <i class="fas fa-box me-1"></i>
+                            @count منتج
+                        </span>
+                    </div>
+                    
+                    <div class="btn-group w-100" role="group">
+                        <button type="button" 
+                                class="btn btn-action edit btn-sm flex-fill"
+                                onclick="editCategory(@category.CategoryId, '@category.Name')"
+                                title="تعديل">
+                            <i class="fas fa-edit"></i>
+                            تعديل
+                        </button>
+                        <button type="button" 
+                                class="btn btn-action delete btn-sm flex-fill"
+                                onclick="deleteCategory(@category.CategoryId, '@category.Name')"
+                                title="حذف">
+                            <i class="fas fa-trash"></i>
+                            حذف
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    
+    @if (!Model.Any())
+    {
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">لا توجد فئات</h4>
+                <p class="text-muted">ابدأ بإضافة فئتك الأولى</p>
+                <button type="button" 
+                        class="btn btn-primary mt-3" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#addCategoryModal">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    إضافة فئة جديدة
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-purple text-white">
+                <h5 class="modal-title" id="addCategoryModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    إضافة فئة جديدة
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCategoryForm">
+                    <div class="mb-3">
+                        <label for="newCategoryName" class="form-label fw-semibold">
+                            اسم الفئة <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control form-control-lg" 
+                               id="newCategoryName" 
+                               placeholder="مثال: زيوت، صابون، مقشرات" 
+                               required 
+                               maxlength="50">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>
+                    إلغاء
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveNewCategory()">
+                    <i class="fas fa-save me-2"></i>
+                    حفظ الفئة
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1" aria-labelledby="editCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-purple text-white">
+                <h5 class="modal-title" id="editCategoryModalLabel">
+                    <i class="fas fa-edit me-2"></i>
+                    تعديل الفئة
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editCategoryForm">
+                    <input type="hidden" id="editCategoryId">
+                    <div class="mb-3">
+                        <label for="editCategoryName" class="form-label fw-semibold">
+                            اسم الفئة <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control form-control-lg" 
+                               id="editCategoryName" 
+                               required 
+                               maxlength="50">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>
+                    إلغاء
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveEditCategory()">
+                    <i class="fas fa-save me-2"></i>
+                    حفظ التعديلات
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Delete Form -->
+<form id="deleteCategoryForm" method="post" style="display: none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script>
+        // Add new category
+        async function saveNewCategory() {
+            const name = document.getElementById('newCategoryName').value.trim();
+            
+            if (!name) {
+                AdminUtils.showToast('الرجاء إدخال اسم الفئة', 'error');
+                return;
+            }
+            
+            try {
+                const token = document.querySelector('[name="__RequestVerificationToken"]')?.value;
+                const url = '@Url.Action("CreateAjax")?name=' + encodeURIComponent(name);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': token || ''
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    AdminUtils.showToast(data.message, 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('addCategoryModal')).hide();
+                    document.getElementById('newCategoryName').value = '';
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    AdminUtils.showToast(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error adding category:', error);
+                AdminUtils.showToast('حدث خطأ في إضافة الفئة', 'error');
+            }
+        }
+        
+        // Open edit modal
+        function editCategory(id, name) {
+            document.getElementById('editCategoryId').value = id;
+            document.getElementById('editCategoryName').value = name;
+            new bootstrap.Modal(document.getElementById('editCategoryModal')).show();
+        }
+        
+        // Save edited category
+        async function saveEditCategory() {
+            const id = document.getElementById('editCategoryId').value;
+            const name = document.getElementById('editCategoryName').value.trim();
+            
+            if (!name) {
+                AdminUtils.showToast('الرجاء إدخال اسم الفئة', 'error');
+                return;
+            }
+            
+            try {
+                const token = document.querySelector('[name="__RequestVerificationToken"]')?.value;
+                const url = '@Url.Action("EditAjax")?id=' + id + '&name=' + encodeURIComponent(name);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': token || ''
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    AdminUtils.showToast(data.message, 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('editCategoryModal')).hide();
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    AdminUtils.showToast(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error editing category:', error);
+                AdminUtils.showToast('حدث خطأ في تعديل الفئة', 'error');
+            }
+        }
+        
+        // Delete category
+        async function deleteCategory(id, name) {
+            const confirmed = await AdminUtils.confirm(
+                `سيتم حذف الفئة "${name}" نهائياً!`,
+                'هل تريد حذف هذه الفئة؟'
+            );
+            
+            if (!confirmed) return;
+            
+            const form = document.getElementById('deleteCategoryForm');
+            form.action = '@Url.Action("Delete")/' + id;
+            form.submit();
+        }
+    </script>
+}
+
+@section Styles {
+    <style>
+        .category-icon-large {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, rgba(106, 27, 154, 0.1), rgba(224, 176, 255, 0.1));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-header.bg-purple {
+            background: linear-gradient(135deg, #6a1b9a, #9c4dcc) !important;
+        }
+        
+        .product-count {
+            font-size: 0.9rem;
+        }
+    </style>
+}

@@ -1,0 +1,265 @@
+@model Order
+@{
+    ViewData["Title"] = $"تفاصيل الطلب #{Model.OrderId}";
+    var orderItems = ViewBag.OrderItems as List<OrderItem> ?? new List<OrderItem>();
+    var productNames = ViewBag.ProductNames as Dictionary<int, string> ?? new Dictionary<int, string>();
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-title-section">
+        <h1 class="page-title">
+            <i class="fas fa-file-invoice me-3"></i>
+            تفاصيل الطلب #@Model.OrderId
+        </h1>
+        <p class="page-subtitle">معلومات كاملة عن الطلب</p>
+    </div>
+    
+    <div>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-2"></i>
+            العودة للقائمة
+        </a>
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="fas fa-print me-2"></i>
+            طباعة
+        </button>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Order Information -->
+    <div class="col-lg-8">
+        <!-- Customer Information -->
+        <div class="card-admin mb-4">
+            <div class="card-header-admin">
+                <h5 class="card-title-admin">
+                    <i class="fas fa-user-circle me-2"></i>
+                    معلومات العميل
+                </h5>
+            </div>
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label text-muted small">اسم العميل</label>
+                    <div class="fw-semibold fs-5">
+                        <i class="fas fa-user me-2 text-primary"></i>
+                        @Model.CustomerName
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <label class="form-label text-muted small">رقم الواتساب</label>
+                    <div class="fw-semibold fs-5">
+                        <a href="https://wa.me/@Model.WhatsAppNumber.Replace("+", "")" 
+                           target="_blank" 
+                           class="text-decoration-none text-success">
+                            <i class="fab fa-whatsapp me-2"></i>
+                            @Model.WhatsAppNumber
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="col-12">
+                    <label class="form-label text-muted small">عنوان الشحن</label>
+                    <div class="fw-semibold">
+                        <i class="fas fa-map-marker-alt me-2 text-danger"></i>
+                        @Model.ShippingAddress
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <label class="form-label text-muted small">المدينة</label>
+                    <div class="fw-semibold">
+                        <i class="fas fa-city me-2 text-info"></i>
+                        @Model.City
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <label class="form-label text-muted small">تاريخ الطلب</label>
+                    <div class="fw-semibold">
+                        <i class="far fa-calendar me-2 text-warning"></i>
+                        @Model.OrderDate.ToString("dd MMMM yyyy - hh:mm tt")
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Items -->
+        <div class="card-admin">
+            <div class="card-header-admin">
+                <h5 class="card-title-admin">
+                    <i class="fas fa-shopping-bag me-2"></i>
+                    المنتجات المطلوبة
+                </h5>
+            </div>
+            
+            @if (orderItems.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-borderless mb-0">
+                        <thead class="border-bottom">
+                            <tr>
+                                <th>المنتج</th>
+                                <th class="text-center">الكمية</th>
+                                <th class="text-end">السعر</th>
+                                <th class="text-end">الإجمالي</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in orderItems)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <i class="fas fa-box text-purple fa-2x"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold">
+                                                    @(productNames.ContainsKey(item.ProductId) ? productNames[item.ProductId] : "Unknown")
+                                                </div>
+                                                <small class="text-muted">رقم المنتج: #@item.ProductId</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-light text-dark border">
+                                            @item.Quantity
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        @item.UnitPrice.ToString("N2") د.ل
+                                    </td>
+                                    <td class="text-end fw-bold">
+                                        @((item.Quantity * item.UnitPrice).ToString("N2")) د.ل
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                    <p>لا توجد عناصر في هذا الطلب</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Order Summary Sidebar -->
+    <div class="col-lg-4">
+        <!-- Order Summary Card -->
+        <div class="card-admin mb-4">
+            <div class="card-header-admin">
+                <h5 class="card-title-admin">
+                    <i class="fas fa-calculator me-2"></i>
+                    ملخص الطلب
+                </h5>
+            </div>
+            
+            <div class="d-flex flex-column gap-3">
+                <div class="d-flex justify-content-between align-items-center pb-3 border-bottom">
+                    <span class="text-muted">المجموع الفرعي:</span>
+                    <span class="fw-semibold">
+                        @orderItems.Sum(i => i.Quantity * i.UnitPrice).ToString("N2") د.ل
+                    </span>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center pb-3 border-bottom">
+                    <span class="text-muted">تكلفة الشحن:</span>
+                    <span class="fw-semibold text-info">
+                        @Model.ShippingCost.ToString("N2") د.ل
+                    </span>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center py-3 bg-light rounded">
+                    <span class="fw-bold fs-5">الإجمالي:</span>
+                    <span class="fw-bold fs-4 text-success">
+                        @Model.TotalAmount.ToString("N2") د.ل
+                    </span>
+                </div>
+                
+                <div class="pt-3 border-top">
+                    <label class="form-label text-muted small">طريقة الدفع</label>
+                    <div class="fw-semibold">
+                        <i class="fas fa-money-bill-wave me-2 text-success"></i>
+                        @(Model.PaymentMethod ?? "الدفع عند الاستلام")
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card-admin">
+            <div class="card-header-admin">
+                <h5 class="card-title-admin">
+                    <i class="fas fa-bolt me-2"></i>
+                    إجراءات سريعة
+                </h5>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <a href="https://wa.me/@Model.WhatsAppNumber.Replace("+", "")?text=مرحباً @Model.CustomerName، بخصوص طلبكم رقم @Model.OrderId" 
+                   target="_blank" 
+                   class="btn btn-success">
+                    <i class="fab fa-whatsapp me-2"></i>
+                    مراسلة العميل
+                </a>
+                
+                <button onclick="window.print()" class="btn btn-primary">
+                    <i class="fas fa-print me-2"></i>
+                    طباعة الفاتورة
+                </button>
+                
+                <button type="button" 
+                        class="btn btn-danger" 
+                        onclick="deleteOrder(@Model.OrderId)">
+                    <i class="fas fa-trash me-2"></i>
+                    حذف الطلب
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Delete Form -->
+<form id="deleteForm" method="post" style="display: none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script>
+        async function deleteOrder(orderId) {
+            const confirmed = await AdminUtils.confirm(
+                'سيتم حذف الطلب نهائياً ولن تتمكن من استرجاعه!',
+                'هل تريد حذف هذا الطلب؟'
+            );
+            
+            if (!confirmed) return;
+            
+            const form = document.getElementById('deleteForm');
+            form.action = '@Url.Action("Delete", new { id = Model.OrderId })';
+            form.submit();
+        }
+    </script>
+}
+
+@section Styles {
+    <style>
+        @@media print {
+            .btn, .page-title-section, .card-header-admin {
+                display: none !important;
+            }
+            
+            .card-admin {
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+        }
+    </style>
+}

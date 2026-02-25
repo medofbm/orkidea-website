@@ -1,0 +1,371 @@
+@model List<Product>
+@{
+    ViewData["Title"] = "الرئيسية";
+
+    var categoryIcons = new Dictionary<string, string>
+    {
+        {"زيت", "fas fa-bottle-droplet"},
+        {"صابون", "fas fa-soap"},
+        {"مقشرات", "fas fa-spa"}
+    };
+}
+
+@if (TempData["MessageSuccess"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mx-3 mt-3" role="alert">
+        <i class="fas fa-check-circle me-2"></i>
+        @TempData["MessageSuccess"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+    </div>
+}
+
+@* ============ HERO SECTION ============ *@
+<section class="hero-section" aria-labelledby="hero-title">
+    <div class="hero-bg-decor" aria-hidden="true">
+        <div class="hero-circle hero-circle-1"></div>
+        <div class="hero-circle hero-circle-2"></div>
+        <div class="hero-circle hero-circle-3"></div>
+    </div>
+    <div class="container position-relative">
+        <div class="row align-items-center justify-content-between">
+            <div class="col-md-6 order-md-2 text-center text-md-end mb-5 mb-md-0">
+                <div class="hero-badge mb-3">
+                    <i class="fas fa-leaf me-2" aria-hidden="true"></i>
+                    <span>100% طبيعي &bull; مصنوع يدوياً</span>
+                </div>
+                <h1 id="hero-title" class="hero-title mb-4">
+                    اكتشفي <span class="hero-title-accent">جمال الطبيعة</span><br />
+                    مع أوركيديا
+                </h1>
+                <p class="hero-desc mb-5">
+                    نقدم لكِ منتجات عضوية وفاخرة للعناية بالبشرة والشعر،
+                    مصنوعة بحب من خيرات الطبيعة.
+                </p>
+                <div class="d-flex flex-wrap gap-3 justify-content-center justify-content-md-end">
+                    <a href="#shop-categories"
+                       class="btn btn-hero-primary btn-glowing"
+                       aria-label="انتقل إلى قسم التصنيفات للتسوق">
+                        <i class="fas fa-shopping-bag me-2" aria-hidden="true"></i>
+                        تسوقي الآن
+                    </a>
+                    <a href="#contact-section" class="btn btn-hero-outline">
+                        <i class="fas fa-envelope me-2" aria-hidden="true"></i>
+                        تواصلي معنا
+                    </a>
+                </div>
+
+                @* Stats Row *@
+                <div class="hero-stats mt-5">
+                    <div class="hero-stat">
+                        <span class="hero-stat-num">100%</span>
+                        <span class="hero-stat-label">طبيعي</span>
+                    </div>
+                    <div class="hero-stat-divider"></div>
+                    <div class="hero-stat">
+                        <span class="hero-stat-num">يدوي</span>
+                        <span class="hero-stat-label">صنع</span>
+                    </div>
+                    <div class="hero-stat-divider"></div>
+                    <div class="hero-stat">
+                        <span class="hero-stat-num">⭐ 5</span>
+                        <span class="hero-stat-label">تقييم</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-5 order-md-1 text-center">
+                <div class="hero-img-wrapper">
+                    <div class="hero-img-glow" aria-hidden="true"></div>
+                    <img src="~/images/logo.jpg"
+                         class="hero-product-img floating-animation"
+                         alt="منتجات أوركيديا الطبيعية"
+                         loading="eager"
+                         width="340" height="340" />
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ============ FEATURES BAR ============ *@
+<section class="features-bar" aria-label="مميزاتنا">
+    <div class="container">
+        <div class="row g-0 justify-content-center">
+            <div class="col-md-4 feature-bar-item">
+                <i class="fas fa-leaf feature-bar-icon" aria-hidden="true"></i>
+                <div>
+                    <strong>100% طبيعي</strong>
+                    <p class="mb-0 small text-muted">مكونات طبيعية خالصة</p>
+                </div>
+            </div>
+            <div class="col-md-4 feature-bar-item">
+                <i class="fas fa-hand-holding-heart feature-bar-icon" aria-hidden="true"></i>
+                <div>
+                    <strong>صنع يدوي</strong>
+                    <p class="mb-0 small text-muted">مصنوع بحب وشغف</p>
+                </div>
+            </div>
+            <div class="col-md-4 feature-bar-item">
+                <i class="fas fa-award feature-bar-icon" aria-hidden="true"></i>
+                <div>
+                    <strong>جودة عالية</strong>
+                    <p class="mb-0 small text-muted">أعلى معايير الجودة</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ============ CATEGORIES SECTION ============ *@
+<section class="categories-section" id="shop-categories" aria-labelledby="categories-heading">
+    <div class="container">
+        <div class="section-header text-center mb-5">
+            <span class="section-badge">
+                <i class="fas fa-th-large me-1" aria-hidden="true"></i> تصنيفاتنا
+            </span>
+            <h2 id="categories-heading" class="section-title mt-2 mb-2">تسوقي حسب الفئة</h2>
+            <p class="section-subtitle">اختاري من مجموعتنا المتنوعة من المنتجات الطبيعية</p>
+        </div>
+        <div class="row justify-content-center g-4" role="list">
+            @if (ViewBag.Categories != null)
+            {
+                foreach (var category in ViewBag.Categories)
+                {
+                    <div class="col-lg-3 col-md-4 col-6" role="listitem">
+                        <a asp-controller="Home"
+                           asp-action="ProductsByCategory"
+                           asp-route-categoryId="@category.CategoryId"
+                           class="category-card"
+                           aria-label="تصفح منتجات @category.Name">
+                            <div class="category-card-icon" aria-hidden="true">
+                                @{
+                                    string iconClass = categoryIcons.TryGetValue(category.Name, out string icon) ? icon : "fas fa-bottle-droplet";
+                                }
+                                <i class="@iconClass"></i>
+                            </div>
+                            <h6 class="category-card-name">@category.Name</h6>
+                            <span class="category-card-arrow" aria-hidden="true">
+                                <i class="fas fa-arrow-left"></i>
+                            </span>
+                        </a>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</section>
+
+@* ============ FEATURED PRODUCTS SWIPER ============ *@
+@if (ViewBag.FeaturedProducts != null && ViewBag.FeaturedProducts.Count > 0)
+{
+    <section class="featured-section" aria-labelledby="featured-heading">
+        <div class="container">
+            <div class="section-header text-center mb-5">
+                <span class="section-badge">
+                    <i class="fas fa-star me-1" aria-hidden="true"></i> المميزة
+                </span>
+                <h2 id="featured-heading" class="section-title mt-2 mb-2">منتجات مختارة</h2>
+                <p class="section-subtitle">أفضل منتجاتنا الطبيعية المختارة بعناية لكِ</p>
+            </div>
+            <div class="swiper featured-swiper" role="region" aria-label="عرض المنتجات المختارة">
+                <div class="swiper-wrapper pb-5">
+                    @foreach (var product in (List<Product>)ViewBag.FeaturedProducts)
+                    {
+                        <div class="swiper-slide">
+                            <partial name="_ProductCardPartial" model="product" />
+                        </div>
+                    }
+                </div>
+                <div class="swiper-pagination" role="group" aria-label="مؤشرات الشرائح"></div>
+                <button class="swiper-button-prev" aria-label="الشريحة السابقة"></button>
+                <button class="swiper-button-next" aria-label="الشريحة التالية"></button>
+            </div>
+        </div>
+    </section>
+}
+
+@* ============ ALL PRODUCTS SECTION ============ *@
+<section class="products-section" aria-labelledby="all-products-heading">
+    <div class="container">
+        <div class="section-header text-center mb-5">
+            <span class="section-badge">
+                <i class="fas fa-box-open me-1" aria-hidden="true"></i> جميع المنتجات
+            </span>
+            <h2 id="all-products-heading" class="section-title mt-2 mb-2">كل منتجاتنا</h2>
+            <p class="section-subtitle">استكشفي مجموعتنا الكاملة من المنتجات الطبيعية</p>
+        </div>
+        <div class="row g-4">
+            @foreach (var product in Model.Where(p => p.ProductVariants.Any()))
+            {
+                <div class="col-lg-4 col-md-6">
+                    <partial name="_ProductCardPartial" model="product" />
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@* ============ TESTIMONIALS SECTION ============ *@
+@if (ViewBag.Reviews != null && ViewBag.Reviews.Count > 0)
+{
+    <section class="testimonials-section" aria-labelledby="testimonials-heading">
+        <div class="testimonials-bg" aria-hidden="true"></div>
+        <div class="container position-relative">
+            <div class="section-header text-center mb-5">
+                <span class="section-badge section-badge-white">
+                    <i class="fas fa-comments me-1" aria-hidden="true"></i> آراء العملاء
+                </span>
+                <h2 id="testimonials-heading" class="section-title mt-2 mb-2" style="color: white;">ماذا يقول زبائننا</h2>
+                <p class="section-subtitle" style="color: rgba(255,255,255,0.7);">تجارب حقيقية من عملائنا الكرام</p>
+            </div>
+            <div class="row g-4 justify-content-center">
+                @foreach (var review in ViewBag.Reviews)
+                {
+                    <div class="col-lg-4 col-md-6">
+                        <article class="review-card">
+                            <div class="review-stars mb-2" aria-hidden="true">
+                                <i class="fas fa-star text-warning"></i>
+                                <i class="fas fa-star text-warning"></i>
+                                <i class="fas fa-star text-warning"></i>
+                                <i class="fas fa-star text-warning"></i>
+                                <i class="fas fa-star text-warning"></i>
+                            </div>
+                            <div class="quote-icon" aria-hidden="true">
+                                <i class="fas fa-quote-right"></i>
+                            </div>
+                            <blockquote class="review-message">
+                                <p>"@review.Message"</p>
+                            </blockquote>
+                            <footer class="review-customer">
+                                <div class="review-avatar" aria-hidden="true">
+                                    @review.CustomerName.Substring(0, 1)
+                                </div>
+                                <cite>@review.CustomerName</cite>
+                            </footer>
+                        </article>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@* ============ CONTACT SECTION ============ *@
+<section class="contact-section-wrapper" id="contact-section" aria-labelledby="contact-heading">
+    <div class="container">
+        <div class="contact-card">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="text-center mb-5">
+                        <span class="section-badge">
+                            <i class="fas fa-envelope me-1" aria-hidden="true"></i> تواصل معنا
+                        </span>
+                        <h2 id="contact-heading" class="section-title mt-2 mb-2">هل لديكِ استفسار؟</h2>
+                        <p class="section-subtitle">أرسلي رسالتك وسنتواصل معك في أقرب وقت.</p>
+                    </div>
+
+                    <form asp-controller="Home"
+                          asp-action="SendMessage"
+                          method="post"
+                          class="contact-form"
+                          novalidate
+                          aria-label="نموذج التواصل">
+
+                        @Html.AntiForgeryToken()
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="contactName" class="form-label">
+                                    <i class="fas fa-user me-1" aria-hidden="true"></i>
+                                    الاسم الكامل <span class="text-danger">*</span>
+                                </label>
+                                <input type="text"
+                                       id="contactName"
+                                       name="name"
+                                       class="form-control contact-input"
+                                       placeholder="أدخلي اسمك الكامل"
+                                       required
+                                       maxlength="100"
+                                       aria-required="true"
+                                       autocomplete="name" />
+                                <div class="invalid-feedback">الرجاء إدخال اسمك</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="contactEmail" class="form-label">
+                                    <i class="fas fa-envelope me-1" aria-hidden="true"></i>
+                                    البريد الإلكتروني <span class="text-danger">*</span>
+                                </label>
+                                <input type="email"
+                                       id="contactEmail"
+                                       name="email"
+                                       class="form-control contact-input"
+                                       placeholder="example@email.com"
+                                       required
+                                       maxlength="150"
+                                       aria-required="true"
+                                       autocomplete="email" />
+                                <div class="invalid-feedback">الرجاء إدخال بريد إلكتروني صحيح</div>
+                            </div>
+                            <div class="col-12">
+                                <label for="contactPhone" class="form-label">
+                                    <i class="fas fa-phone me-1" aria-hidden="true"></i>
+                                    رقم الهاتف <span class="text-danger">*</span>
+                                </label>
+                                <input type="tel"
+                                       id="contactPhone"
+                                       name="phoneNumber"
+                                       class="form-control contact-input"
+                                       placeholder="+218 XX XXX XXXX"
+                                       required
+                                       maxlength="20"
+                                       pattern="[0-9+\-\s()]+"
+                                       aria-required="true"
+                                       autocomplete="tel" />
+                                <div class="invalid-feedback">الرجاء إدخال رقم هاتف صحيح</div>
+                            </div>
+                            <div class="col-12">
+                                <label for="contactMessage" class="form-label">
+                                    <i class="fas fa-comment me-1" aria-hidden="true"></i>
+                                    رسالتك <span class="text-danger">*</span>
+                                </label>
+                                <textarea id="contactMessage"
+                                          name="message"
+                                          class="form-control contact-input"
+                                          rows="5"
+                                          placeholder="اكتبي رسالتك هنا..."
+                                          required
+                                          maxlength="1000"
+                                          aria-required="true"></textarea>
+                                <div class="invalid-feedback">الرجاء كتابة رسالتك</div>
+                                <small class="form-text text-muted mt-1 d-block">الحد الأقصى 1000 حرف</small>
+                            </div>
+                            <div class="col-12 text-center mt-2">
+                                <button type="submit" class="btn btn-primary btn-lg px-5 btn-glowing">
+                                    <i class="fas fa-paper-plane me-2" aria-hidden="true"></i>
+                                    إرسال الرسالة
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        (function () {
+            'use strict';
+            const forms = document.querySelectorAll('.contact-form');
+            Array.from(forms).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        })();
+    </script>
+}

@@ -1,0 +1,158 @@
+﻿@model List<Orkideya.Models.CartItem>
+@{
+    ViewData["Title"] = "سلة التسوق";
+    var total = Model.Sum(item => item.SubTotal);
+}
+
+<section class="cart-section">
+    <!-- خلفية زخرفية -->
+    <div class="cart-bg-decor" aria-hidden="true">
+        <div class="cart-circle cart-circle-1"></div>
+        <div class="cart-circle cart-circle-2"></div>
+    </div>
+
+    <div class="container py-5 position-relative">
+
+        <!-- Page Header -->
+        <div class="cart-page-header mb-4">
+            <div class="cart-header-icon">
+                <i class="fas fa-bag-shopping" aria-hidden="true"></i>
+            </div>
+            <div>
+                <h1 class="cart-page-title">سلة التسوق</h1>
+                <p class="cart-page-sub">
+                    @if (Model.Count > 0)
+                    {
+                        <span>@Model.Count منتج في سلتك</span>
+                    }
+                    else
+                    {
+                        <span>سلتك فارغة حالياً</span>
+                    }
+                </p>
+            </div>
+        </div>
+
+        @if (Model.Count > 0)
+        {
+            <div class="row g-4">
+                <!-- Cart Items -->
+                <div class="col-lg-8">
+                    <div class="cart-card">
+                        <div class="cart-items-list">
+                            @foreach (var item in Model)
+                            {
+                                <div class="cart-item">
+                                    <!-- صورة المنتج -->
+                                    <div class="cart-item-img-wrap">
+                                        <img src="@item.ImageUrl"
+                                             alt="@item.ProductName"
+                                             class="cart-item-img"
+                                             loading="lazy" />
+                                    </div>
+
+                                    <!-- تفاصيل المنتج -->
+                                    <div class="cart-item-details">
+                                        <h4 class="cart-item-name">@item.ProductName</h4>
+                                        <div class="cart-item-price">
+                                            <span class="price-label">السعر:</span>
+                                            <span class="price-value">@item.Price.ToString("0.00") <small>د.ل</small></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- عداد الكمية -->
+                                    <div class="cart-qty-control">
+                                        <a asp-controller="Cart"
+                                           asp-action="DecreaseQuantity"
+                                           asp-route-id="@item.ProductVariantId"
+                                           class="cart-qty-btn"
+                                           aria-label="تقليل الكمية">
+                                            <i class="fas fa-minus"></i>
+                                        </a>
+                                        <span class="cart-qty-num">@item.Quantity</span>
+                                        <a asp-controller="Cart"
+                                           asp-action="IncreaseQuantity"
+                                           asp-route-id="@item.ProductVariantId"
+                                           class="cart-qty-btn"
+                                           aria-label="زيادة الكمية">
+                                            <i class="fas fa-plus"></i>
+                                        </a>
+                                    </div>
+
+                                    <!-- الإجمالي الفرعي -->
+                                    <div class="cart-item-subtotal">
+                                        <span class="subtotal-label">الإجمالي</span>
+                                        <span class="subtotal-value">@item.SubTotal.ToString("0.00") <small>د.ل</small></span>
+                                    </div>
+
+                                    <!-- زر الحذف -->
+                                    <a asp-controller="Cart"
+                                       asp-action="RemoveFromCart"
+                                       asp-route-id="@item.ProductVariantId"
+                                       class="cart-remove-btn"
+                                       aria-label="حذف @item.ProductName من السلة"
+                                       title="حذف">
+                                        <i class="fas fa-trash-can"></i>
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="col-lg-4">
+                    <div class="cart-summary-card">
+                        <div class="cart-summary-header">
+                            <i class="fas fa-receipt me-2" aria-hidden="true"></i>
+                            ملخص الطلب
+                        </div>
+
+                        <div class="cart-summary-body">
+                            <div class="cart-summary-row">
+                                <span>المنتجات (@Model.Count)</span>
+                                <span>@total.ToString("0.00") د.ل</span>
+                            </div>
+                            <div class="cart-summary-row">
+                                <span>الشحن</span>
+                                <span class="text-success">مجاني</span>
+                            </div>
+                            <div class="cart-summary-divider"></div>
+                            <div class="cart-summary-total">
+                                <span>الإجمالي الكلي</span>
+                                <span class="cart-total-price">@total.ToString("0.00") <small>د.ل</small></span>
+                            </div>
+                        </div>
+
+                        <a asp-controller="Checkout"
+                           asp-action="Index"
+                           class="btn cart-checkout-btn btn-glowing w-100">
+                            <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>
+                            المتابعة لإتمام الطلب
+                        </a>
+
+                        <a asp-controller="Home" asp-action="Index" class="cart-continue-link">
+                            <i class="fas fa-bag-shopping me-1" aria-hidden="true"></i>
+                            متابعة التسوق
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- حالة السلة الفارغة -->
+            <div class="cart-empty">
+                <div class="cart-empty-icon">
+                    <i class="fas fa-bag-shopping" aria-hidden="true"></i>
+                </div>
+                <h2 class="cart-empty-title">سلتك فارغة!</h2>
+                <p class="cart-empty-sub">لم تضيفي أي منتجات بعد. تصفّحي منتجاتنا الطبيعية واختاري ما يناسبك.</p>
+                <a asp-controller="Home" asp-action="Index" class="btn cart-checkout-btn btn-glowing">
+                    <i class="fas fa-sparkles me-2" aria-hidden="true"></i>
+                    تسوقي الآن
+                </a>
+            </div>
+        }
+    </div>
+</section>

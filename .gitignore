@@ -1,0 +1,52 @@
+# ============================================
+# .gitignore for Orkideya ASP.NET Core Project
+# ============================================
+
+## Build outputs
+bin/
+obj/
+
+## User-specific files
+*.user
+*.suo
+.vs/
+
+## ASP.NET - Secrets & Connection Strings (DO NOT COMMIT)
+**/appsettings.json
+**/appsettings.Development.json
+**/appsettings.Production.json
+
+## Database files
+*.mdf
+*.ldf
+*.db
+*.sqlite
+
+## Published output
+**/publish/
+**/PublishProfiles/
+
+## NuGet packages
+*.nupkg
+packages/
+.nuget/
+
+## Logs
+Logs/
+*.log
+
+## OS files
+.DS_Store
+Thumbs.db
+
+## Rider / JetBrains
+.idea/
+
+## Visual Studio Code
+.vscode/
+
+## Entity Framework migrations - keep if needed but exclude temp
+# Migrations/
+
+## wwwroot uploads (product images - large files)
+**/wwwroot/images/products/

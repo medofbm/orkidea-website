@@ -1,0 +1,190 @@
+@model IEnumerable<Orkideya.Models.Product>
+
+@{
+    ViewData["Title"] = "إدارة المنتجات";
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-title-section">
+        <h1 class="page-title">
+            <i class="fas fa-box-open me-3"></i>
+            إدارة المنتجات
+        </h1>
+        <p class="page-subtitle">إضافة وتعديل وحذف منتجات المتجر</p>
+    </div>
+    
+    <div>
+        <a href="@Url.Action("Create")" class="btn btn-primary btn-lg">
+            <i class="fas fa-plus-circle me-2"></i>
+            إضافة منتج جديد
+        </a>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="card-admin mb-4">
+    <div class="row g-3 align-items-center">
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" 
+                       class="form-control" 
+                       id="productSearch"
+                       placeholder="ابحث عن منتج بالاسم أو الفئة..."
+                       data-table-search="#productsTable">
+            </div>
+        </div>
+        <div class="col-md-6 text-end">
+            <span class="text-muted">
+                <i class="fas fa-box me-1"></i>
+                إجمالي المنتجات: <strong>@Model.Count()</strong>
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Products Table -->
+<div class="admin-table">
+    @if (Model.Any())
+    {
+        <table class="table table-hover align-middle mb-0" id="productsTable">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">صورة</th>
+                    <th>اسم المنتج</th>
+                    <th>الفئة</th>
+                    <th>الوصف</th>
+                    <th>الأحجام</th>
+                    <th style="width: 150px;">إجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>
+                            @if (!string.IsNullOrEmpty(item.ImageUrl))
+                            {
+                                <img src="@item.ImageUrl" 
+                                     alt="@item.Name" 
+                                     class="rounded"
+                                     style="width: 60px; height: 60px; object-fit: cover; border: 2px solid #e0b0ff;"
+                                     onerror="this.src='https://via.placeholder.com/60x60?text=No+Image';" />
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center justify-content-center bg-light rounded" 
+                                     style="width: 60px; height: 60px; border: 2px solid #e9ecef;">
+                                    <i class="fas fa-image fa-2x text-muted"></i>
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            <div class="fw-semibold">@item.Name</div>
+                            <small class="text-muted">#@item.ProductId</small>
+                        </td>
+                        <td>
+                            @if (item.Category != null)
+                            {
+                                <span class="badge" style="background: rgba(106, 27, 154, 0.1); color: #6a1b9a;">
+                                    <i class="fas fa-tag me-1"></i>
+                                    @item.Category.Name
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">بدون فئة</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(item.Description))
+                            {
+                                <div class="text-truncate" style="max-width: 250px;" title="@Html.Raw(item.Description)">
+                                    @Html.Raw(item.Description?.Length > 80 ? item.Description.Substring(0, 80) + "..." : item.Description)
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted small fst-italic">لا يوجد وصف</span>
+                            }
+                        </td>
+                        <td>
+                            @if (item.ProductVariants.Any())
+                            {
+                                <span class="badge bg-success">
+                                    <i class="fas fa-layer-group me-1"></i>
+                                    @item.ProductVariants.Count حجم
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    لا توجد أحجام
+                                </span>
+                            }
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="@Url.Action("Details", new { id = item.ProductId })" 
+                                   class="btn btn-action view btn-sm"
+                                   title="عرض التفاصيل">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="@Url.Action("Edit", new { id = item.ProductId })" 
+                                   class="btn btn-action edit btn-sm"
+                                   title="تعديل">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button type="button"
+                                        class="btn btn-action delete btn-sm" 
+                                        onclick="deleteProduct(@item.ProductId, '@item.Name')"
+                                        title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+            <h4 class="text-muted">لا توجد منتجات</h4>
+            <p class="text-muted">ابدأ بإضافة منتجك الأول</p>
+            <a href="@Url.Action("Create")" class="btn btn-primary mt-3">
+                <i class="fas fa-plus-circle me-2"></i>
+                إضافة منتج جديد
+            </a>
+        </div>
+    }
+</div>
+
+<!-- Hidden Delete Form -->
+<form id="deleteProductForm" method="post" style="display: none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script>
+        // Delete Product with SweetAlert
+        async function deleteProduct(productId, productName) {
+            const confirmed = await AdminUtils.confirm(
+                `سيتم حذف المنتج "${productName}" نهائياً مع جميع أحجامه وأسعاره!`,
+                'هل تريد حذف هذا المنتج؟'
+            );
+            
+            if (!confirmed) return;
+            
+            const form = document.getElementById('deleteProductForm');
+            form.action = '@Url.Action("Delete")/' + productId;
+            form.submit();
+        }
+    </script>
+}
