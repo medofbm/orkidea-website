@@ -1,4 +1,4 @@
-@model Order
+﻿@model Order
 @{
     ViewData["Title"] = $"تفاصيل الطلب #{Model.OrderId}";
     var orderItems = ViewBag.OrderItems as List<OrderItem> ?? new List<OrderItem>();
@@ -369,7 +369,7 @@
 
             /* تذييل الفاتورة */
             .row.g-4::after {
-                content: "شكراً لتسوقكِ مع أوركيديا 🌸  |  جميع الحقوق محفوظة © 2026 Orkideya";
+                content: "شكراً لتسوقكِ مع أوركيديا 🌸  |  جميع الحقوق محفوظة © 2026 Orkidea";
                 display: block;
                 width: 100%;
                 text-align: center;

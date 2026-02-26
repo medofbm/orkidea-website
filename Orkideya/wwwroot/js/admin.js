@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================
- * ORKIDEYA ADMIN PANEL - JAVASCRIPT
+ * Orkidea Admin PANEL - JAVASCRIPT
  * Modern Admin Dashboard Functionality
  * ============================================
  */

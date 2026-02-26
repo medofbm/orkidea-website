@@ -1,4 +1,4 @@
-@using Microsoft.AspNetCore.Identity
+﻿@using Microsoft.AspNetCore.Identity
 @inject SignInManager<IdentityUser> SignInManager
 @inject UserManager<IdentityUser> UserManager
 
@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     
-    <title>@ViewData["Title"] - Orkideya Admin</title>
+    <title>@ViewData["Title"] - Orkidea Admin</title>
     
     <!-- Preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -33,10 +33,10 @@
         <div class="sidebar-header">
             <div class="brand-logo">
                 <img src="/images/logo.jpg"
-                     alt="Orkideya"
+                     alt="Orkidea"
                      style="width:36px;height:36px;border-radius:50%;object-fit:cover;margin-left:6px;border:2px solid rgba(255,255,255,0.3);"
                      onerror="this.outerHTML='<i class=\'fas fa-seedling me-2\'></i>'" />
-                <span class="brand-text">Orkideya</span>
+                <span class="brand-text">Orkidea</span>
                 <small class="admin-badge">Admin</small>
             </div>
             <button class="sidebar-toggle d-lg-none" id="sidebarToggle">
@@ -238,7 +238,7 @@
                     <div class="col-md-6">
                         <p class="mb-0 text-muted">
                             <i class="far fa-copyright me-1"></i>
-                            @DateTime.Now.Year Orkideya. جميع الحقوق محفوظة.
+                            @DateTime.Now.Year Orkidea. جميع الحقوق محفوظة.
                         </p>
                     </div>
                     <div class="col-md-6 text-md-end">

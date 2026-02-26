@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================
- * ORKIDEYA - MAIN JAVASCRIPT FILE
+ * ORKIDEA - MAIN JAVASCRIPT FILE
  * Modern ES6+ | No jQuery Required
  * ============================================
  */
