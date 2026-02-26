@@ -163,7 +163,7 @@
             updateStars(initialRating);
             document.getElementById('ratingNumber').textContent = initialRating;
             
-            console.log('Review Create - Initial Rating:', initialRating);
+
             
             stars.forEach(star => {
                 star.addEventListener('click', function(e) {
@@ -173,7 +173,6 @@
                     updateStars(rating);
                     // Update display badge
                     document.getElementById('ratingNumber').textContent = rating;
-                    console.log('Rating set to:', rating); // Debug
                 });
                 
                 star.addEventListener('mouseenter', function() {

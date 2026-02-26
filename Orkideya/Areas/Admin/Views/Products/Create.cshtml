@@ -52,21 +52,20 @@
                         <label asp-for="Description" class="form-label fw-semibold">
                             وصف المنتج
                         </label>
-                        
-                        <!-- Hidden textarea for Quill content -->
-                        <textarea asp-for="Description" 
-                                  id="descriptionHidden" 
-                                  style="display: none;"></textarea>
-                        
-                        <!-- Quill Editor Container -->
-                        <div id="quillEditor" style="min-height: 200px; background: white;"></div>
-                        
+
+                        <textarea asp-for="Description"
+                                  id="descriptionHidden"
+                                  class="form-control"
+                                  rows="6"
+                                  placeholder="اكتب وصف المنتج هنا: فوائده، مكوناته، طريقة استخدامه..."></textarea>
+
                         <small class="form-text text-muted">
                             <i class="fas fa-info-circle me-1"></i>
-                            استخدم المحرر لتنسيق النص (غامق، قوائم، روابط)
+                            يمكنك كتابة وصف تفصيلي للمنتج (غير إلزامي)
                         </small>
                         <span asp-validation-for="Description" class="text-danger"></span>
                     </div>
+
                     
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">
@@ -210,42 +209,15 @@
     </div>
 </div>
 
-@section Styles {
-    <!-- Quill Editor CSS -->
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-}
+
 
 @section Scripts {
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
-    
-    <!-- Quill Editor JS -->
-    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-    
+
     <script>
-        // Initialize Quill Editor
-        const quill = new Quill('#quillEditor', {
-            theme: 'snow',
-            placeholder: 'اكتب وصف المنتج هنا... يمكنك استخدام التنسيق لجعل النص أكثر جاذبية',
-            modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'align': [] }],
-                    ['link'],
-                    ['clean']
-                ]
-            }
-        });
-        
-        // Sync Quill content to hidden textarea on form submit
-        document.querySelector('form').addEventListener('submit', function() {
-            document.getElementById('descriptionHidden').value = quill.root.innerHTML;
-        });
-        
-        // Preview uploaded image file
+        // ── معاينة الصورة من ملف ──────────────────────────────────────
         function previewUploadedImage(event) {
             const file = event.target.files[0];
             if (file) {
@@ -253,27 +225,25 @@
                 reader.onload = function(e) {
                     document.getElementById('imagePreview').src = e.target.result;
                     document.getElementById('imagePreviewContainer').style.display = 'block';
-                    // Clear URL input when file is selected
                     document.getElementById('imageUrlInput').value = '';
                 };
                 reader.readAsDataURL(file);
             }
         }
-        
-        // Preview image from URL
+
+        // ── معاينة الصورة من رابط خارجي ──────────────────────────────
         function previewUrlImage() {
             const url = document.getElementById('imageUrlInput').value.trim();
             if (url) {
                 document.getElementById('imagePreview').src = url;
                 document.getElementById('imagePreviewContainer').style.display = 'block';
-                // Clear file input when URL is entered
                 document.getElementById('imageFile').value = '';
             } else {
                 document.getElementById('imagePreviewContainer').style.display = 'none';
             }
         }
-        
-        // Bootstrap form validation
+
+        // ── Bootstrap form validation ─────────────────────────────────
         (function () {
             'use strict';
             const forms = document.querySelectorAll('.needs-validation');
@@ -289,3 +259,4 @@
         })();
     </script>
 }
+

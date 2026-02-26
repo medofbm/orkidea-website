@@ -21,12 +21,12 @@ const Utils = {
             timeout = setTimeout(later, wait);
         };
     },
-    
+
     // Safe query selector
     qs(selector, parent = document) {
         return parent.querySelector(selector);
     },
-    
+
     // Safe query selector all
     qsa(selector, parent = document) {
         return Array.from(parent.querySelectorAll(selector));
@@ -43,42 +43,40 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Initialize Swiper Slider
+ * Initialize Featured Products Swiper
  */
 function initSwiperSlider() {
-    const swiperElement = Utils.qs('.swiper');
+    const swiperElement = Utils.qs('.featured-swiper');
     if (!swiperElement) return;
-    
+
     try {
-        const swiper = new Swiper('.swiper', {
-            loop: true,
-            slidesPerView: 3,
-            spaceBetween: 30,
-            lazy: true,
+        const swiper = new Swiper('.featured-swiper', {
+            loop: false,
+            slidesPerView: 1,
+            spaceBetween: 24,
+            watchOverflow: true,
             pagination: {
-                el: '.swiper-pagination',
+                el: '.featured-swiper .swiper-pagination',
                 clickable: true,
                 dynamicBullets: true,
             },
             navigation: {
-                nextEl: '.swiper-button-next',
-                prevEl: '.swiper-button-prev',
+                nextEl: '.featured-swiper .swiper-button-next',
+                prevEl: '.featured-swiper .swiper-button-prev',
             },
             breakpoints: {
-                320: { slidesPerView: 1, spaceBetween: 20 },
-                768: { slidesPerView: 2, spaceBetween: 30 },
-                992: { slidesPerView: 3, spaceBetween: 30 }
+                640: { slidesPerView: 2, spaceBetween: 24 },
+                992: { slidesPerView: 3, spaceBetween: 28 },
             },
             autoplay: {
                 delay: 5000,
                 disableOnInteraction: false,
                 pauseOnMouseEnter: true,
             },
-            effect: 'slide',
             speed: 600,
         });
     } catch (error) {
-        console.error('Error initializing Swiper:', error);
+        console.error('Error initializing featured Swiper:', error);
     }
 }
 
@@ -87,29 +85,29 @@ function initSwiperSlider() {
  */
 function initVariantSelection() {
     const productCards = Utils.qsa('.product-card');
-    
+
     productCards.forEach(card => {
         const variantButtons = Utils.qsa('.variant-btn', card);
         const priceDisplay = Utils.qs('[class*="price-display-"]', card);
         const hiddenVariantInput = Utils.qs('input[name="variantId"]', card);
-        
+
         variantButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
+            button.addEventListener('click', function (e) {
                 e.preventDefault();
-                
+
                 // Remove active class from all buttons in this card
                 variantButtons.forEach(btn => {
                     btn.classList.remove('active');
                     btn.setAttribute('aria-pressed', 'false');
                 });
-                
+
                 // Add active class to clicked button
                 this.classList.add('active');
                 this.setAttribute('aria-pressed', 'true');
-                
+
                 // Get variant data
                 const { productId, price, variantId } = this.dataset;
-                
+
                 // Update price display with animation
                 if (priceDisplay) {
                     priceDisplay.style.opacity = '0';
@@ -118,12 +116,12 @@ function initVariantSelection() {
                         priceDisplay.style.opacity = '1';
                     }, 150);
                 }
-                
+
                 // Update hidden input
                 if (hiddenVariantInput) {
                     hiddenVariantInput.value = variantId;
                 }
-                
+
                 // Update add to cart buttons
                 const addToCartButtons = Utils.qsa('.add-to-cart-ajax-btn, .add-to-cart-btn', card);
                 addToCartButtons.forEach(btn => {
@@ -131,11 +129,11 @@ function initVariantSelection() {
                 });
             });
         });
-        
+
         // Set initial active variant with proper ARIA
         const firstVariantButton = variantButtons[0];
         const activeButton = Utils.qs('.variant-btn.active', card);
-        
+
         if (firstVariantButton && !activeButton) {
             firstVariantButton.classList.add('active');
             firstVariantButton.setAttribute('aria-pressed', 'true');
@@ -150,14 +148,14 @@ function initVariantSelection() {
  */
 function initQuantitySelectors() {
     const productCards = Utils.qsa('.product-card');
-    
+
     productCards.forEach(card => {
         const quantityInput = Utils.qs('.quantity-input', card);
         const quantityMinusBtn = Utils.qs('.quantity-minus', card);
         const quantityPlusBtn = Utils.qs('.quantity-plus', card);
-        
+
         if (!quantityInput) return;
-        
+
         // Decrease quantity
         if (quantityMinusBtn) {
             quantityMinusBtn.addEventListener('click', (e) => {
@@ -169,7 +167,7 @@ function initQuantitySelectors() {
                 }
             });
         }
-        
+
         // Increase quantity
         if (quantityPlusBtn) {
             quantityPlusBtn.addEventListener('click', (e) => {
@@ -182,19 +180,19 @@ function initQuantitySelectors() {
                 }
             });
         }
-        
+
         // Validate input on change
         quantityInput.addEventListener('change', () => {
             let value = parseInt(quantityInput.value, 10);
             const min = parseInt(quantityInput.min, 10) || 1;
             const max = parseInt(quantityInput.max, 10) || 999;
-            
+
             if (isNaN(value) || value < min) {
                 value = min;
             } else if (value > max) {
                 value = max;
             }
-            
+
             quantityInput.value = value;
         });
     });
@@ -206,62 +204,62 @@ function initQuantitySelectors() {
  */
 function initAddToCart() {
     const addToCartButtons = Utils.qsa('.add-to-cart-btn, .add-to-cart-ajax-btn');
-    
+
     addToCartButtons.forEach(button => {
-        button.addEventListener('click', async function(event) {
+        button.addEventListener('click', async function (event) {
             event.preventDefault();
-            
+
             // Disable button during request
             this.disabled = true;
             const originalText = this.textContent;
             this.textContent = 'جاري الإضافة...';
-            
+
             try {
                 const card = this.closest('.product-card');
                 const variantId = this.dataset.variantId || Utils.qs('input[name="variantId"]', card)?.value;
                 const quantityInput = Utils.qs('.quantity-input', card);
-                const quantity = quantityInput 
-                    ? parseInt(quantityInput.value, 10) 
+                const quantity = quantityInput
+                    ? parseInt(quantityInput.value, 10)
                     : parseInt(this.dataset.quantity, 10) || 1;
-                
+
                 if (!variantId) {
                     console.error('Variant ID is required');
                     showNotification('الرجاء اختيار المقاس', 'error');
                     return;
                 }
-                
+
                 // Get CSRF token
-                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || 
-                              document.querySelector('[name="__RequestVerificationToken"]')?.value;
-                
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ||
+                    document.querySelector('[name="__RequestVerificationToken"]')?.value;
+
                 // Make AJAX request
                 const url = `/Cart/AddToCartAjax?variantId=${variantId}&quantity=${quantity}`;
                 const headers = {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 };
-                
+
                 // Add CSRF token if available
                 if (token) {
                     headers['RequestVerificationToken'] = token;
                 }
-                
+
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: headers,
                     credentials: 'same-origin'
                 });
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     // Update cart badge with animation
                     updateCartBadge(data.count);
-                    
+
                     // Show success feedback
                     this.textContent = '✓ تمت الإضافة';
                     setTimeout(() => {
@@ -316,7 +314,7 @@ function showNotification(message, type = 'info') {
     // Simple console notification for now
     // Can be replaced with SweetAlert2 or custom toast
     console.log(`[${type.toUpperCase()}]: ${message}`);
-    
+
     // If SweetAlert2 is available, use it
     if (typeof Swal !== 'undefined') {
         Swal.fire({
@@ -347,7 +345,7 @@ function initAccessibility() {
             }
         });
     }
-    
+
     // Improve dropdown accessibility
     const dropdowns = Utils.qsa('[data-bs-toggle="dropdown"]');
     dropdowns.forEach(dropdown => {

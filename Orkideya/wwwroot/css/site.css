@@ -63,6 +63,9 @@ body {
     line-height: 1.6;
     overflow-x: hidden;
     min-height: 100vh;
+    /* Fix: sticky footer - eliminate white space below footer on mobile */
+    display: flex;
+    flex-direction: column;
 }
 
 body {
@@ -525,6 +528,47 @@ body {
     padding: 4rem 0;
 }
 
+/* Load More */
+.product-hidden {
+    display: none !important;
+}
+
+.load-more-btn {
+    background: transparent;
+    border: 2px solid var(--primary-purple);
+    color: var(--primary-purple);
+    border-radius: var(--border-radius-xl);
+    padding: 0.8rem 2.5rem;
+    font-weight: 700;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    letter-spacing: 0.3px;
+}
+
+.load-more-btn:hover {
+    background: var(--primary-purple);
+    color: white;
+    box-shadow: 0 8px 24px rgba(111, 66, 193, 0.3);
+}
+
+.load-more-count {
+    font-size: 0.85rem;
+    opacity: 0.75;
+    margin-right: 0.25rem;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* ============================================
    TESTIMONIALS SECTION - REDESIGNED
    ============================================ */
@@ -804,7 +848,6 @@ h6 {
 
 .btn-primary:hover {
     border: 2px solid var(--primary-purple);
-    transform: translateY(-2px);
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
 }
 

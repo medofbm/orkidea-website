@@ -10,5 +10,8 @@ namespace Orkideya.Models
         public int ProductId { get; set; }
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
+
+        /// <summary>حجم العبوة المطلوبة (مثلاً: 60ml, 120ml)</summary>
+        public string? VariantSize { get; set; }
     }
 }

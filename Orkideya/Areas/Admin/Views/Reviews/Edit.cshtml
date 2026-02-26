@@ -135,9 +135,7 @@
                 document.getElementById('ratingNumber').textContent = initialRating;
             }
             
-            // Debug log
-            console.log('Review Edit - Initial Rating:', initialRating);
-            console.log('Stars initialized for rating:', initialRating);
+
             
             stars.forEach(star => {
                 star.addEventListener('click', function(e) {
@@ -147,7 +145,6 @@
                     updateStars(rating);
                     // Update display badge
                     document.getElementById('ratingNumber').textContent = rating;
-                    console.log('Rating updated to:', rating); // Debug
                 });
                 
                 star.addEventListener('mouseenter', function() {

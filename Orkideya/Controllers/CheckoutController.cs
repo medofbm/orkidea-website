@@ -132,12 +132,19 @@ namespace Orkideya.Controllers
 
             foreach (var item in cart)
             {
+                // جلب حجم العبوة من قاعدة البيانات عبر معرّف الحجم
+                var variantSize = await _context.ProductVariants
+                    .Where(v => v.ProductVariantId == item.ProductVariantId)
+                    .Select(v => v.Size)
+                    .FirstOrDefaultAsync();
+
                 var orderItem = new OrderItem
                 {
                     OrderId = order.OrderId,
                     ProductId = item.ProductId,
                     Quantity = item.Quantity,
-                    UnitPrice = item.Price
+                    UnitPrice = item.Price,
+                    VariantSize = variantSize ?? "-"
                 };
                 _context.OrderItems.Add(orderItem);
             }

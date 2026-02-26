@@ -1,33 +1,119 @@
 ﻿@model Orkideya.Models.Category
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "إضافة فئة جديدة";
 }
 
-<h1>Create</h1>
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-title-section">
+        <h1 class="page-title">
+            <i class="fas fa-plus-circle me-3"></i>
+            إضافة فئة جديدة
+        </h1>
+        <p class="page-subtitle">أضف فئة جديدة لتنظيم منتجاتك</p>
+    </div>
+    <a href="@Url.Action("Index", "Categories")" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-right me-2"></i>
+        العودة للقائمة
+    </a>
+</div>
 
-<h4>Category</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Create">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="Name" class="control-label"></label>
-                <input asp-for="Name" class="form-control" />
-                <span asp-validation-for="Name" class="text-danger"></span>
+<div class="row g-4 justify-content-center">
+    <div class="col-xl-6 col-lg-7">
+        <div class="card-admin">
+            <div class="card-header-admin">
+                <h5 class="card-title-admin">
+                    <i class="fas fa-tags me-2"></i>
+                    بيانات الفئة
+                </h5>
             </div>
-            <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
+
+            <form asp-action="Create" method="post" class="needs-validation" novalidate>
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                <div class="mb-4">
+                    <label asp-for="Name" class="form-label fw-semibold">
+                        اسم الفئة <span class="text-danger">*</span>
+                    </label>
+                    <input asp-for="Name"
+                           class="form-control form-control-lg"
+                           placeholder="مثال: زيوت طبيعية، صابون عضوي..."
+                           autofocus
+                           required />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                    <small class="form-text text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        اختر اسماً واضحاً يعكس نوع المنتجات الموجودة تحت هذه الفئة
+                    </small>
+                </div>
+
+                <div class="d-flex gap-2 justify-content-end pt-3 border-top">
+                    <a href="@Url.Action("Index", "Categories")" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-2"></i>
+                        إلغاء
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-lg px-5">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        إضافة الفئة
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Help Card -->
+    <div class="col-xl-4 col-lg-5">
+        <div class="card-admin">
+            <div class="card-header-admin">
+                <h5 class="card-title-admin">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    نصائح
+                </h5>
             </div>
-        </form>
+            <div class="d-flex flex-column gap-3">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1 flex-shrink-0"></i>
+                    <div>
+                        <strong>اسم واضح:</strong>
+                        <p class="small text-muted mb-0">استخدم اسماً وصفياً يفهمه العميل بسهولة</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1 flex-shrink-0"></i>
+                    <div>
+                        <strong>فئات منطقية:</strong>
+                        <p class="small text-muted mb-0">تجنب إنشاء فئات فارغة، أضف المنتجات بعدها مباشرة</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1 flex-shrink-0"></i>
+                    <div>
+                        <strong>بعد الإضافة:</strong>
+                        <p class="small text-muted mb-0">ستجد الفئة الجديدة في قائمة الفئات لإدارة المنتجات</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
-
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script>
+        // Bootstrap form validation
+        (function () {
+            'use strict';
+            document.querySelectorAll('.needs-validation').forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        })();
+    </script>
 }

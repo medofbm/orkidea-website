@@ -196,12 +196,13 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <a href="mailto:" 
-                   id="replyEmailBtn" 
+                <a href="#"
+                   id="replyWaBtn"
                    class="btn btn-success me-auto"
-                   rel="noopener">
-                    <i class="fas fa-reply me-2"></i>
-                    الرد عبر البريد
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    <i class="fab fa-whatsapp me-2"></i>
+                    الرد عبر واتساب
                 </a>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-2"></i>
@@ -234,20 +235,32 @@
                 
                 if (result.success) {
                     const data = result.data;
-                    
+
                     // Populate modal
                     document.getElementById('modalName').textContent = data.name;
                     document.getElementById('modalEmail').textContent = data.email;
-                    document.getElementById('modalEmailLink').href = 'mailto:' + data.email + '?subject=رد على رسالتك من Orkideya';
+                    document.getElementById('modalEmailLink').href = 'mailto:' + data.email;
                     document.getElementById('modalPhone').textContent = data.phoneNumber;
                     document.getElementById('modalPhoneLink').href = 'tel:' + data.phoneNumber;
                     document.getElementById('modalMessage').textContent = data.message;
                     document.getElementById('modalDate').textContent = data.receivedAt;
-                    
-                    // Reply button
-                    const replyBtn = document.getElementById('replyEmailBtn');
-                    replyBtn.href = `mailto:${data.email}?subject=رد على رسالتك من Orkideya&body=مرحباً ${data.name}،%0D%0A%0D%0A`;
-                    
+
+                    // بناء رابط واتساب بالرقم الدولي الليبي
+                    function buildWaLink(phone, msg) {
+                        if (!phone) return '#';
+                        let clean = phone.trim().replace(/[\s\-\+]/g, '');
+                        if (clean.startsWith('09') && clean.length === 10)
+                            clean = '218' + clean.substring(1);
+                        else if (clean.startsWith('9') && clean.length === 9)
+                            clean = '218' + clean;
+                        let url = `https://wa.me/${clean}`;
+                        if (msg) url += `?text=${encodeURIComponent(msg)}`;
+                        return url;
+                    }
+
+                    const waMsg = `مرحباً ${data.name}، شكراً على تواصلك مع أوركيديا. بخصوص رسالتك؟`;
+                    document.getElementById('replyWaBtn').href = buildWaLink(data.phoneNumber, waMsg);
+
                     // Show content
                     document.getElementById('modalLoading').style.display = 'none';
                     document.getElementById('modalContent').style.display = 'block';

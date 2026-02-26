@@ -9,33 +9,29 @@
     <div class="card-body d-flex flex-column">
         <h5 class="card-title">@Model.Name</h5>
 
-        <h6 class="card-subtitle mb-2 mt-auto price-display-@Model.ProductId">
+        <h6 class="card-subtitle mb-2 mt-1 price-display-@Model.ProductId">
             @defaultVariant.Price.ToString("0.00") د.ل
         </h6>
 
-        <div class="card-hover-content">
-            <form>
-                <input type="hidden" name="variantId" value="@defaultVariant.ProductVariantId" />
-                <div class="mb-2">
-                    <div class="variant-buttons">
-                        @foreach (var variant in Model.ProductVariants.OrderBy(v => v.Price))
-                        {
-                            <button type="button" class="btn btn-outline-primary variant-btn @(variant.ProductVariantId == defaultVariant.ProductVariantId ? "active" : "")"
-                                    data-price="@variant.Price.ToString("0.00")"
-                                    data-variant-id="@variant.ProductVariantId"
-                                    data-product-id="@Model.ProductId">
-                                @variant.Size
-                            </button>
-                        }
-                    </div>
-                </div>
-                <button type="button" class="btn btn-primary w-100 mt-3 add-to-cart-btn" 
-                        data-product-id="@Model.ProductId"
-                        data-variant-id="@defaultVariant.ProductVariantId"
-                        data-quantity="1">
-                    أضف للسلة
+        <div class="variant-buttons mb-2">
+            @foreach (var variant in Model.ProductVariants.OrderBy(v => v.Price))
+            {
+                <button type="button"
+                        class="btn btn-outline-primary variant-btn @(variant.ProductVariantId == defaultVariant.ProductVariantId ? "active" : "")"
+                        data-price="@variant.Price.ToString("0.00")"
+                        data-variant-id="@variant.ProductVariantId"
+                        data-product-id="@Model.ProductId">
+                    @variant.Size
                 </button>
-            </form>
+            }
         </div>
+
+        <button type="button"
+                class="btn btn-primary w-100 mt-auto add-to-cart-btn"
+                data-product-id="@Model.ProductId"
+                data-variant-id="@defaultVariant.ProductVariantId"
+                data-quantity="1">
+            أضف للسلة
+        </button>
     </div>
 </div>

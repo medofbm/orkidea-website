@@ -81,14 +81,13 @@ namespace Orkideya.Areas.Admin.Controllers
         /// </summary>
         private async Task<int> GetLowStockProductsCountAsync()
         {
-            // Placeholder - will be implemented when Stock field is added
-            // For now, return products with variants count < 3
-            var productsWithFewVariants = await _context.Products
+            // منتجات بدون أي حجم/سعر محدد - هذه هي المشكلة الحقيقية
+            var productsWithNoVariants = await _context.Products
                 .Include(p => p.ProductVariants)
-                .Where(p => p.ProductVariants.Count < 3)
+                .Where(p => !p.ProductVariants.Any())
                 .CountAsync();
             
-            return productsWithFewVariants;
+            return productsWithNoVariants;
         }
 
         /// <summary>

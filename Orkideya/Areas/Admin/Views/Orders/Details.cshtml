@@ -3,6 +3,21 @@
     ViewData["Title"] = $"تفاصيل الطلب #{Model.OrderId}";
     var orderItems = ViewBag.OrderItems as List<OrderItem> ?? new List<OrderItem>();
     var productNames = ViewBag.ProductNames as Dictionary<int, string> ?? new Dictionary<int, string>();
+
+    // دالة بناء رابط واتساب دولي للأرقام الليبية
+    string BuildWaLink(string phone, string message = "")
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return "#";
+        var clean = phone.Trim().Replace(" ", "").Replace("-", "").Replace("+", "");
+        if (clean.StartsWith("09") && clean.Length == 10)
+            clean = "218" + clean.Substring(1);
+        else if (clean.StartsWith("9") && clean.Length == 9)
+            clean = "218" + clean;
+        var url = $"https://wa.me/{clean}";
+        if (!string.IsNullOrEmpty(message))
+            url += $"?text={Uri.EscapeDataString(message)}";
+        return url;
+    }
 }
 
 <!-- Page Header -->
@@ -51,8 +66,9 @@
                 <div class="col-md-6">
                     <label class="form-label text-muted small">رقم الواتساب</label>
                     <div class="fw-semibold fs-5">
-                        <a href="https://wa.me/@Model.WhatsAppNumber.Replace("+", "")" 
-                           target="_blank" 
+                        <a href="@BuildWaLink(Model.WhatsAppNumber)"
+                           target="_blank"
+                           rel="noopener noreferrer"
                            class="text-decoration-none text-success">
                             <i class="fab fa-whatsapp me-2"></i>
                             @Model.WhatsAppNumber
@@ -102,6 +118,7 @@
                         <thead class="border-bottom">
                             <tr>
                                 <th>المنتج</th>
+                                <th class="text-center">الحجم</th>
                                 <th class="text-center">الكمية</th>
                                 <th class="text-end">السعر</th>
                                 <th class="text-end">الإجمالي</th>
@@ -123,6 +140,18 @@
                                                 <small class="text-muted">رقم المنتج: #@item.ProductId</small>
                                             </div>
                                         </div>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (!string.IsNullOrEmpty(item.VariantSize) && item.VariantSize != "-")
+                                        {
+                                            <span class="badge rounded-pill" style="background:rgba(106,27,154,0.12);color:#6a1b9a;font-size:0.82rem;font-weight:700;padding:0.4em 0.85em;">
+                                                <i class="fas fa-flask me-1" style="font-size:0.75rem;"></i>@item.VariantSize
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">-</span>
+                                        }
                                     </td>
                                     <td class="text-center">
                                         <span class="badge bg-light text-dark border">
@@ -204,8 +233,9 @@
             </div>
             
             <div class="d-grid gap-2">
-                <a href="https://wa.me/@Model.WhatsAppNumber.Replace("+", "")?text=مرحباً @Model.CustomerName، بخصوص طلبكم رقم @Model.OrderId" 
-                   target="_blank" 
+                <a href="@BuildWaLink(Model.WhatsAppNumber, $"مرحباً {Model.CustomerName}، بخصوص طلبكم رقم {Model.OrderId}")"
+                   target="_blank"
+                   rel="noopener noreferrer"
                    class="btn btn-success">
                     <i class="fab fa-whatsapp me-2"></i>
                     مراسلة العميل
@@ -251,15 +281,107 @@
 
 @section Styles {
     <style>
+        /* ══════════════════════════════════════════
+           طباعة الفاتورة - Invoice Print Styles
+        ══════════════════════════════════════════ */
         @@media print {
-            .btn, .page-title-section, .card-header-admin {
+            /* إخفاء كل شيء */
+            .admin-sidebar,
+            .admin-header,
+            .admin-footer,
+            .sidebar-overlay,
+            .page-title-section .btn,
+            .quick-actions-card,
+            .d-flex.justify-content-between .btn,
+            .d-grid.gap-2,
+            #deleteForm,
+            .btn,
+            nav[aria-label="breadcrumb"] {
                 display: none !important;
             }
-            
-            .card-admin {
-                box-shadow: none;
-                border: 1px solid #ddd;
+
+            /* إعداد الصفحة */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            html, body { margin: 0 !important; padding: 0 !important; background: white !important; font-size: 12pt; font-family: 'Cairo', Arial, sans-serif; direction: rtl; }
+            .admin-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            .admin-main { padding: 0 !important; }
+            .container-fluid { padding: 0 !important; }
+
+            /* رأس الفاتورة */
+            .page-title-section {
+                display: block !important;
+                text-align: center;
+                padding: 12pt 0 8pt;
+                border-bottom: 2px solid #6a1b9a;
+                margin-bottom: 14pt;
             }
+            .page-title-section::before {
+                content: "🌸 أوركيديا — فاتورة طلب";
+                display: block;
+                font-size: 18pt;
+                font-weight: 800;
+                color: #6a1b9a;
+                letter-spacing: 0.5pt;
+            }
+            .page-title-section h1,
+            .page-title-section p { display: none !important; }
+
+            /* البطاقات */
+            .card-admin {
+                border: 1pt solid #ddd !important;
+                border-radius: 6pt !important;
+                box-shadow: none !important;
+                margin-bottom: 10pt !important;
+                padding: 10pt !important;
+                page-break-inside: avoid;
+            }
+            .card-header-admin {
+                background: #f3e5f5 !important;
+                color: #6a1b9a !important;
+                border-radius: 4pt !important;
+                padding: 6pt 10pt !important;
+                margin-bottom: 8pt !important;
+                font-weight: 700;
+            }
+
+            /* التخطيط - نضع الأعمدة بجانب بعض */
+            .row { display: flex !important; flex-wrap: wrap !important; }
+            .col-lg-8 { width: 65% !important; flex: 0 0 65% !important; padding-left: 6pt; }
+            .col-lg-4 { width: 33% !important; flex: 0 0 33% !important; }
+            .col-md-6 { width: 50% !important; flex: 0 0 50% !important; }
+            .col-12 { width: 100% !important; }
+            .g-4 { gap: 8pt !important; }
+
+            /* الجدول */
+            table { width: 100% !important; border-collapse: collapse; font-size: 10pt; }
+            th { background: #f3e5f5 !important; color: #6a1b9a !important; padding: 5pt 7pt !important; border: 1pt solid #ddd; font-weight: 700; }
+            td { padding: 5pt 7pt !important; border: 1pt solid #eee; }
+            tr:nth-child(even) td { background: #fafafa !important; }
+
+            /* ملخص الطلب */
+            .bg-light { background: #f9f9f9 !important; }
+            .text-success { color: #388e3c !important; }
+            .text-purple, .text-info { color: #6a1b9a !important; }
+
+            /* إخفاء أيقونات غير ضرورية في الجدول الرئيسي */
+            .fas.fa-box { display: none; }
+            .me-3 { margin: 0 !important; }
+
+            /* تذييل الفاتورة */
+            .row.g-4::after {
+                content: "شكراً لتسوقكِ مع أوركيديا 🌸  |  جميع الحقوق محفوظة © 2026 Orkideya";
+                display: block;
+                width: 100%;
+                text-align: center;
+                font-size: 9pt;
+                color: #888;
+                border-top: 1pt solid #ddd;
+                padding-top: 8pt;
+                margin-top: 10pt;
+            }
+
+            /* إجبار الطباعة في صفحة واحدة */
+            @@page { size: A4 portrait; margin: 1.5cm 1cm; }
         }
     </style>
 }

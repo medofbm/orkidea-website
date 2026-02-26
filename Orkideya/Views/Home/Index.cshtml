@@ -55,7 +55,7 @@
                 </div>
 
                 @* Stats Row *@
-                <div class="hero-stats mt-5">
+                <div class="hero-stats mt-5 justify-content-center" style="display:flex;justify-content:center;">
                     <div class="hero-stat">
                         <span class="hero-stat-num">100%</span>
                         <span class="hero-stat-label">طبيعي</span>
@@ -193,14 +193,29 @@
             <h2 id="all-products-heading" class="section-title mt-2 mb-2">كل منتجاتنا</h2>
             <p class="section-subtitle">استكشفي مجموعتنا الكاملة من المنتجات الطبيعية</p>
         </div>
-        <div class="row g-4">
-            @foreach (var product in Model.Where(p => p.ProductVariants.Any()))
-            {
-                <div class="col-lg-4 col-md-6">
-                    <partial name="_ProductCardPartial" model="product" />
-                </div>
+        <div class="row g-4" id="allProductsGrid">
+            @{
+                int prodIndex = 0;
+                foreach (var product in Model.Where(p => p.ProductVariants.Any()))
+                {
+                    string hiddenClass = prodIndex >= 6 ? "product-hidden" : "";
+                    <div class="col-lg-4 col-md-6 product-grid-item @hiddenClass">
+                        <partial name="_ProductCardPartial" model="product" />
+                    </div>
+                    prodIndex++;
+                }
             }
         </div>
+        @if (Model.Count(p => p.ProductVariants.Any()) > 6)
+        {
+            <div class="text-center mt-5" id="loadMoreWrapper">
+                <button id="loadMoreBtn" class="btn load-more-btn">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    عرض المزيد من المنتجات
+                    <span class="load-more-count" id="remainingCount"></span>
+                </button>
+            </div>
+        }
     </div>
 </section>
 
@@ -214,40 +229,57 @@
                 <span class="section-badge section-badge-white">
                     <i class="fas fa-comments me-1" aria-hidden="true"></i> آراء العملاء
                 </span>
-                <h2 id="testimonials-heading" class="section-title mt-2 mb-2" style="color: white;">ماذا يقول زبائننا</h2>
-                <p class="section-subtitle" style="color: rgba(255,255,255,0.7);">تجارب حقيقية من عملائنا الكرام</p>
+                <h2 id="testimonials-heading" class="section-title mt-2 mb-2">ماذا يقول زبائننا</h2>
+                <p class="section-subtitle">تجارب حقيقية من عملائنا الكرام</p>
             </div>
-            <div class="row g-4 justify-content-center">
-                @foreach (var review in ViewBag.Reviews)
-                {
-                    <div class="col-lg-4 col-md-6">
-                        <article class="review-card">
-                            <div class="review-stars mb-2" aria-hidden="true">
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                            </div>
-                            <div class="quote-icon" aria-hidden="true">
-                                <i class="fas fa-quote-right"></i>
-                            </div>
-                            <blockquote class="review-message">
-                                <p>"@review.Message"</p>
-                            </blockquote>
-                            <footer class="review-customer">
-                                <div class="review-avatar" aria-hidden="true">
-                                    @review.CustomerName.Substring(0, 1)
+
+            <!-- Swiper carousel -->
+            <div class="swiper reviews-swiper">
+                <div class="swiper-wrapper">
+                    @foreach (var review in ViewBag.Reviews)
+                    {
+                        <div class="swiper-slide">
+                            <article class="review-card">
+                                <div class="review-stars mb-2" aria-hidden="true">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        if (i <= (int)review.Rating)
+                                        {
+                                            <i class="fas fa-star text-warning"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="far fa-star text-muted"></i>
+                                        }
+                                    }
                                 </div>
-                                <cite>@review.CustomerName</cite>
-                            </footer>
-                        </article>
-                    </div>
-                }
+                                <div class="quote-icon" aria-hidden="true">
+                                    <i class="fas fa-quote-right"></i>
+                                </div>
+                                <blockquote class="review-message">
+                                    <p>"@review.Message"</p>
+                                </blockquote>
+                                <footer class="review-customer">
+                                    <div class="review-avatar" aria-hidden="true">
+                                        @review.CustomerName.Substring(0, 1)
+                                    </div>
+                                    <cite>@review.CustomerName</cite>
+                                </footer>
+                            </article>
+                        </div>
+                    }
+                </div>
+                <!-- Pagination dots -->
+                <div class="swiper-pagination reviews-pagination"></div>
+                <!-- Nav arrows -->
+                <div class="swiper-button-prev reviews-prev"></div>
+                <div class="swiper-button-next reviews-next"></div>
             </div>
         </div>
     </section>
+
 }
+
 
 @* ============ CONTACT SECTION ============ *@
 <section class="contact-section-wrapper" id="contact-section" aria-labelledby="contact-heading">
@@ -353,8 +385,72 @@
 </section>
 
 @section Scripts {
+    <style>
+    /* Swiper overrides for reviews */
+    .reviews-swiper { padding-bottom: 3rem !important; overflow: visible; }
+    .reviews-swiper .swiper-slide { height: auto; }
+    .reviews-swiper .review-card { height: 100%; }
+    .reviews-pagination .swiper-pagination-bullet { background: rgba(255,255,255,0.5); opacity: 1; width: 8px; height: 8px; }
+    .reviews-pagination .swiper-pagination-bullet-active { background: white; width: 22px; border-radius: 4px; }
+    .reviews-prev, .reviews-next { color: white !important; --swiper-navigation-size: 22px; }
+    .reviews-prev::after, .reviews-next::after { font-size: 22px !important; font-weight: 800; }
+    @@media (max-width: 576px) { .reviews-prev, .reviews-next { display: none; } }
+    </style>
+
     <script>
-        (function () {
+        // Reviews carousel
+        document.addEventListener('DOMContentLoaded', function () {
+            if (document.querySelector('.reviews-swiper')) {
+                new Swiper('.reviews-swiper', {
+                    loop: true,
+                    centeredSlides: true,
+                    slidesPerView: 1,
+                    spaceBetween: 24,
+                    autoplay: {
+                        delay: 4500,
+                        disableOnInteraction: false,
+                        pauseOnMouseEnter: true,
+                    },
+                    speed: 700,
+                    pagination: { el: '.reviews-pagination', clickable: true },
+                    navigation: { nextEl: '.reviews-next', prevEl: '.reviews-prev' },
+                    breakpoints: {
+                        768: { slidesPerView: 2, spaceBetween: 28, centeredSlides: false },
+                        1200: { slidesPerView: 3, spaceBetween: 30, centeredSlides: false },
+                    },
+                    a11y: { prevSlideMessage: 'الرأي السابق', nextSlideMessage: 'الرأي التالي' },
+                });
+            }
+
+            // Load More Products
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            if (loadMoreBtn) {
+                const allItems = document.querySelectorAll('.product-grid-item.product-hidden');
+                const remaining = document.getElementById('remainingCount');
+                const step = 6;
+                let shownCount = 0;
+
+                function updateRemaining() {
+                    const left = allItems.length - shownCount;
+                    remaining.textContent = left > 0 ? '(' + left + ')' : '';
+                    if (shownCount >= allItems.length) {
+                        document.getElementById('loadMoreWrapper').style.display = 'none';
+                    }
+                }
+                updateRemaining();
+
+                loadMoreBtn.addEventListener('click', function () {
+                    let shown = 0;
+                    for (let i = shownCount; i < allItems.length && shown < step; i++, shown++) {
+                        allItems[i].classList.remove('product-hidden');
+                        allItems[i].style.animation = 'fadeInUp 0.4s ease both';
+                    }
+                    shownCount += shown;
+                    updateRemaining();
+                });
+            }
+
+            // Contact form validation
             'use strict';
             const forms = document.querySelectorAll('.contact-form');
             Array.from(forms).forEach(function (form) {
@@ -366,6 +462,6 @@
                     form.classList.add('was-validated');
                 }, false);
             });
-        })();
+        });
     </script>
 }

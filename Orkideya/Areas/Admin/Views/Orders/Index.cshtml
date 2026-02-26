@@ -3,6 +3,21 @@
     ViewData["Title"] = "إدارة الطلبات";
     var currentStatus = ViewBag.CurrentStatus as string ?? "all";
     var searchTerm = ViewBag.SearchTerm as string ?? "";
+
+    // دالة بناء رابط واتساب دولي للأرقام الليبية
+    string BuildWaLink(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return "#";
+        // إزالة المسافات والشرطات والرمز +
+        var clean = phone.Trim().Replace(" ", "").Replace("-", "").Replace("+", "");
+        // إذا كان الرقم يبدأ بـ 09 (ليبي محلي) → أضف 218 بدلاً من الصفر
+        if (clean.StartsWith("09") && clean.Length == 10)
+            clean = "218" + clean.Substring(1);
+        // إذا كان يبدأ بـ 9 وطوله 9 (بعد حذف الصفر)
+        else if (clean.StartsWith("9") && clean.Length == 9)
+            clean = "218" + clean;
+        return $"https://wa.me/{clean}";
+    }
 }
 
 <!-- Page Header -->
@@ -237,11 +252,12 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 
-                                <a href="https://wa.me/@order.WhatsAppNumber.Replace("+", "")" 
+                                <a href="@BuildWaLink(order.WhatsAppNumber)"
                                    class="btn btn-sm" 
                                    style="background: rgba(37, 211, 102, 0.1); color: #25d366;"
                                    target="_blank"
-                                   title="مراسلة العميل">
+                                   rel="noopener noreferrer"
+                                   title="مراسلة العميل عبر واتساب">
                                     <i class="fab fa-whatsapp"></i>
                                 </a>
                                 
