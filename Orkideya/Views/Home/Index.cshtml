@@ -193,20 +193,20 @@
             <h2 id="all-products-heading" class="section-title mt-2 mb-2">كل منتجاتنا</h2>
             <p class="section-subtitle">استكشفي مجموعتنا الكاملة من المنتجات الطبيعية</p>
         </div>
-        <div class="row g-4" id="allProductsGrid">
+        <div class="row g-3" id="allProductsGrid">
             @{
                 int prodIndex = 0;
                 foreach (var product in Model.Where(p => p.ProductVariants.Any()))
                 {
-                    string hiddenClass = prodIndex >= 6 ? "product-hidden" : "";
-                    <div class="col-lg-4 col-md-6 product-grid-item @hiddenClass">
+                    string hiddenClass = prodIndex >= 8 ? "product-hidden" : "";
+                    <div class="col-lg-3 col-md-4 col-6 product-grid-item @hiddenClass">
                         <partial name="_ProductCardPartial" model="product" />
                     </div>
                     prodIndex++;
                 }
             }
         </div>
-        @if (Model.Count(p => p.ProductVariants.Any()) > 6)
+        @if (Model.Count(p => p.ProductVariants.Any()) > 8)
         {
             <div class="text-center mt-5" id="loadMoreWrapper">
                 <button id="loadMoreBtn" class="btn load-more-btn">

@@ -1,0 +1,269 @@
+@model Orkideya.Models.Product
+@{
+    ViewData["Title"] = Model.Name;
+    var variants = Model.ProductVariants.OrderBy(v => v.Price).ToList();
+    var defaultVariant = variants.First();
+    var orderCount = (int)(ViewBag.OrderCount ?? 0);
+    var relatedProducts = ViewBag.RelatedProducts as List<Orkideya.Models.Product> ?? new List<Orkideya.Models.Product>();
+}
+
+<div class="product-detail-page" style="padding: 2rem 0 4rem;">
+    <div class="container">
+
+        @* breadcrumb *@
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a asp-controller="Home" asp-action="Index" class="text-decoration-none text-muted">
+                        <i class="fas fa-home me-1"></i> الرئيسية
+                    </a>
+                </li>
+                @if (Model.Category != null)
+                {
+                    <li class="breadcrumb-item">
+                        <a asp-controller="Home" asp-action="ProductsByCategory"
+                           asp-route-categoryId="@Model.CategoryId"
+                           class="text-decoration-none text-muted">@Model.Category.Name</a>
+                    </li>
+                }
+                <li class="breadcrumb-item active">@Model.Name</li>
+            </ol>
+        </nav>
+
+        @* Main product section *@
+        <div class="row g-5 align-items-start">
+
+            @* Product image *@
+            <div class="col-lg-5">
+                <div class="product-detail-img-wrapper position-relative">
+                    <div class="product-detail-img-glow"></div>
+                    <img src="@Model.ImageUrl"
+                         alt="@Model.Name"
+                         class="img-fluid rounded-4 w-100 product-detail-img"
+                         style="max-height:480px;object-fit:cover;box-shadow:0 20px 60px rgba(106,27,154,0.18);"
+                         onerror="this.src=''" />
+                    @if (orderCount > 5)
+                    {
+                        <span class="badge position-absolute top-0 start-0 m-3"
+                              style="background:rgba(106,27,154,0.85);font-size:0.85rem;padding:0.5em 0.9em;border-radius:20px;">
+                            <i class="fas fa-fire me-1"></i> الأكثر طلباً
+                        </span>
+                    }
+                </div>
+            </div>
+
+            @* Product info *@
+            <div class="col-lg-7">
+
+                @if (Model.Category != null)
+                {
+                    <span class="badge mb-3" style="background:rgba(106,27,154,0.1);color:#6a1b9a;font-size:0.85rem;padding:0.5em 1em;border-radius:20px;">
+                        <i class="fas fa-tag me-1"></i>@Model.Category.Name
+                    </span>
+                }
+
+                <h1 class="fw-800 mb-2" style="font-size:clamp(1.6rem,4vw,2.2rem);color:#1a0533;">@Model.Name</h1>
+
+                @* Trust badges *@
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <span class="badge" style="background:#f3e5f5;color:#6a1b9a;font-size:0.78rem;padding:0.4em 0.75em;">
+                        <i class="fas fa-leaf me-1"></i>100% طبيعي
+                    </span>
+                    <span class="badge" style="background:#e8f5e9;color:#2e7d32;font-size:0.78rem;padding:0.4em 0.75em;">
+                        <i class="fas fa-hand-holding-heart me-1"></i>صنع يدوي
+                    </span>
+                    @if (orderCount > 0)
+                    {
+                        <span class="badge" style="background:#fff3e0;color:#e65100;font-size:0.78rem;padding:0.4em 0.75em;">
+                            <i class="fas fa-shopping-bag me-1"></i>@orderCount طلب حتى الآن
+                        </span>
+                    }
+                </div>
+
+                @* Price *@
+                <div class="mb-4">
+                    <span class="product-detail-price" id="detailPrice">
+                        @defaultVariant.Price.ToString("0.00") <small>د.ل</small>
+                    </span>
+                </div>
+
+                @* Size selector *@
+                @if (variants.Count > 0)
+                {
+                    <div class="mb-4">
+                        <label class="fw-semibold mb-2 d-block" style="color:#555;">
+                            <i class="fas fa-flask me-2" style="color:#6a1b9a;"></i>اختاري الحجم:
+                        </label>
+                        <div class="d-flex flex-wrap gap-2" id="detailVariants">
+                            @foreach (var v in variants)
+                            {
+                                <button type="button"
+                                        class="btn detail-size-btn @(v.ProductVariantId == defaultVariant.ProductVariantId ? "active" : "")"
+                                        data-price="@v.Price.ToString("0.00")"
+                                        data-variant-id="@v.ProductVariantId"
+                                        data-product-id="@Model.ProductId">
+                                    @v.Size
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @* Add to cart *@
+                <div class="d-flex gap-3 align-items-center mb-4 flex-wrap">
+                    <button type="button"
+                            class="btn btn-hero-primary btn-glowing add-to-cart-btn flex-grow-1"
+                            id="detailAddToCart"
+                            data-product-id="@Model.ProductId"
+                            data-variant-id="@defaultVariant.ProductVariantId"
+                            data-quantity="1"
+                            style="font-size:1.05rem;padding:0.85rem 2rem;">
+                        <i class="fas fa-shopping-cart me-2"></i>
+                        أضف للسلة
+                    </button>
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-right me-2"></i>تسوق أكثر
+                    </a>
+                </div>
+
+                @* Description *@
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <div class="product-detail-desc rounded-4 p-4 mb-4"
+                         style="background:linear-gradient(135deg,#f9f0ff,#fdf6ff);border:1px solid rgba(106,27,154,0.12);">
+                        <h5 class="fw-700 mb-3" style="color:#6a1b9a;">
+                            <i class="fas fa-info-circle me-2"></i>وصف المنتج
+                        </h5>
+                        <div style="line-height:1.9;color:#444;">
+                            @Html.Raw(Model.Description)
+                        </div>
+                    </div>
+                }
+
+                @* Features mini cards *@
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="d-flex align-items-center gap-2 p-3 rounded-3" style="background:#f8f0ff;">
+                            <i class="fas fa-shield-alt fa-lg" style="color:#6a1b9a;"></i>
+                            <div>
+                                <div class="fw-600 small">ضمان الجودة</div>
+                                <div class="text-muted" style="font-size:0.75rem;">مكونات طبيعية 100%</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-center gap-2 p-3 rounded-3" style="background:#f0fff4;">
+                            <i class="fas fa-truck fa-lg" style="color:#2e7d32;"></i>
+                            <div>
+                                <div class="fw-600 small">توصيل سريع</div>
+                                <div class="text-muted" style="font-size:0.75rem;">لجميع مدن ليبيا</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-center gap-2 p-3 rounded-3" style="background:#fff8e1;">
+                            <i class="fas fa-star fa-lg" style="color:#f9a825;"></i>
+                            <div>
+                                <div class="fw-600 small">تقييم 5 نجوم</div>
+                                <div class="text-muted" style="font-size:0.75rem;">رضا العملاء أولويتنا</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-center gap-2 p-3 rounded-3" style="background:#fce4ec;">
+                            <i class="fas fa-heart fa-lg" style="color:#c62828;"></i>
+                            <div>
+                                <div class="fw-600 small">صنع بحب</div>
+                                <div class="text-muted" style="font-size:0.75rem;">منتج يدوي أصيل</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Related products *@
+        @if (relatedProducts.Count > 0)
+        {
+            <div class="mt-5 pt-4 border-top">
+                <div class="section-header text-center mb-4">
+                    <span class="section-badge">
+                        <i class="fas fa-heart me-1"></i> قد يعجبك أيضاً
+                    </span>
+                    <h2 class="section-title mt-2 mb-0">منتجات مشابهة</h2>
+                </div>
+                <div class="row g-3">
+                    @foreach (var rp in relatedProducts)
+                    {
+                        <div class="col-lg-3 col-md-4 col-6">
+                            <partial name="_ProductCardPartial" model="rp" />
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .product-detail-price {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #6a1b9a;
+        }
+        .product-detail-price small { font-size: 1rem; font-weight: 500; }
+
+        .detail-size-btn {
+            padding: 0.5rem 1.1rem;
+            border: 2px solid #e0c3fc;
+            border-radius: 25px;
+            font-weight: 600;
+            color: #6a1b9a;
+            background: white;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+        .detail-size-btn:hover, .detail-size-btn.active {
+            background: linear-gradient(135deg, #9c27b0, #6a1b9a);
+            color: white;
+            border-color: transparent;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(106,27,154,0.25);
+        }
+
+        .product-detail-img-glow {
+            position: absolute;
+            inset: 30px;
+            background: radial-gradient(circle, rgba(156,39,176,0.15), transparent 70%);
+            border-radius: 50%;
+            filter: blur(30px);
+            z-index: 0;
+        }
+        .product-detail-img { position: relative; z-index: 1; }
+        .fw-600 { font-weight: 600; }
+        .fw-700 { font-weight: 700; }
+        .fw-800 { font-weight: 800; }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sizeBtns = document.querySelectorAll('.detail-size-btn');
+            const addToCartBtn = document.getElementById('detailAddToCart');
+            const priceEl = document.getElementById('detailPrice');
+
+            sizeBtns.forEach(btn => {
+                btn.addEventListener('click', function () {
+                    sizeBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    const price = parseFloat(this.dataset.price).toFixed(2);
+                    priceEl.innerHTML = price + ' <small>د.ل</small>';
+                    addToCartBtn.dataset.variantId = this.dataset.variantId;
+                });
+            });
+        });
+    </script>
+}

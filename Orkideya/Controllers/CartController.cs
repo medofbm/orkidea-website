@@ -127,5 +127,13 @@ namespace Orkideya.Controllers
             var cartJson = JsonSerializer.Serialize(cart);
             HttpContext.Session.SetString("Cart", cartJson);
         }
+
+        [HttpGet]
+        public JsonResult GetCount()
+        {
+            var cart = GetCart();
+            int count = cart.Sum(i => i.Quantity);
+            return Json(new { count });
+        }
     }
 }

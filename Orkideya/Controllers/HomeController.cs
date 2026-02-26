@@ -71,6 +71,34 @@ namespace Orkideya.Controllers
             return View();
         }
 
+        public async Task<IActionResult> ProductDetail(int id)
+        {
+            var product = await _context.Products
+                .Include(p => p.ProductVariants)
+                .Include(p => p.Category)
+                .FirstOrDefaultAsync(p => p.ProductId == id);
+
+            if (product == null) return NotFound();
+
+            // عدد مرات طلب هذا المنتج
+            var orderCount = await _context.OrderItems
+                .Where(oi => oi.ProductId == id)
+                .SumAsync(oi => (int?)oi.Quantity) ?? 0;
+
+            // منتجات مشابهة (نفس الفئة)
+            var related = await _context.Products
+                .Include(p => p.ProductVariants)
+                .Where(p => p.CategoryId == product.CategoryId && p.ProductId != id && p.ProductVariants.Any())
+                .Take(4)
+                .ToListAsync();
+
+            ViewBag.OrderCount = orderCount;
+            ViewBag.RelatedProducts = related;
+            ViewBag.Categories = await _context.Categories.ToListAsync();
+
+            return View(product);
+        }
+
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {

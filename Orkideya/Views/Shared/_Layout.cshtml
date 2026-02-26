@@ -344,7 +344,100 @@
             document.addEventListener('mousedown', function () {
                 document.body.classList.remove('keyboard-navigation');
             });
+
+            // ---- Floating Cart Button Visibility ----
+            const floatCart = document.getElementById('floatingCartBtn');
+            if (floatCart) {
+                window.addEventListener('scroll', function () {
+                    floatCart.classList.toggle('fab-visible', window.scrollY > 200);
+                }, { passive: true });
+            }
+
+            // ---- FAB Cart Count Sync ----
+            function updateFabCount() {
+                const fabCount = document.getElementById('fabCartCount');
+                if (!fabCount) return;
+                fetch('/Cart/GetCount', { credentials: 'same-origin' })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(data => {
+                        if (data && data.count > 0) {
+                            fabCount.textContent = data.count;
+                            fabCount.classList.add('has-items');
+                        } else {
+                            fabCount.classList.remove('has-items');
+                        }
+                    }).catch(() => {});
+            }
+            updateFabCount();
+            document.addEventListener('cartUpdated', updateFabCount);
+            // مزامنة بعد كل نقر على زر أضف للسلة
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.add-to-cart-btn')) {
+                    setTimeout(updateFabCount, 800);
+                }
+            }, { passive: true });
         });
     </script>
+
+    @* زر السلة العائم *@
+    <a href="/Cart" id="floatingCartBtn" class="fab-cart" aria-label="السلة">
+        <i class="fas fa-shopping-cart"></i>
+        <span class="fab-cart-count" id="fabCartCount">0</span>
+    </a>
+
+    <style>
+        .fab-cart {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            z-index: 1050;
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #9c27b0, #6a1b9a);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            box-shadow: 0 6px 24px rgba(106,27,154,0.38);
+            text-decoration: none;
+            opacity: 0;
+            transform: translateY(20px) scale(0.85);
+            transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.25s;
+            pointer-events: none;
+        }
+        .fab-cart.fab-visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+        .fab-cart:hover {
+            box-shadow: 0 10px 35px rgba(106,27,154,0.5);
+            transform: translateY(-3px) scale(1.07);
+            color: white;
+        }
+        .fab-cart-count {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #ff4757;
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            display: none;
+        }
+        .fab-cart-count.has-items { display: flex; }
+        @media (max-width: 576px) {
+            .fab-cart { bottom: 1.2rem; left: 1.2rem; width: 52px; height: 52px; font-size: 1.1rem; }
+        }
+    </style>
 </body>
 </html>
