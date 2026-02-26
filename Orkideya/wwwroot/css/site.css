@@ -4072,3 +4072,95 @@ main {
         box-shadow: none;
     }
 }
+
+/* ============================================
+   📱 MOBILE COMPACT - تصغير الأقسام على الموبايل
+   ============================================ */
+@media (max-width: 576px) {
+
+    /* Hero section أصغر */
+    .hero-section {
+        padding: 2rem 0 !important;
+        min-height: auto !important;
+    }
+
+    .hero-title {
+        font-size: 1.6rem !important;
+        line-height: 1.35 !important;
+    }
+
+    .hero-desc {
+        font-size: 0.9rem !important;
+        margin-bottom: 1.2rem !important;
+    }
+
+    .hero-product-img {
+        width: 180px !important;
+        height: 180px !important;
+    }
+
+    .hero-stats {
+        margin-top: 1.2rem !important;
+    }
+
+    .hero-stat-num {
+        font-size: 1.2rem !important;
+    }
+
+    /* أقسام - تقليل padding */
+    .categories-section,
+    .featured-section,
+    .products-section,
+    .testimonials-section,
+    .features-bar {
+        padding: 2rem 0 !important;
+    }
+
+    .section-title {
+        font-size: 1.4rem !important;
+    }
+
+    .section-header {
+        margin-bottom: 1.5rem !important;
+    }
+
+    /* بطاقة الفئة أصغر */
+    .category-card {
+        padding: 1rem 0.6rem !important;
+        min-height: auto !important;
+    }
+
+    .category-card-icon {
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 1.3rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .category-card-name {
+        font-size: 0.82rem !important;
+    }
+
+    /* features bar أصغر */
+    .feature-bar-item {
+        padding: 0.75rem !important;
+    }
+
+    .feature-bar-icon {
+        font-size: 1.4rem !important;
+    }
+
+    /* contact section */
+    .contact-card {
+        padding: 1.5rem 1rem !important;
+    }
+
+    /* FAB position */
+    .fab-cart {
+        bottom: 1rem;
+        left: 1rem;
+        width: 50px;
+        height: 50px;
+        font-size: 1.1rem;
+    }
+}

@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Orkideya.styles.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
     <a href="#main-content" class="skip-to-main visually-hidden-focusable">الانتقال إلى المحتوى الرئيسي</a>
@@ -345,37 +346,8 @@
                 document.body.classList.remove('keyboard-navigation');
             });
 
-            // ---- Floating Cart Button Visibility ----
-            const floatCart = document.getElementById('floatingCartBtn');
-            if (floatCart) {
-                window.addEventListener('scroll', function () {
-                    floatCart.classList.toggle('fab-visible', window.scrollY > 200);
-                }, { passive: true });
-            }
-
-            // ---- FAB Cart Count Sync ----
-            function updateFabCount() {
-                const fabCount = document.getElementById('fabCartCount');
-                if (!fabCount) return;
-                fetch('/Cart/GetCount', { credentials: 'same-origin' })
-                    .then(r => r.ok ? r.json() : null)
-                    .then(data => {
-                        if (data && data.count > 0) {
-                            fabCount.textContent = data.count;
-                            fabCount.classList.add('has-items');
-                        } else {
-                            fabCount.classList.remove('has-items');
-                        }
-                    }).catch(() => {});
-            }
-            updateFabCount();
-            document.addEventListener('cartUpdated', updateFabCount);
-            // مزامنة بعد كل نقر على زر أضف للسلة
-            document.addEventListener('click', function(e) {
-                if (e.target.closest('.add-to-cart-btn')) {
-                    setTimeout(updateFabCount, 800);
-                }
-            }, { passive: true });
+            // ---- Floating Cart Button always visible ----
+            // (FAB is always shown as fixed button)
         });
     </script>
 
@@ -402,15 +374,7 @@
             font-size: 1.3rem;
             box-shadow: 0 6px 24px rgba(106,27,154,0.38);
             text-decoration: none;
-            opacity: 0;
-            transform: translateY(20px) scale(0.85);
-            transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.25s;
-            pointer-events: none;
-        }
-        .fab-cart.fab-visible {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            pointer-events: auto;
+            transition: box-shadow 0.25s, transform 0.2s;
         }
         .fab-cart:hover {
             box-shadow: 0 10px 35px rgba(106,27,154,0.5);
