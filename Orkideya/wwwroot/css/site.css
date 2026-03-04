@@ -55,22 +55,31 @@ html {
 
 
 
-html,
-body {
+html {
     font-family: 'Cairo', sans-serif;
     text-align: right;
     direction: rtl;
     background-color: var(--light-gray);
     color: var(--dark-text);
     line-height: 1.6;
-    overflow-x: hidden;
+    /*
+     * CRITICAL: Use 'clip' NOT 'hidden' here.
+     * overflow-x:hidden on <html> breaks position:fixed on iOS Safari
+     * because it makes html the scroll container.
+     * overflow-x:clip clips content WITHOUT creating a scroll container.
+     */
+    overflow-x: clip;
     min-height: 100vh;
-    /* Fix: sticky footer - eliminate white space below footer on mobile */
     display: flex;
     flex-direction: column;
 }
 
 body {
+    /* overflow-x:hidden on body is safe - does not affect position:fixed */
+    overflow-x: hidden;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
     animation: fadeIn 0.8s ease-out forwards;
     opacity: 0;
 }
@@ -4081,9 +4090,14 @@ main {
 
 /* ---- Product Card Base Styles ---- */
 .product-card-img {
-    height: 190px;
-    object-fit: cover;
+    height: 180px;
     width: 100%;
+    object-fit: contain;
+    /* show full product without cropping */
+    background: #fff;
+    /* clean white bg so product stands out */
+    padding: 8px;
+    /* breathing room around bottles */
 }
 
 .product-card-title {
