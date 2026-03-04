@@ -40,7 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initQuantitySelectors();
     initAddToCart();
     initAccessibility();
-    initFabCart();
 });
 
 /**
@@ -85,10 +84,12 @@ function initSwiperSlider() {
  * Initialize Variant Selection
  */
 function initVariantSelection() {
-    const productCards = Utils.qsa('.product-card');
+    // Support both new class (.product-card-wrapper) and old class (.product-card)
+    const productCards = Utils.qsa('.product-card-wrapper, .product-card');
 
     productCards.forEach(card => {
-        const variantButtons = Utils.qsa('.variant-btn', card);
+        // Support both new class (.variant-size-btn) and old class (.variant-btn)
+        const variantButtons = Utils.qsa('.variant-size-btn, .variant-btn', card);
         const priceDisplay = Utils.qs('[class*="price-display-"]', card);
         const hiddenVariantInput = Utils.qs('input[name="variantId"]', card);
 
@@ -113,7 +114,8 @@ function initVariantSelection() {
                 if (priceDisplay) {
                     priceDisplay.style.opacity = '0';
                     setTimeout(() => {
-                        priceDisplay.textContent = `${price} د.ل`;
+                        // Keep currency label inside
+                        priceDisplay.innerHTML = `${price} <small class="price-currency">د.ل</small>`;
                         priceDisplay.style.opacity = '1';
                     }, 150);
                 }
@@ -133,7 +135,7 @@ function initVariantSelection() {
 
         // Set initial active variant with proper ARIA
         const firstVariantButton = variantButtons[0];
-        const activeButton = Utils.qs('.variant-btn.active', card);
+        const activeButton = Utils.qs('.variant-size-btn.active, .variant-btn.active', card);
 
         if (firstVariantButton && !activeButton) {
             firstVariantButton.classList.add('active');
@@ -148,7 +150,7 @@ function initVariantSelection() {
  * Initialize Quantity Selectors
  */
 function initQuantitySelectors() {
-    const productCards = Utils.qsa('.product-card');
+    const productCards = Utils.qsa('.product-card-wrapper, .product-card');
 
     productCards.forEach(card => {
         const quantityInput = Utils.qs('.quantity-input', card);
@@ -220,7 +222,7 @@ function initAddToCart() {
                 const variantId = this.dataset.variantId;
 
                 // Try to get quantity from a nearby input, or fall back to data-quantity attr
-                const card = this.closest('.product-card');
+                const card = this.closest('.product-card-wrapper, .product-card');
                 const quantityInput = card ? Utils.qs('.quantity-input', card) : null;
                 const quantity = quantityInput
                     ? parseInt(quantityInput.value, 10)
@@ -285,11 +287,11 @@ function initAddToCart() {
     });
 }
 
+
 /**
- * Update cart badge with animation - updates BOTH the header badge and the FAB badge
+ * Update cart badge with animation - updates the header badge
  */
 function updateCartBadge(count) {
-    // --- Header badge ---
     const cartBadge = Utils.qs('#cartBadge');
     if (cartBadge) {
         cartBadge.textContent = count;
@@ -303,78 +305,6 @@ function updateCartBadge(count) {
         cartBadge.classList.add('pulse-animation');
         setTimeout(() => cartBadge.classList.remove('pulse-animation'), 600);
     }
-
-    // --- FAB badge ---
-    const fabCount = Utils.qs('#fabCartCount');
-    if (fabCount) {
-        fabCount.textContent = count;
-        if (count > 0) {
-            fabCount.classList.add('has-items');
-        } else {
-            fabCount.classList.remove('has-items');
-        }
-    }
-}
-
-/**
- * Initialize FAB cart: load count on page load + scroll-based show/hide
- *
- * NOTE: IntersectionObserver does NOT work for sticky headers because
- * sticky elements are always intersecting the viewport. We use a simple
- * scrollY threshold instead - clean and reliable on all browsers.
- */
-function initFabCart() {
-    const fab = Utils.qs('#floatingCartBtn');
-    if (!fab) return;
-
-    // Direct inline-style control (bypasses CSS class/specificity issues)
-    function showFab() {
-        fab.style.opacity = '1';
-        fab.style.visibility = 'visible';
-        fab.style.pointerEvents = 'auto';
-    }
-    function hideFab() {
-        fab.style.opacity = '0';
-        fab.style.visibility = 'hidden';
-        fab.style.pointerEvents = 'none';
-    }
-
-    // Start hidden at top of page
-    hideFab();
-
-    // Load current cart count from server on page load
-    fetch('/Cart/GetCount', { credentials: 'same-origin' })
-        .then(r => r.json())
-        .then(data => {
-            if (data && typeof data.count === 'number') {
-                updateCartBadge(data.count);
-            }
-        })
-        .catch(() => { /* silent */ });
-
-    // Simple, bulletproof scroll detection
-    // Show FAB as soon as user scrolls even a tiny bit (> 10px)
-    // Hide only when exactly at the very top of the page
-    let ticking = false;
-
-    function onScroll() {
-        if (window.scrollY > 10) {
-            showFab();
-        } else {
-            hideFab();
-        }
-        ticking = false;
-    }
-
-    window.addEventListener('scroll', function () {
-        if (!ticking) {
-            requestAnimationFrame(onScroll);
-            ticking = true;
-        }
-    }, { passive: true });
-
-    // Check immediately on load (in case page restores a scroll position)
-    onScroll();
 }
 
 
