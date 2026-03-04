@@ -319,15 +319,15 @@ function updateCartBadge(count) {
 /**
  * Initialize FAB cart: load count on page load + scroll-based show/hide
  *
- * Uses IntersectionObserver (most reliable on mobile) to detect when the
- * sticky header leaves the viewport, then shows the FAB. Falls back to
- * scroll events. Direct inline-style control avoids all CSS class conflicts.
+ * NOTE: IntersectionObserver does NOT work for sticky headers because
+ * sticky elements are always intersecting the viewport. We use a simple
+ * scrollY threshold instead - clean and reliable on all browsers.
  */
 function initFabCart() {
     const fab = Utils.qs('#floatingCartBtn');
     if (!fab) return;
 
-    // --- Inline style helpers (bypass any CSS class/specificity conflicts) ---
+    // Direct inline-style control (bypasses CSS class/specificity issues)
     function showFab() {
         fab.style.opacity = '1';
         fab.style.visibility = 'visible';
@@ -339,10 +339,10 @@ function initFabCart() {
         fab.style.pointerEvents = 'none';
     }
 
-    // Start hidden
+    // Start hidden at top of page
     hideFab();
 
-    // Load current cart count from server
+    // Load current cart count from server on page load
     fetch('/Cart/GetCount', { credentials: 'same-origin' })
         .then(r => r.json())
         .then(data => {
@@ -352,33 +352,13 @@ function initFabCart() {
         })
         .catch(() => { /* silent */ });
 
-    const header = Utils.qs('.sticky-header');
-
-    // --- Method 1: IntersectionObserver (best for mobile, ~95% browser support) ---
-    if (header && 'IntersectionObserver' in window) {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                // When header is NOT intersecting (out of view) → show FAB
-                if (!entries[0].isIntersecting) {
-                    showFab();
-                } else {
-                    hideFab();
-                }
-            },
-            {
-                threshold: 0,      // trigger as soon as header starts leaving
-                rootMargin: '0px'  // no margin
-            }
-        );
-        observer.observe(header);
-        return; // IntersectionObserver handles it - no need for scroll event
-    }
-
-    // --- Method 2: Scroll fallback (for older browsers) ---
+    // Simple, bulletproof scroll detection
+    // Show FAB as soon as user scrolls even a tiny bit (> 10px)
+    // Hide only when exactly at the very top of the page
     let ticking = false;
-    function checkScroll() {
-        const threshold = header ? header.offsetHeight : 70;
-        if (window.scrollY > threshold) {
+
+    function onScroll() {
+        if (window.scrollY > 10) {
             showFab();
         } else {
             hideFab();
@@ -386,14 +366,15 @@ function initFabCart() {
         ticking = false;
     }
 
-    window.addEventListener('scroll', () => {
+    window.addEventListener('scroll', function () {
         if (!ticking) {
-            requestAnimationFrame(checkScroll);
+            requestAnimationFrame(onScroll);
             ticking = true;
         }
     }, { passive: true });
 
-    checkScroll(); // initial check
+    // Check immediately on load (in case page restores a scroll position)
+    onScroll();
 }
 
 
