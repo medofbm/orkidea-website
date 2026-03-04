@@ -4092,12 +4092,7 @@ main {
 .product-card-img {
     height: 180px;
     width: 100%;
-    object-fit: contain;
-    /* show full product without cropping */
-    background: #fff;
-    /* clean white bg so product stands out */
-    padding: 8px;
-    /* breathing room around bottles */
+    object-fit: cover;
 }
 
 .product-card-title {
