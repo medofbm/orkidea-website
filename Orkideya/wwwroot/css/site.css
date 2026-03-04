@@ -4076,6 +4076,38 @@ main {
 /* ============================================
    📱 MOBILE COMPACT - تصغير الأقسام على الموبايل
    ============================================ */
+
+/* ---- Product Card Base Styles ---- */
+.product-card-img {
+    height: 190px;
+    object-fit: cover;
+    width: 100%;
+}
+
+.product-card-title {
+    color: #1a0533;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    font-weight: 700;
+}
+
+.product-card-price {
+    color: #6a1b9a;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.product-card-price small {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.product-card-btn {
+    font-size: 0.85rem;
+    padding: 0.5rem;
+    border-radius: 12px;
+}
+
 @media (max-width: 576px) {
 
     /* Hero section أصغر */
@@ -4150,9 +4182,77 @@ main {
         font-size: 1.4rem !important;
     }
 
-    /* contact section */
+    /* ---- بطاقة المنتج على الموبايل ---- */
+    .product-card-img {
+        height: 155px !important;
+    }
+
+    .product-card-title {
+        font-size: 0.8rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+
+    .product-card-price {
+        font-size: 0.9rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+
+    .product-card-btn {
+        font-size: 0.75rem !important;
+        padding: 0.4rem !important;
+    }
+
+    .product-card .card-body {
+        padding: 0.5rem !important;
+    }
+
+    .product-card .variant-buttons {
+        margin-bottom: 0.35rem !important;
+        gap: 0.2rem !important;
+    }
+
+    /* ---- قسم تواصل معنا على الموبايل ---- */
+    .contact-section-wrapper {
+        padding: 2rem 0 !important;
+    }
+
     .contact-card {
-        padding: 1.5rem 1rem !important;
+        padding: 1.25rem 1rem !important;
+        border-radius: 16px !important;
+    }
+
+    .contact-card .section-title {
+        font-size: 1.3rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .contact-card .section-subtitle {
+        font-size: 0.85rem !important;
+        margin-bottom: 0 !important;
+    }
+
+    .contact-card .text-center.mb-5 {
+        margin-bottom: 1.25rem !important;
+    }
+
+    .contact-card .row.g-3 {
+        --bs-gutter-y: 0.6rem;
+    }
+
+    .contact-input {
+        padding: 0.6rem 0.85rem !important;
+        font-size: 0.88rem !important;
+    }
+
+    .contact-form textarea.contact-input {
+        min-height: 90px !important;
+    }
+
+    /* شبكة المنتجات: عمودين احترافيين على الموبايل */
+    #allProductsGrid .col-6,
+    .row.g-3>.col-6 {
+        padding-left: 0.35rem;
+        padding-right: 0.35rem;
     }
 
     /* FAB position */

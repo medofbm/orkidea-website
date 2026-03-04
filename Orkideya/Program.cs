@@ -11,7 +11,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Database Configuration
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions =>
+        {
+            // Handle transient Azure SQL failures (e.g. database not available temporarily)
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null);
+        }));
 
 // Identity Configuration with Security Options
 builder.Services.AddDefaultIdentity<IdentityUser>(options =>
@@ -86,7 +95,16 @@ var app = builder.Build();
 // ============================================
 using (var scope = app.Services.CreateScope())
 {
-    await DbInitializer.Initialize(scope.ServiceProvider);
+    try
+    {
+        await DbInitializer.Initialize(scope.ServiceProvider);
+    }
+    catch (Exception ex)
+    {
+        // Log the error but don't crash the app - DB may be temporarily unavailable
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "خطأ في تهيئة قاعدة البيانات. التطبيق سيستمر بدون التهيئة الكاملة.");
+    }
 }
 
 // ============================================

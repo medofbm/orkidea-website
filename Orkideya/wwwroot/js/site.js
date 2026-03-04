@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initQuantitySelectors();
     initAddToCart();
     initAccessibility();
+    initFabCart();
 });
 
 /**
@@ -211,20 +212,22 @@ function initAddToCart() {
 
             // Disable button during request
             this.disabled = true;
-            const originalText = this.textContent;
-            this.textContent = 'جاري الإضافة...';
+            const originalHTML = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الإضافة...';
 
             try {
+                // Read variantId directly from the button (works on both product cards AND product detail page)
+                const variantId = this.dataset.variantId;
+
+                // Try to get quantity from a nearby input, or fall back to data-quantity attr
                 const card = this.closest('.product-card');
-                const variantId = this.dataset.variantId || Utils.qs('input[name="variantId"]', card)?.value;
-                const quantityInput = Utils.qs('.quantity-input', card);
+                const quantityInput = card ? Utils.qs('.quantity-input', card) : null;
                 const quantity = quantityInput
                     ? parseInt(quantityInput.value, 10)
                     : parseInt(this.dataset.quantity, 10) || 1;
 
                 if (!variantId) {
-                    console.error('Variant ID is required');
-                    showNotification('الرجاء اختيار المقاس', 'error');
+                    showNotification('الرجاء اختيار الحجم أولاً', 'error');
                     return;
                 }
 
@@ -261,49 +264,91 @@ function initAddToCart() {
                     updateCartBadge(data.count);
 
                     // Show success feedback
-                    this.textContent = '✓ تمت الإضافة';
+                    this.innerHTML = '<i class="fas fa-check me-1"></i> تمت الإضافة ✓';
+                    showNotification('تمت الإضافة للسلة بنجاح! 🛒', 'success');
                     setTimeout(() => {
-                        this.textContent = originalText;
+                        this.innerHTML = originalHTML;
                     }, 2000);
                 } else {
                     showNotification(data.message || 'فشل في إضافة المنتج', 'error');
+                    this.innerHTML = originalHTML;
                 }
             } catch (error) {
                 console.error('Error adding to cart:', error);
                 showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+                this.innerHTML = originalHTML;
             } finally {
                 // Re-enable button
                 this.disabled = false;
-                setTimeout(() => {
-                    this.textContent = originalText;
-                }, 2000);
             }
         });
     });
 }
 
 /**
- * Update cart badge with animation
+ * Update cart badge with animation - updates BOTH the header badge and the FAB badge
  */
 function updateCartBadge(count) {
+    // --- Header badge ---
     const cartBadge = Utils.qs('#cartBadge');
-    if (!cartBadge) return;
-
-    // Update text
-    cartBadge.textContent = count;
-
-    // Show or hide badge
-    if (count > 0) {
-        cartBadge.classList.remove('cart-badge--hidden');
-    } else {
-        cartBadge.classList.add('cart-badge--hidden');
+    if (cartBadge) {
+        cartBadge.textContent = count;
+        if (count > 0) {
+            cartBadge.classList.remove('cart-badge--hidden');
+        } else {
+            cartBadge.classList.add('cart-badge--hidden');
+        }
+        cartBadge.classList.remove('pulse-animation');
+        void cartBadge.offsetWidth;
+        cartBadge.classList.add('pulse-animation');
+        setTimeout(() => cartBadge.classList.remove('pulse-animation'), 600);
     }
 
-    // Bounce animation
-    cartBadge.classList.remove('pulse-animation');
-    void cartBadge.offsetWidth; // reflow
-    cartBadge.classList.add('pulse-animation');
-    setTimeout(() => cartBadge.classList.remove('pulse-animation'), 600);
+    // --- FAB badge ---
+    const fabCount = Utils.qs('#fabCartCount');
+    if (fabCount) {
+        fabCount.textContent = count;
+        if (count > 0) {
+            fabCount.classList.add('has-items');
+        } else {
+            fabCount.classList.remove('has-items');
+        }
+    }
+}
+
+/**
+ * Initialize FAB cart: load count on page load + scroll-based show/hide
+ */
+function initFabCart() {
+    const fab = Utils.qs('#floatingCartBtn');
+    if (!fab) return;
+
+    // Load current cart count from server
+    fetch('/Cart/GetCount', { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            if (data && typeof data.count === 'number') {
+                updateCartBadge(data.count);
+            }
+        })
+        .catch(() => { /* silent */ });
+
+    // Scroll-based visibility: hide FAB when header is fully visible (at top), show when scrolled past it
+    const header = Utils.qs('.sticky-header');
+
+    function updateFabVisibility() {
+        // Use the actual header height as threshold (typically 60-75px on mobile)
+        const threshold = header ? header.offsetHeight : 70;
+        if (window.scrollY > threshold) {
+            fab.classList.remove('fab-hidden');
+        } else {
+            fab.classList.add('fab-hidden');
+        }
+    }
+
+    window.addEventListener('scroll', updateFabVisibility, { passive: true });
+    // Run once immediately to set correct initial state
+    updateFabVisibility();
 }
 
 

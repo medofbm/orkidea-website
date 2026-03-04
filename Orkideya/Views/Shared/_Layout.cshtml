@@ -358,49 +358,59 @@
     </a>
 
     <style>
+        /* ---- Floating Cart Button ---- */
         .fab-cart {
             position: fixed;
-            bottom: 2rem;
-            left: 2rem;
-            z-index: 1050;
-            width: 58px;
-            height: 58px;
+            bottom: 1.5rem;
+            left: 1.5rem;
+            z-index: 1060;
+            width: 56px;
+            height: 56px;
             border-radius: 50%;
             background: linear-gradient(135deg, #9c27b0, #6a1b9a);
-            color: white;
+            color: white !important;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.3rem;
-            box-shadow: 0 6px 24px rgba(106,27,154,0.38);
+            font-size: 1.25rem;
+            box-shadow: 0 6px 24px rgba(106,27,154,0.40);
             text-decoration: none;
-            transition: box-shadow 0.25s, transform 0.2s;
+            /* Use visibility + opacity for smooth fade without transform conflicts */
+            visibility: visible;
+            opacity: 1;
+            will-change: opacity, visibility;
+            transition: opacity 0.28s ease, visibility 0.28s ease, box-shadow 0.22s ease !important;
+        }
+        /* Hidden: invisible but transition still runs */
+        .fab-cart.fab-hidden {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
         }
         .fab-cart:hover {
-            box-shadow: 0 10px 35px rgba(106,27,154,0.5);
-            transform: translateY(-3px) scale(1.07);
-            color: white;
+            box-shadow: 0 10px 32px rgba(106,27,154,0.55);
+            color: white !important;
         }
         .fab-cart-count {
             position: absolute;
-            top: -4px;
-            right: -4px;
+            top: -5px;
+            right: -5px;
             background: #ff4757;
             color: white;
             border-radius: 50%;
             width: 22px;
             height: 22px;
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             font-weight: 700;
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
             border: 2px solid white;
-            display: none;
+            line-height: 1;
         }
-        .fab-cart-count.has-items { display: flex; }
+        .fab-cart-count.has-items { display: flex !important; }
         @@media (max-width: 576px) {
-            .fab-cart { bottom: 1.2rem; left: 1.2rem; width: 52px; height: 52px; font-size: 1.1rem; }
+            .fab-cart { width: 50px; height: 50px; font-size: 1.1rem; bottom: 1.2rem; left: 1rem; }
         }
     </style>
 </body>
