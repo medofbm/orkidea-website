@@ -53,11 +53,7 @@ html {
     scroll-behavior: smooth;
 }
 
-html {
-    font-size: 16px;
-    scroll-behavior: smooth;
-    /* NOTE: Do NOT add overflow-x:hidden here - it breaks position:fixed on iOS Safari */
-}
+
 
 html,
 body {
@@ -67,6 +63,7 @@ body {
     background-color: var(--light-gray);
     color: var(--dark-text);
     line-height: 1.6;
+    overflow-x: hidden;
     min-height: 100vh;
     /* Fix: sticky footer - eliminate white space below footer on mobile */
     display: flex;
@@ -74,8 +71,6 @@ body {
 }
 
 body {
-    /* overflow-x:hidden on body only - safe for position:fixed children */
-    overflow-x: hidden;
     animation: fadeIn 0.8s ease-out forwards;
     opacity: 0;
 }
