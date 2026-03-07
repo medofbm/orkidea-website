@@ -52,8 +52,8 @@ function initSwiperSlider() {
     try {
         const swiper = new Swiper('.featured-swiper', {
             loop: false,
-            slidesPerView: 2,     // عرض بطاقتين = نفس عرض col-6 في الگريد
-            spaceBetween: 12,
+            slidesPerView: 1,
+            spaceBetween: 20,
             watchOverflow: true,
             autoHeight: true,
             pagination: {
@@ -66,8 +66,8 @@ function initSwiperSlider() {
                 prevEl: '.featured-swiper .swiper-button-prev',
             },
             breakpoints: {
-                640: { slidesPerView: 2, spaceBetween: 16 },
-                992: { slidesPerView: 3, spaceBetween: 20 },
+                640: { slidesPerView: 2, spaceBetween: 20 },
+                992: { slidesPerView: 3, spaceBetween: 24 },
                 1200: { slidesPerView: 4, spaceBetween: 24 },
             },
             autoplay: {
