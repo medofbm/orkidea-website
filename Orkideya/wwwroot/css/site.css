@@ -1641,13 +1641,20 @@ main {
 
 .social-icons {
     padding-left: 0;
-    margin-bottom: 0;
+    padding-right: 0;
+    /* RTL reset */
+    margin: 0 auto;
     list-style: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
 }
 
 .social-icons li {
-    display: inline-block;
-    margin: 0 0.5rem;
+    /* flex child — لا حاجة لـ inline-block */
+    margin: 0;
 }
 
 .social-icons a {
