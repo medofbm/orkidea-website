@@ -52,10 +52,10 @@ function initSwiperSlider() {
     try {
         const swiper = new Swiper('.featured-swiper', {
             loop: false,
-            slidesPerView: 1,
-            spaceBetween: 24,
+            slidesPerView: 2,     // عرض بطاقتين = نفس عرض col-6 في الگريد
+            spaceBetween: 12,
             watchOverflow: true,
-            autoHeight: true,     // ← الارتفاع يتكيف مع محتوى الشريحة
+            autoHeight: true,
             pagination: {
                 el: '.featured-swiper .swiper-pagination',
                 clickable: true,
@@ -66,8 +66,9 @@ function initSwiperSlider() {
                 prevEl: '.featured-swiper .swiper-button-prev',
             },
             breakpoints: {
-                640: { slidesPerView: 2, spaceBetween: 24 },
-                992: { slidesPerView: 3, spaceBetween: 28 },
+                640: { slidesPerView: 2, spaceBetween: 16 },
+                992: { slidesPerView: 3, spaceBetween: 20 },
+                1200: { slidesPerView: 4, spaceBetween: 24 },
             },
             autoplay: {
                 delay: 5000,

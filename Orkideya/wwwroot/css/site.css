@@ -4630,37 +4630,25 @@ main {
 }
 
 /* ============================================
-   FEATURED SWIPER — بطاقة أنيقة كمتجر إلكتروني
+   FEATURED SWIPER — مطابق لبطاقة كل منتجاتنا
    ============================================ */
 
-/* الشرائح تأخذ حجم محتواها فقط (autoHeight في JS يتحكم بالارتفاع) */
+/* الشرائح تأخذ حجم محتواها فقط */
 .featured-swiper .swiper-slide {
     height: auto !important;
     align-self: flex-start;
-    /* لا تتمدد لارتفاع شريحة أخرى */
 }
 
 .featured-swiper .product-card-wrapper {
     height: auto !important;
-    /* البطاقة حجم محتواها فقط */
-    max-width: 340px;
-    /* عرض أنيق ومتناسق */
-    margin: 0 auto;
-    /* توسيط البطاقة داخل الشريحة */
 }
 
-/* منع card-body من التمدد والتجاوب مع الارتفاع الخارجي */
+/* منع card-body من التمدد لملء ارتفاع خارجي */
 .featured-swiper .product-card-body {
     flex: 0 0 auto;
-    /* لا يتمدد ولا ينضغط */
 }
 
-/* آمن لخفية المحتوى */
-.featured-swiper .product-card-img-frame {
-    background: #f8f6fc !important;
-}
-
-/* overlay مخفي افتراضياً */
+/* overlay مخفي افتراضياً، يظهر عند hover */
 .featured-swiper .product-card-img-overlay {
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -4668,13 +4656,6 @@ main {
 
 .featured-swiper .product-card-wrapper:hover .product-card-img-overlay {
     opacity: 1;
-}
-
-/* موبايل: عرض بطاقة أصغر للاحترافية */
-@media (max-width: 639px) {
-    .featured-swiper .product-card-wrapper {
-        max-width: 300px;
-    }
 }
 
 /* ============================================
