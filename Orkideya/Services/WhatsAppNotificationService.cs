@@ -20,6 +20,15 @@ namespace Orkideya.Services
             var authToken = _configuration["Twilio:AuthToken"];
             var twilioNumber = _configuration["Twilio:PhoneNumber"];
 
+            // التحقق من وجود بيانات الاعتماد قبل الاتصال
+            if (string.IsNullOrWhiteSpace(accountSid) || accountSid == "YOUR_ACCOUNT_SID" ||
+                string.IsNullOrWhiteSpace(authToken) || authToken == "YOUR_AUTH_TOKEN" ||
+                string.IsNullOrWhiteSpace(twilioNumber))
+            {
+                Console.WriteLine("⚠️ Twilio credentials are missing or not configured. Skipping WhatsApp notification.");
+                return;
+            }
+
             // --- رقم هاتفك الشخصي الذي سيستقبل الإشعار ---
             var adminNumber = "+218916749962";
 

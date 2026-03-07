@@ -52,7 +52,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 
 // Application Services
 builder.Services.AddSingleton<ExcelExportService>();
-builder.Services.AddSingleton<WhatsAppNotificationService>();
+builder.Services.AddScoped<WhatsAppNotificationService>();
 
 // Determine cookie security policy based on environment
 var cookieSecurePolicy = builder.Environment.IsDevelopment() 

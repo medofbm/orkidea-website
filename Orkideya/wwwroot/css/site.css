@@ -4531,8 +4531,61 @@ main {
     }
 }
 
+
 @media (min-width: 768px) and (max-width: 991.98px) {
     .product-card-img-frame {
         padding-top: 75%;
     }
+}
+
+/* ============================================
+   FIX #1: Featured Swiper Card — إزالة الفراغ الأرجواني
+   ============================================ */
+/* في الـ featured swiper، نستبدل الـ padding-top      */
+/* بارتفاع ثابت حتى لا يمتد التدرج اللوني الفارغ     */
+.featured-swiper .product-card-img-frame {
+    padding-top: 0 !important;
+    height: 240px;
+}
+
+@media (max-width: 575.98px) {
+    .featured-swiper .product-card-img-frame {
+        height: 200px;
+    }
+}
+
+/* تأكيد أن الصورة تملأ الإطار بالكامل */
+.featured-swiper .product-card-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* الـ overlay شفاف افتراضياً — يظهر فقط عند hover */
+.featured-swiper .product-card-img-overlay {
+    opacity: 0;
+}
+
+.featured-swiper .product-card-wrapper:hover .product-card-img-overlay {
+    opacity: 1;
+}
+
+/* ============================================
+   FIX #2: Footer Social Icons — توسيط الأيقونات
+   ============================================ */
+/* إلغاء المحاذاة لليمين وتوسيط الأيقونات على كل الشاشات */
+.social-icons.d-flex {
+    justify-content: center !important;
+}
+
+/* توسيط العمود بالكامل في الفوتر على الشاشات الصغيرة */
+.site-footer .col-lg-4 {
+    text-align: center !important;
+}
+
+.site-footer .col-lg-4 .footer-heading,
+.site-footer .col-lg-4 .footer-contact {
+    text-align: center;
 }
