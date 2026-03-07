@@ -4304,7 +4304,8 @@ main {
     padding-top: 78%;
     /* نسبة 4:3 تقريباً - مريحة للعين */
     overflow: hidden;
-    background: linear-gradient(135deg, #f8f4ff 0%, #fce4ff 100%);
+    background: #f8f6fc;
+    /* لون محايد خفيف — لا يظهر خلف الصورة */
 }
 
 .product-card-img {
@@ -4610,70 +4611,39 @@ main {
 }
 
 /* ============================================
-   FIX #3: Featured Swiper — إزالة الشريط الوردي/الأرجواني
+   FEATURED SWIPER — نفس شكل بطاقة كل المنتجات
    ============================================ */
-/* السبب: الـ product-card-img-frame يحمل خلفية gradient تظهر
-   عند وجود مسافة بين الصورة وحدود الإطار.
-   الحل: نزيل الخلفية من frame الـ featured swiper ونجعل
-   الصورة تملأ الإطار تماماً بلا فراغات */
+
+/* 1. منع Swiper من تمديد الشرائح لنفس الارتفاع */
+.featured-swiper .swiper-wrapper {
+    align-items: flex-start;
+}
+
+/* 2. الشريحة والغلاف يأخذان حجم المحتوى فقط */
+.featured-swiper .swiper-slide {
+    height: auto !important;
+}
 
 .featured-swiper .product-card-wrapper {
+    height: auto !important;
     overflow: hidden;
-    /* مهم لقطع أي overflow */
 }
 
+/* 3. إزالة خلفية الـ gradient من إطار الصورة
+   (يُستبدل بأبيض شفاف حتى لا يظهر لون خلف الصورة) */
 .featured-swiper .product-card-img-frame {
-    padding-top: 0 !important;
-    height: 220px;
-    background: transparent !important;
-    /* إزالة الخلفية الوردية */
-    border-radius: 0;
-    /* لا حواف على الإطار نفسه، البطاقة هي التي تتحكم */
+    background: #f9f4ff !important;
+    /* لون خفيف جداً — فقط عند خطأ التحميل */
 }
 
-/* الصورة تملأ الإطار بالكامل بدون مسافات */
-.featured-swiper .product-card-img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center top;
-    display: block;
-}
-
-/* نصف الخلفية من link الصورة أيضاً */
-.featured-swiper .product-card-img-link {
-    background: transparent !important;
-}
-
-/* تأكيد أن الـ overlay يبدأ مخفياً ويظهر عند hover فقط */
+/* 4. الـ overlay مخفي افتراضياً */
 .featured-swiper .product-card-img-overlay {
-    opacity: 0 !important;
+    opacity: 0;
     transition: opacity 0.3s ease;
 }
 
-.featured-swiper .swiper-slide:hover .product-card-img-overlay,
 .featured-swiper .product-card-wrapper:hover .product-card-img-overlay {
-    opacity: 1 !important;
-}
-
-/* إزالة الخلفية من الـ img-error حالة أيضاً */
-.featured-swiper .product-card-img-frame.img-error {
-    background: #f3e5f5 !important;
-    /* لون خفيف فقط عند خطأ تحميل الصورة */
-}
-
-@media (max-width: 575.98px) {
-    .featured-swiper .product-card-img-frame {
-        height: 185px;
-    }
-}
-
-@media (min-width: 768px) {
-    .featured-swiper .product-card-img-frame {
-        height: 260px;
-    }
+    opacity: 1;
 }
 
 /* ============================================
