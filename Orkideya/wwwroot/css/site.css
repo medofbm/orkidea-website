@@ -1622,6 +1622,18 @@ main {
     gap: 0.5rem;
 }
 
+/* توسيط البادجات في شاشة الهاتف */
+@media (max-width: 767.98px) {
+    .footer-features {
+        justify-content: center;
+    }
+
+    .site-footer .col-lg-8,
+    .site-footer .col-md-7 {
+        text-align: center;
+    }
+}
+
 .footer-badge {
     background-color: rgba(255, 255, 255, 0.15);
     color: var(--white);
