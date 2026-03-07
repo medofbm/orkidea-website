@@ -4589,3 +4589,373 @@ main {
 .site-footer .col-lg-4 .footer-contact {
     text-align: center;
 }
+
+/* ── Mobile-only: force center (override any Bootstrap md/lg alignment) ── */
+@media (max-width: 767.98px) {
+
+    .site-footer .col-md-5,
+    .site-footer .col-lg-4 {
+        text-align: center !important;
+    }
+
+    .site-footer .social-icons {
+        justify-content: center !important;
+        display: flex !important;
+        flex-wrap: wrap;
+    }
+
+    .site-footer .footer-contact {
+        text-align: center !important;
+    }
+}
+
+/* ============================================
+   FIX #3: Featured Swiper — إزالة الشريط الوردي/الأرجواني
+   ============================================ */
+/* السبب: الـ product-card-img-frame يحمل خلفية gradient تظهر
+   عند وجود مسافة بين الصورة وحدود الإطار.
+   الحل: نزيل الخلفية من frame الـ featured swiper ونجعل
+   الصورة تملأ الإطار تماماً بلا فراغات */
+
+.featured-swiper .product-card-wrapper {
+    overflow: hidden;
+    /* مهم لقطع أي overflow */
+}
+
+.featured-swiper .product-card-img-frame {
+    padding-top: 0 !important;
+    height: 220px;
+    background: transparent !important;
+    /* إزالة الخلفية الوردية */
+    border-radius: 0;
+    /* لا حواف على الإطار نفسه، البطاقة هي التي تتحكم */
+}
+
+/* الصورة تملأ الإطار بالكامل بدون مسافات */
+.featured-swiper .product-card-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    display: block;
+}
+
+/* نصف الخلفية من link الصورة أيضاً */
+.featured-swiper .product-card-img-link {
+    background: transparent !important;
+}
+
+/* تأكيد أن الـ overlay يبدأ مخفياً ويظهر عند hover فقط */
+.featured-swiper .product-card-img-overlay {
+    opacity: 0 !important;
+    transition: opacity 0.3s ease;
+}
+
+.featured-swiper .swiper-slide:hover .product-card-img-overlay,
+.featured-swiper .product-card-wrapper:hover .product-card-img-overlay {
+    opacity: 1 !important;
+}
+
+/* إزالة الخلفية من الـ img-error حالة أيضاً */
+.featured-swiper .product-card-img-frame.img-error {
+    background: #f3e5f5 !important;
+    /* لون خفيف فقط عند خطأ تحميل الصورة */
+}
+
+@media (max-width: 575.98px) {
+    .featured-swiper .product-card-img-frame {
+        height: 185px;
+    }
+}
+
+@media (min-width: 768px) {
+    .featured-swiper .product-card-img-frame {
+        height: 260px;
+    }
+}
+
+/* ============================================
+   CITY SELECTOR — MODERN DROPDOWN
+   ============================================ */
+.city-selector-section {
+    background: linear-gradient(135deg, #f8f4ff 0%, #fdf0ff 100%);
+    border: 1.5px solid rgba(106, 27, 154, 0.12);
+    border-radius: 18px;
+    padding: 1.4rem 1.4rem 1.1rem;
+}
+
+.city-selector-label {
+    display: block;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #2d1b4e;
+    margin-bottom: 0.9rem;
+}
+
+/* ---- Dropdown wrapper ---- */
+.city-dropdown-wrapper {
+    position: relative;
+}
+
+/* ---- Trigger button ---- */
+.city-dropdown-btn {
+    width: 100%;
+    background: #ffffff;
+    border: 1.5px solid rgba(106, 27, 154, 0.2);
+    border-radius: 14px;
+    padding: 0.8rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    cursor: pointer;
+    transition: border-color 0.22s ease, box-shadow 0.22s ease;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.95rem;
+    text-align: right;
+    color: #5a5a72;
+    box-shadow: 0 2px 10px rgba(106, 27, 154, 0.06);
+}
+
+.city-dropdown-btn:hover,
+.city-dropdown-btn:focus {
+    border-color: var(--primary-purple);
+    box-shadow: 0 0 0 3px rgba(106, 27, 154, 0.1);
+    outline: none;
+}
+
+.city-dropdown-btn.has-value {
+    color: #2d1b4e;
+    font-weight: 600;
+    border-color: rgba(106, 27, 154, 0.35);
+}
+
+.city-dropdown-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: rgba(106, 27, 154, 0.08);
+    color: var(--primary-purple);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.city-dropdown-text {
+    flex: 1;
+    text-align: right;
+}
+
+.city-dropdown-price {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--primary-purple);
+    background: rgba(106, 27, 154, 0.08);
+    padding: 0.15rem 0.6rem;
+    border-radius: 50px;
+    white-space: nowrap;
+}
+
+.city-dropdown-arrow {
+    font-size: 0.75rem;
+    color: var(--light-text);
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+    margin-right: auto;
+    margin-left: 0.25rem;
+}
+
+.city-dropdown-arrow.open {
+    transform: rotate(180deg);
+    color: var(--primary-purple);
+}
+
+/* ---- Dropdown panel ---- */
+.city-dropdown-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    left: 0;
+    background: #ffffff;
+    border: 1.5px solid rgba(106, 27, 154, 0.15);
+    border-radius: 16px;
+    box-shadow: 0 16px 48px rgba(106, 27, 154, 0.18), 0 4px 16px rgba(0, 0, 0, 0.06);
+    z-index: 500;
+    overflow: hidden;
+    animation: cityPanelIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes cityPanelIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ---- Search bar ---- */
+.city-search-wrap {
+    position: relative;
+    padding: 0.75rem 0.75rem 0.5rem;
+    border-bottom: 1px solid rgba(106, 27, 154, 0.07);
+}
+
+.city-search-icon {
+    position: absolute;
+    right: 1.4rem;
+    top: 50%;
+    transform: translateY(-55%);
+    color: var(--light-text);
+    font-size: 0.82rem;
+    pointer-events: none;
+}
+
+.city-search-input {
+    width: 100%;
+    border: 1.5px solid rgba(106, 27, 154, 0.14);
+    border-radius: 10px;
+    padding: 0.55rem 2rem 0.55rem 0.75rem;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.88rem;
+    color: #2d1b4e;
+    background: #fafafa;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    text-align: right;
+}
+
+.city-search-input:focus {
+    border-color: var(--primary-purple);
+    box-shadow: 0 0 0 3px rgba(106, 27, 154, 0.08);
+    background: white;
+}
+
+/* ---- City list ---- */
+.city-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.4rem 0;
+    max-height: 260px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(106, 27, 154, 0.2) transparent;
+}
+
+.city-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.city-list::-webkit-scrollbar-thumb {
+    background: rgba(106, 27, 154, 0.2);
+    border-radius: 10px;
+}
+
+/* ---- Single city item ---- */
+.city-list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 1rem;
+    cursor: pointer;
+    transition: background 0.16s ease;
+    font-size: 0.9rem;
+    color: #3a2a50;
+    border-radius: 0;
+    outline: none;
+}
+
+.city-list-item:hover,
+.city-list-item:focus {
+    background: rgba(106, 27, 154, 0.05);
+    color: var(--primary-purple);
+}
+
+.city-list-item.selected {
+    background: rgba(106, 27, 154, 0.08);
+    color: var(--primary-purple);
+    font-weight: 700;
+}
+
+.city-item-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(106, 27, 154, 0.25);
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+
+.city-list-item.selected .city-item-dot,
+.city-list-item:hover .city-item-dot {
+    background: var(--primary-purple);
+}
+
+.city-item-dot.other {
+    background: rgba(25, 135, 84, 0.35);
+}
+
+.city-item-name {
+    flex: 1;
+    text-align: right;
+}
+
+.city-item-price {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--primary-purple);
+    background: rgba(106, 27, 154, 0.07);
+    padding: 0.1rem 0.55rem;
+    border-radius: 50px;
+    white-space: nowrap;
+}
+
+.city-item-price.other {
+    background: rgba(25, 135, 84, 0.08);
+    color: #19865a;
+    font-weight: 600;
+    font-size: 0.72rem;
+}
+
+.city-item-other .city-item-name {
+    font-weight: 600;
+}
+
+.city-no-results {
+    text-align: center;
+    padding: 1.25rem;
+    color: var(--light-text);
+    font-size: 0.88rem;
+}
+
+/* ---- Error message ---- */
+.city-error-msg {
+    color: #dc3545;
+    font-size: 0.84rem;
+    margin-top: 0.4rem;
+    font-weight: 600;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 575.98px) {
+    .city-selector-section {
+        padding: 1rem;
+        border-radius: 14px;
+    }
+
+    .city-dropdown-btn {
+        padding: 0.7rem 0.9rem;
+        font-size: 0.88rem;
+    }
+
+    .city-list {
+        max-height: 220px;
+    }
+}

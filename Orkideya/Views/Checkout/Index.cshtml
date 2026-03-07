@@ -10,18 +10,18 @@
                 <i class="fas fa-shipping-fast me-2" aria-hidden="true"></i>
                 بيانات الشحن
             </h3>
-            <form asp-action="PlaceOrder" method="post" novalidate aria-label="نموذج إتمام الطلب">
+            <form asp-action="PlaceOrder" method="post" novalidate aria-label="نموذج إتمام الطلب" id="checkoutForm">
                 @* CSRF Protection Token *@
                 @Html.AntiForgeryToken()
-                
+
                 <div class="form-group mb-3">
                     <label for="whatsAppNumber" class="control-label">رقم الواتساب <span class="text-danger">*</span></label>
-                    <input type="tel" 
+                    <input type="tel"
                            id="whatsAppNumber"
-                           name="whatsAppNumber" 
-                           class="form-control" 
+                           name="whatsAppNumber"
+                           class="form-control"
                            placeholder="+218 XX XXX XXXX"
-                           required 
+                           required
                            maxlength="20"
                            pattern="[0-9+\-\s()]+"
                            aria-required="true"
@@ -33,10 +33,10 @@
                         <label for="firstName" class="control-label">الاسم الأول <span class="text-danger">*</span></label>
                         <input type="text"
                                id="firstName"
-                               name="firstName" 
-                               class="form-control" 
+                               name="firstName"
+                               class="form-control"
                                placeholder="الاسم الأول"
-                               required 
+                               required
                                maxlength="50"
                                aria-required="true"
                                autocomplete="given-name" />
@@ -46,10 +46,10 @@
                         <label for="lastName" class="control-label">اسم العائلة <span class="text-danger">*</span></label>
                         <input type="text"
                                id="lastName"
-                               name="lastName" 
-                               class="form-control" 
+                               name="lastName"
+                               class="form-control"
                                placeholder="اسم العائلة"
-                               required 
+                               required
                                maxlength="50"
                                aria-required="true"
                                autocomplete="family-name" />
@@ -59,67 +59,97 @@
                 <div class="form-group mb-3">
                     <label for="shippingAddress" class="control-label">العنوان بالتفصيل <span class="text-danger">*</span></label>
                     <textarea id="shippingAddress"
-                              name="shippingAddress" 
-                              class="form-control" 
+                              name="shippingAddress"
+                              class="form-control"
                               rows="2"
                               placeholder="الشارع، رقم المنزل، معلومات إضافية..."
-                              required 
+                              required
                               maxlength="200"
                               aria-required="true"
                               autocomplete="street-address"></textarea>
                     <div class="invalid-feedback">الرجاء إدخال عنوان الشحن</div>
                 </div>
 
-                <h4 class="mt-5 mb-3">
-                    <i class="fas fa-map-marker-alt me-2" aria-hidden="true"></i>
-                    اختيار مدينة التوصيل <span class="text-danger">*</span>
-                </h4>
-                <fieldset>
-                    <legend class="visually-hidden">خيارات مدينة التوصيل</legend>
-                    @foreach (var rate in Model.ShippingRates)
-                    {
-                        <div class="form-check shipping-option">
-                            <input class="form-check-input" 
-                                   type="radio" 
-                                   name="shippingRateId" 
-                                   id="city@(rate.ShippingRateId)" 
-                                   value="@rate.ShippingRateId" 
-                                   required 
-                                   aria-required="true"
-                                   onchange="toggleOtherCity(false)">
-                            <label class="form-check-label w-100" for="city@(rate.ShippingRateId)">
-                                <i class="fas fa-city me-2" aria-hidden="true"></i>
-                                @rate.CityName
-                                <span class="shipping-price">@rate.Price.ToString("0.00") د.ل</span>
-                            </label>
+                @* ============ CITY SELECTOR - MODERN DESIGN ============ *@
+                <div class="city-selector-section mt-4 mb-3">
+                    <label class="city-selector-label">
+                        <i class="fas fa-map-marker-alt me-2" aria-hidden="true"></i>
+                        اختيار مدينة التوصيل <span class="text-danger">*</span>
+                    </label>
+
+                    @* Hidden real input that gets submitted *@
+                    <input type="hidden" name="shippingRateId" id="shippingRateIdInput" value="" required />
+
+                    @* Custom dropdown trigger *@
+                    <div class="city-dropdown-wrapper" id="cityDropdownWrapper">
+                        <button type="button"
+                                class="city-dropdown-btn"
+                                id="cityDropdownBtn"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                                aria-controls="cityDropdownList">
+                            <span class="city-dropdown-icon">
+                                <i class="fas fa-city"></i>
+                            </span>
+                            <span class="city-dropdown-text" id="cityDropdownText">اختر مدينتك...</span>
+                            <span class="city-dropdown-price" id="cityDropdownPrice"></span>
+                            <i class="fas fa-chevron-down city-dropdown-arrow" id="cityDropdownArrow"></i>
+                        </button>
+
+                        @* Search + list panel *@
+                        <div class="city-dropdown-panel" id="cityDropdownPanel" role="listbox" aria-label="قائمة المدن">
+                            <div class="city-search-wrap">
+                                <i class="fas fa-search city-search-icon"></i>
+                                <input type="text"
+                                       class="city-search-input"
+                                       id="citySearchInput"
+                                       placeholder="ابحث عن مدينتك..."
+                                       autocomplete="off"
+                                       aria-label="البحث في المدن" />
+                            </div>
+                            <ul class="city-list" id="cityList">
+                                @foreach (var rate in Model.ShippingRates)
+                                {
+                                    <li class="city-list-item"
+                                        role="option"
+                                        data-value="@rate.ShippingRateId"
+                                        data-city="@rate.CityName"
+                                        data-price="@rate.Price.ToString("0.00") د.ل"
+                                        tabindex="0">
+                                        <span class="city-item-dot"></span>
+                                        <span class="city-item-name">@rate.CityName</span>
+                                        <span class="city-item-price">@rate.Price.ToString("0.00") <small>د.ل</small></span>
+                                    </li>
+                                }
+                                <li class="city-list-item city-item-other"
+                                    role="option"
+                                    data-value="0"
+                                    data-city="مدينة أخرى"
+                                    data-price="سيتم تحديده لاحقاً"
+                                    tabindex="0">
+                                    <span class="city-item-dot other"></span>
+                                    <span class="city-item-name">مدينة أخرى</span>
+                                    <span class="city-item-price other">سيتم تحديده لاحقاً</span>
+                                </li>
+                                <li class="city-no-results" id="cityNoResults" style="display:none;">
+                                    لا توجد نتائج مطابقة
+                                </li>
+                            </ul>
                         </div>
-                    }
-                    <div class="form-check shipping-option">
-                        <input class="form-check-input" 
-                               type="radio" 
-                               name="shippingRateId" 
-                               id="otherCityRadio" 
-                               value="0" 
-                               required 
-                               aria-required="true"
-                               onchange="toggleOtherCity(true)">
-                        <label class="form-check-label w-100" for="otherCityRadio">
-                            <i class="fas fa-map-marked-alt me-2" aria-hidden="true"></i>
-                            مدينة أخرى
-                            <span class="shipping-price">سيتم تحديده لاحقاً</span>
-                        </label>
                     </div>
-                    <div class="invalid-feedback d-block" id="shippingError" style="display: none !important;">
+                    <div class="city-error-msg" id="cityErrorMsg" style="display:none;">
+                        <i class="fas fa-exclamation-circle me-1"></i>
                         الرجاء اختيار مدينة التوصيل
                     </div>
-                </fieldset>
+                </div>
 
+                @* Other city input — shown when "مدينة أخرى" selected *@
                 <div id="otherCityGroup" class="form-group mt-3" style="display:none;">
                     <label for="otherCityInput" class="control-label">الرجاء كتابة اسم المدينة <span class="text-danger">*</span></label>
                     <input type="text"
-                           name="otherCity" 
-                           id="otherCityInput" 
-                           class="form-control" 
+                           name="otherCity"
+                           id="otherCityInput"
+                           class="form-control"
                            placeholder="اكتب اسم مدينتك"
                            maxlength="50"
                            autocomplete="address-level2" />
@@ -127,7 +157,7 @@
                 </div>
 
                 <div class="form-group text-center mt-5">
-                    <button type="submit" class="btn btn-success btn-lg w-100">
+                    <button type="submit" class="btn btn-success btn-lg w-100" id="submitOrderBtn">
                         <i class="fas fa-check-circle me-2" aria-hidden="true"></i>
                         إتمام الطلب
                     </button>
@@ -163,16 +193,143 @@
 
 @section Scripts {
     <script>
-        function toggleOtherCity(show) {
-            const otherCityGroup = document.getElementById('otherCityGroup');
-            const otherCityInput = document.getElementById('otherCityInput');
-            if (show) {
-                otherCityGroup.style.display = 'block';
-                otherCityInput.required = true;
-            } else {
-                otherCityGroup.style.display = 'none';
-                otherCityInput.required = false;
-            }
+    (function () {
+        'use strict';
+
+        /* ───────── City Dropdown Logic ───────── */
+        const btn        = document.getElementById('cityDropdownBtn');
+        const panel      = document.getElementById('cityDropdownPanel');
+        const arrow      = document.getElementById('cityDropdownArrow');
+        const searchIn   = document.getElementById('citySearchInput');
+        const listItems  = document.querySelectorAll('.city-list-item');
+        const hiddenIn   = document.getElementById('shippingRateIdInput');
+        const displayTxt = document.getElementById('cityDropdownText');
+        const displayPrc = document.getElementById('cityDropdownPrice');
+        const noResults  = document.getElementById('cityNoResults');
+        const otherGrp   = document.getElementById('otherCityGroup');
+        const otherIn    = document.getElementById('otherCityInput');
+        const errMsg     = document.getElementById('cityErrorMsg');
+        let isOpen       = false;
+
+        function openPanel() {
+            panel.classList.add('open');
+            arrow.classList.add('open');
+            btn.setAttribute('aria-expanded', 'true');
+            panel.style.display = 'block';
+            searchIn.value = '';
+            filterCities('');
+            searchIn.focus();
+            isOpen = true;
         }
+
+        function closePanel() {
+            panel.classList.remove('open');
+            arrow.classList.remove('open');
+            btn.setAttribute('aria-expanded', 'false');
+            panel.style.display = 'none';
+            isOpen = false;
+        }
+
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            isOpen ? closePanel() : openPanel();
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!document.getElementById('cityDropdownWrapper').contains(e.target)) {
+                closePanel();
+            }
+        });
+
+        // Keyboard: Escape closes
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && isOpen) closePanel();
+        });
+
+        function filterCities(query) {
+            const q = query.trim().toLowerCase();
+            let anyVisible = false;
+            listItems.forEach(function (li) {
+                const name = li.dataset.city.toLowerCase();
+                const match = !q || name.includes(q);
+                li.style.display = match ? '' : 'none';
+                if (match) anyVisible = true;
+            });
+            noResults.style.display = anyVisible ? 'none' : '';
+        }
+
+        searchIn.addEventListener('input', function () {
+            filterCities(this.value);
+        });
+
+        listItems.forEach(function (li) {
+            li.addEventListener('click', function () {
+                selectCity(this);
+            });
+            li.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') selectCity(this);
+            });
+        });
+
+        function selectCity(li) {
+            // Remove active from all
+            listItems.forEach(function (el) { el.classList.remove('selected'); });
+            li.classList.add('selected');
+
+            const val   = li.dataset.value;
+            const city  = li.dataset.city;
+            const price = li.dataset.price;
+
+            hiddenIn.value   = val;
+            displayTxt.textContent = city;
+            displayPrc.textContent = price;
+            btn.classList.add('has-value');
+            errMsg.style.display = 'none';
+
+            // Handle "Other city"
+            if (val === '0') {
+                otherGrp.style.display = 'block';
+                otherIn.required = true;
+            } else {
+                otherGrp.style.display = 'none';
+                otherIn.required = false;
+                otherIn.value = '';
+            }
+
+            closePanel();
+        }
+
+        /* ───────── Form Validation ───────── */
+        document.getElementById('checkoutForm').addEventListener('submit', function (e) {
+            let valid = true;
+
+            // City required
+            if (!hiddenIn.value) {
+                errMsg.style.display = 'block';
+                document.getElementById('cityDropdownWrapper').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                valid = false;
+            }
+
+            // Other city required if selected
+            if (hiddenIn.value === '0' && !otherIn.value.trim()) {
+                otherIn.classList.add('is-invalid');
+                valid = false;
+            }
+
+            // HTML5 validation
+            if (!this.checkValidity()) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.classList.add('was-validated');
+                valid = false;
+            }
+
+            if (!valid) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.classList.add('was-validated');
+            }
+        });
+    })();
     </script>
 }
