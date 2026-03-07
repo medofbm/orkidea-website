@@ -4332,8 +4332,7 @@ main {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center top;
-    /* المنتج يظهر من الأعلى */
+    object-position: center;
     transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     display: block;
 }
@@ -4630,23 +4629,25 @@ main {
 }
 
 /* ============================================
-   FEATURED SWIPER — إصلاح الفراغ الوردي
+   FEATURED SWIPER — إصلاح شامل للبطاقة
    ============================================ */
 
-/* السبب: .featured-section له خلفية lavender ورديّة
-   الحل: اجعل الـ swiper-slide أبيض ليغطي الخلفية */
+/* الشريحة: خلفية بيضاء تغطي خلفية القسم الوردية */
 .featured-swiper .swiper-slide {
     height: auto !important;
     background: #ffffff;
-    /* هذا يزيل الفراغ الوردي نهائياً */
     border-radius: 20px;
     overflow: hidden;
 }
 
+/* البطاقة: max-width يجعل نسب الصورة مطابقة col-6 */
 .featured-swiper .product-card-wrapper {
     height: auto !important;
+    max-width: 290px;
+    /* عرض متناسق = نفس نسب col-6 */
+    margin: 0 auto;
+    /* توسيط داخل الشريحة */
     box-shadow: none;
-    /* الظل على الشريحة لا البطاقة */
     border: none;
     border-radius: 0;
 }
@@ -4658,16 +4659,6 @@ main {
 }
 
 .featured-swiper .product-card-wrapper:hover .product-card-img-overlay {
-    opacity: 1;
-}
-
-/* ظل على الشريحة الكاملة لمظهر بطاقة احترافي */
-.featured-swiper .swiper-slide:not(.swiper-slide-active + .swiper-slide):not(.swiper-slide-active) {
-    opacity: 0.85;
-    transition: opacity 0.4s ease;
-}
-
-.featured-swiper .swiper-slide.swiper-slide-active {
     opacity: 1;
 }
 
