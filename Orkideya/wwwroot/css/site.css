@@ -4630,32 +4630,37 @@ main {
 }
 
 /* ============================================
-   FEATURED SWIPER — نفس شكل بطاقة كل المنتجات
+   FEATURED SWIPER — بطاقة أنيقة كمتجر إلكتروني
    ============================================ */
 
-/* 1. منع Swiper من تمديد الشرائح لنفس الارتفاع */
-.featured-swiper .swiper-wrapper {
-    align-items: flex-start;
-}
-
-/* 2. الشريحة والغلاف يأخذان حجم المحتوى فقط */
+/* الشرائح تأخذ حجم محتواها فقط (autoHeight في JS يتحكم بالارتفاع) */
 .featured-swiper .swiper-slide {
     height: auto !important;
+    align-self: flex-start;
+    /* لا تتمدد لارتفاع شريحة أخرى */
 }
 
 .featured-swiper .product-card-wrapper {
     height: auto !important;
-    overflow: hidden;
+    /* البطاقة حجم محتواها فقط */
+    max-width: 340px;
+    /* عرض أنيق ومتناسق */
+    margin: 0 auto;
+    /* توسيط البطاقة داخل الشريحة */
 }
 
-/* 3. إزالة خلفية الـ gradient من إطار الصورة
-   (يُستبدل بأبيض شفاف حتى لا يظهر لون خلف الصورة) */
+/* منع card-body من التمدد والتجاوب مع الارتفاع الخارجي */
+.featured-swiper .product-card-body {
+    flex: 0 0 auto;
+    /* لا يتمدد ولا ينضغط */
+}
+
+/* آمن لخفية المحتوى */
 .featured-swiper .product-card-img-frame {
-    background: #f9f4ff !important;
-    /* لون خفيف جداً — فقط عند خطأ التحميل */
+    background: #f8f6fc !important;
 }
 
-/* 4. الـ overlay مخفي افتراضياً */
+/* overlay مخفي افتراضياً */
 .featured-swiper .product-card-img-overlay {
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -4663,6 +4668,13 @@ main {
 
 .featured-swiper .product-card-wrapper:hover .product-card-img-overlay {
     opacity: 1;
+}
+
+/* موبايل: عرض بطاقة أصغر للاحترافية */
+@media (max-width: 639px) {
+    .featured-swiper .product-card-wrapper {
+        max-width: 300px;
+    }
 }
 
 /* ============================================

@@ -55,6 +55,7 @@ function initSwiperSlider() {
             slidesPerView: 1,
             spaceBetween: 24,
             watchOverflow: true,
+            autoHeight: true,     // ← الارتفاع يتكيف مع محتوى الشريحة
             pagination: {
                 el: '.featured-swiper .swiper-pagination',
                 clickable: true,
