@@ -4321,10 +4321,9 @@ main {
     position: relative;
     width: 100%;
     padding-top: 78%;
-    /* نسبة 4:3 تقريباً - مريحة للعين */
     overflow: hidden;
-    background: #f8f6fc;
-    /* لون محايد خفيف — لا يظهر خلف الصورة */
+    background: #ffffff;
+    /* أبيض خالص — يظهر خلف الصور الشفافة */
 }
 
 .product-card-img {
@@ -4333,7 +4332,8 @@ main {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center;
+    object-position: center top;
+    /* المنتج يظهر من الأعلى */
     transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     display: block;
 }
