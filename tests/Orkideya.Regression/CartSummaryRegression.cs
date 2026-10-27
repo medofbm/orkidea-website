@@ -15,7 +15,7 @@ internal static class CartSummaryRegression
             ("null", 0, "Null cart JSON renders empty header"),
             ("{broken", 0, "Malformed cart JSON does not break the page header"),
             ("[]", 0, "Empty cart renders empty header"),
-            ("[{\"Quantity\":2,\"Price\":30}]", 1, "Valid cart remains visible in header")
+            ("[{\"ProductName\":\"Synthetic product\",\"Quantity\":2,\"Price\":30}]", 1, "Valid cart remains visible in header")
         })
         {
             var session = new MemorySession();
