@@ -10,6 +10,7 @@ static void Check(bool condition, string name)
 }
 var service = new ExcelExportService();
 CartSummaryRegression.Run(Check);
+await HttpSecurityRegression.Run(Check);
 var order = new Order {
     OrderId = 123, CustomerName = "=1+1", WhatsAppNumber = "+218000000000",
     ShippingAddress = "Synthetic test address", City = "Tripoli", ShippingCost = 10m,
