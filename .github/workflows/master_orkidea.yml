@@ -1,65 +1,46 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy ASP.Net Core app to Azure Web App - orkidea
+name: Orkidea verification
 
 on:
+  pull_request:
+    branches: [master]
   push:
-    branches:
-      - master
+    branches: [master]
   workflow_dispatch:
 
-jobs:
-  build:
-    runs-on: windows-latest
-    permissions:
-      contents: read #This is required for actions/checkout
+permissions:
+  contents: read
 
+concurrency:
+  group: verification-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+      Initialization__Run: 'false'
+      Notifications__WhatsAppEnabled: 'false'
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up .NET Core
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.x'
-
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
-
-      - name: dotnet publish
-        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
+          global-json-file: global.json
+      - uses: actions/setup-node@v4
         with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
-
-  deploy:
-    runs-on: windows-latest
-    needs: build
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
+          node-version: '22'
+      - uses: actions/setup-python@v5
         with:
-          name: .net-app
-      
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_0D12EA1054AE41D9BA0DBB5869DAD4AA }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_1DAD2FCC021240549582F0F23AA62C23 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8FEB5623147B4C5AA0CDB34BC30C5EFE }}
-
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'orkidea'
-          slot-name: 'Production'
-          package: .
-          
+          python-version: '3.13'
+      - name: JavaScript regressions
+        run: node --test tests/cart.test.cjs tests/checkout.test.cjs tests/review-rating.test.cjs
+      - name: Source safety checks
+        run: python tests/check_safety.py
+      - name: Restore backend and regression runner
+        run: dotnet restore tests/Orkideya.Regression/Orkideya.Regression.csproj --verbosity minimal
+      - name: Compile application, Razor views and regression runner
+        run: dotnet build tests/Orkideya.Regression/Orkideya.Regression.csproj --configuration Release --no-restore --nologo
+      - name: Run synthetic backend regressions
+        run: dotnet run --project tests/Orkideya.Regression/Orkideya.Regression.csproj --configuration Release --no-build --no-restore

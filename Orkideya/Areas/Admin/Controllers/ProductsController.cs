@@ -1,3 +1,4 @@
+using Orkideya.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,9 +18,12 @@ namespace Orkideya.Areas.Admin.Controllers
     {
         private readonly ApplicationDbContext _context;
 
-        public ProductsController(ApplicationDbContext context)
+        private readonly ProductImageStorage _images;
+
+        public ProductsController(ApplicationDbContext context, ProductImageStorage images)
         {
             _context = context;
+            _images = images;
         }
 
         // GET: Admin/Products
@@ -57,40 +61,30 @@ namespace Orkideya.Areas.Admin.Controllers
         public IActionResult Create()
         {
             ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "Name");
-            return View();
+            return View(new ProductInput());
         }
 
-        // POST: Admin/Products/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("ProductId,Name,Description,ImageUrl,CategoryId")] Product product, IFormFile? imageFile)
+        [RequestSizeLimit(6 * 1024 * 1024)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
+        public async Task<IActionResult> Create(ProductInput input, IFormFile? imageFile)
         {
-            // Handle image upload
-            if (imageFile != null && imageFile.Length > 0)
+            await ValidateInputAsync(input);
+            if (ModelState.IsValid && await TrySaveImageAsync(input, imageFile))
             {
-                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "products");
-                Directory.CreateDirectory(uploadsFolder); // Ensure folder exists
-                
-                var uniqueFileName = $"{Guid.NewGuid()}_{imageFile.FileName}";
-                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                var product = new Product
                 {
-                    await imageFile.CopyToAsync(fileStream);
-                }
-                
-                product.ImageUrl = $"/images/products/{uniqueFileName}";
-            }
-            
-            if (ModelState.IsValid)
-            {
-                _context.Add(product);
+                    Name = input.Name.Trim(), Description = input.Description,
+                    CategoryId = input.CategoryId, ImageUrl = input.ImageUrl
+                };
+                _context.Products.Add(product);
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "تم إضافة المنتج بنجاح";
                 return RedirectToAction(nameof(Edit), new { id = product.ProductId });
             }
-            ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "Name", product.CategoryId);
-            return View(product);
+            ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "Name", input.CategoryId);
+            return View(input);
         }
 
         // GET: Admin/Products/Edit/5
@@ -110,112 +104,80 @@ namespace Orkideya.Areas.Admin.Controllers
             ViewBag.Variants = await _context.ProductVariants.Where(v => v.ProductId == id).ToListAsync();
 
             ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "Name", product.CategoryId);
-            return View(product);
+            return View(new ProductInput
+            {
+                ProductId = product.ProductId, Name = product.Name,
+                Description = product.Description, CategoryId = product.CategoryId, ImageUrl = product.ImageUrl
+            });
         }
 
-        // POST: Admin/Products/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("ProductId,Name,Description,ImageUrl,CategoryId")] Product product, IFormFile? imageFile)
+        [RequestSizeLimit(6 * 1024 * 1024)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
+        public async Task<IActionResult> Edit(int id, ProductInput input, IFormFile? imageFile)
         {
-            if (id != product.ProductId)
+            if (id != input.ProductId) return NotFound();
+            var product = await _context.Products.FindAsync(id);
+            if (product == null) return NotFound();
+            await ValidateInputAsync(input);
+            if (ModelState.IsValid && await TrySaveImageAsync(input, imageFile))
             {
-                return NotFound();
-            }
-            
-            // Get existing product from database to preserve ImageUrl if no new upload
-            var existingProduct = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.ProductId == id);
-            if (existingProduct == null)
-            {
-                return NotFound();
-            }
-            
-            // AGGRESSIVELY remove ALL navigation property validations
-            // These often fail incorrectly with EF Core tracking
-            ModelState.Remove("ImageUrl");
-            ModelState.Remove("imageFile");
-            ModelState.Remove("Category");
-            ModelState.Remove("ProductVariants");
-            ModelState.Remove("Product");
-            
-            // Remove any other potential blockers
-            foreach (var key in ModelState.Keys.Where(k => k.Contains("Category") || k.Contains("Variant")).ToList())
-            {
-                ModelState.Remove(key);
-            }
-            
-            // Handle image upload
-            if (imageFile != null && imageFile.Length > 0)
-            {
-                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "products");
-                Directory.CreateDirectory(uploadsFolder); // Ensure folder exists
-                
-                var uniqueFileName = $"{Guid.NewGuid()}_{imageFile.FileName}";
-                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    await imageFile.CopyToAsync(fileStream);
-                }
-                
-                product.ImageUrl = $"/images/products/{uniqueFileName}";
-            }
-            else if (string.IsNullOrEmpty(product.ImageUrl))
-            {
-                // No new image uploaded and no URL provided - keep existing image
-                product.ImageUrl = existingProduct.ImageUrl;
-            }
-            // If product.ImageUrl has a value (from form), it means user entered a new URL - use it
-
-            if (!ModelState.IsValid)
-            {
-                // Debug: Log validation errors
-                var errors = ModelState.Values.SelectMany(v => v.Errors);
-                foreach (var error in errors)
-                {
-                    Console.WriteLine($"ModelState Error: {error.ErrorMessage}");
-                }
-            }
-            
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(product);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ProductExists(product.ProductId))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
+                product.Name = input.Name.Trim();
+                product.Description = input.Description;
+                product.CategoryId = input.CategoryId;
+                product.ImageUrl = input.ImageUrl;
+                await _context.SaveChangesAsync();
+                // Keep old images until a separate reference-aware cleanup is implemented.
                 TempData["SuccessMessage"] = "تم تحديث المنتج بنجاح";
                 return RedirectToAction(nameof(Index));
             }
-            
             ViewBag.Variants = await _context.ProductVariants.Where(v => v.ProductId == id).ToListAsync();
-            ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "Name", product.CategoryId);
-            return View(product);
+            ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "Name", input.CategoryId);
+            return View(input);
+        }
+
+        private async Task ValidateInputAsync(ProductInput input)
+        {
+            if (!ProductImageStorage.IsAllowedReference(input.ImageUrl))
+                ModelState.AddModelError(nameof(input.ImageUrl), "استخدم رابط HTTPS أو صورة محلية ضمن /images/.");
+            if (input.CategoryId.HasValue && !await _context.Categories.AnyAsync(c => c.CategoryId == input.CategoryId.Value))
+                ModelState.AddModelError(nameof(input.CategoryId), "الفئة المختارة غير موجودة.");
+        }
+
+        private async Task<bool> TrySaveImageAsync(ProductInput input, IFormFile? imageFile)
+        {
+            if (imageFile == null) return true;
+            try
+            {
+                input.ImageUrl = await _images.SaveAsync(imageFile, HttpContext.RequestAborted);
+                return true;
+            }
+            catch (InvalidDataException exception)
+            {
+                ModelState.AddModelError("imageFile", exception.Message);
+                return false;
+            }
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddVariant(ProductVariant variant)
+        public async Task<IActionResult> AddVariant(ProductVariantInput input)
         {
-            ModelState.Remove("Product"); 
-
-            if (ModelState.IsValid)
+            var product = await _context.Products.FindAsync(input.ProductId);
+            if (product == null) return NotFound();
+            if (!ModelState.IsValid)
             {
-                _context.ProductVariants.Add(variant);
-                await _context.SaveChangesAsync();
+                TempData["VariantError"] = "تعذر إضافة الحجم. أدخل حجماً حتى 50 حرفاً وسعراً موجباً بدقة رقمين عشريين.";
+                return RedirectToAction(nameof(Edit), new { id = product.ProductId });
             }
-            return RedirectToAction(nameof(Edit), new { id = variant.ProductId });
+            _context.ProductVariants.Add(new ProductVariant
+            {
+                ProductId = product.ProductId, Product = product,
+                Size = input.Size.Trim(), Price = input.Price
+            });
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Edit), new { id = product.ProductId });
         }
 
         // GET: Admin/Products/Delete/5

@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Orkideya.Data;
 using Orkideya.Models;
 using Orkideya.Services;
-using ClosedXML.Excel;
 
 namespace Orkideya.Areas.Admin.Controllers
 {
@@ -118,7 +117,7 @@ namespace Orkideya.Areas.Admin.Controllers
             }
 
             // Update status
-            order.Status = status;
+            order.Status = validStatuses.First(value => value.Equals(status, StringComparison.OrdinalIgnoreCase));
 
             try
             {
@@ -128,7 +127,7 @@ namespace Orkideya.Areas.Admin.Controllers
                 return Json(new { 
                     success = true, 
                     message = $"تم تحديث حالة الطلب #{order.OrderId} بنجاح",
-                    newStatus = status 
+                    newStatus = order.Status 
                 });
             }
             catch (Exception ex)
@@ -186,87 +185,9 @@ namespace Orkideya.Areas.Admin.Controllers
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync();
 
-            // Create Excel workbook using ClosedXML
-            using (var workbook = new XLWorkbook())
-            {
-                var worksheet = workbook.Worksheets.Add("الطلبات");
-                
-                // Set RTL for Arabic
-                worksheet.RightToLeft = true;
-                
-                // Headers
-                var headers = new[] {
-                    "رقم الطلب", "اسم العميل", "رقم الواتساب", "المدينة", 
-                    "العنوان", "تاريخ الطلب", "المبلغ الإجمالي", "تكلفة الشحن", 
-                    "الحالة", "طريقة الدفع"
-                };
-                
-                for (int i = 0; i < headers.Length; i++)
-                {
-                    var cell = worksheet.Cell(1, i + 1);
-                    cell.Value = headers[i];
-                    cell.Style.Font.Bold = true;
-                    cell.Style.Font.FontSize = 12;
-                    cell.Style.Fill.BackgroundColor = XLColor.FromArgb(106, 27, 154); // Purple
-                    cell.Style.Font.FontColor = XLColor.White;
-                    cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                }
-                
-                // Data rows
-                int row = 2;
-                foreach (var order in orders)
-                {
-                    worksheet.Cell(row, 1).Value = order.OrderId;
-                    worksheet.Cell(row, 2).Value = order.CustomerName;
-                    worksheet.Cell(row, 3).Value = order.WhatsAppNumber;
-                    worksheet.Cell(row, 4).Value = order.City;
-                    worksheet.Cell(row, 5).Value = order.ShippingAddress;
-                    worksheet.Cell(row, 6).Value = order.OrderDate.ToString("yyyy-MM-dd HH:mm");
-                    worksheet.Cell(row, 7).Value = order.TotalAmount;
-                    worksheet.Cell(row, 7).Style.NumberFormat.Format = "0.00";
-                    worksheet.Cell(row, 8).Value = order.ShippingCost;
-                    worksheet.Cell(row, 8).Style.NumberFormat.Format = "0.00";
-                    worksheet.Cell(row, 9).Value = GetStatusArabic(order.Status);
-                    worksheet.Cell(row, 10).Value = order.PaymentMethod ?? "";
-                    
-                    row++;
-                }
-                
-                // Auto-fit columns
-                worksheet.Columns().AdjustToContents();
-                
-                // Add borders
-                var dataRange = worksheet.Range(1, 1, row - 1, headers.Length);
-                dataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-                dataRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-                
-                // Generate file
-                using (var stream = new MemoryStream())
-                {
-                    workbook.SaveAs(stream);
-                    var fileName = $"Orkideya_Orders_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
-                    
-                    return File(stream.ToArray(), 
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-                        fileName);
-                }
-            }
-        }
-        
-        /// <summary>
-        /// Get Arabic status name
-        /// </summary>
-        private string GetStatusArabic(string status)
-        {
-            return status?.ToLower() switch
-            {
-                "pending" => "جديد",
-                "processing" => "قيد المعالجة",
-                "shipped" => "تم الشحن",
-                "delivered" => "مكتمل",
-                "cancelled" => "ملغي",
-                _ => "جديد"
-            };
+            return File(_excelService.ExportOrders(orders),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"Orkideya_Orders_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx");
         }
     }
 }

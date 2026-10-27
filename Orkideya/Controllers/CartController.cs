@@ -1,3 +1,4 @@
+using Orkideya.Application.Cart;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Data;
@@ -25,22 +26,27 @@ namespace Orkideya.Controllers
         [ValidateAntiForgeryToken]
         public async Task<JsonResult> AddToCartAjax(int variantId, int quantity = 1)
         {
-            if (quantity <= 0) // Ensure quantity is at least 1
+            if (variantId <= 0 || !CartLimits.CanAdd(0, quantity))
             {
-                return Json(new { success = false, message = "الكمية يجب أن تكون أكبر من صفر." });
+                return Json(new { success = false, message = "الكمية المطلوبة يجب أن تكون بين 1 و99." });
             }
 
             var variant = await _context.ProductVariants
                                   .Include(v => v.Product)
                                   .FirstOrDefaultAsync(v => v.ProductVariantId == variantId);
 
-            if (variant == null)
+            if (variant == null || variant.Price <= 0)
             {
                 return Json(new { success = false, message = "لم يتم العثور على خيار المنتج." });
             }
 
             List<CartItem> cart = GetCart();
             var cartItem = cart.FirstOrDefault(item => item.ProductVariantId == variantId);
+
+            if (!CartLimits.CanAdd(cartItem?.Quantity ?? 0, quantity))
+            {
+                return Json(new { success = false, message = "الحد الأقصى لكل حجم هو 99 قطعة." });
+            }
 
             if (cartItem != null)
             {
@@ -63,6 +69,8 @@ namespace Orkideya.Controllers
             return Json(new { success = true, count = newCartCount, message = "تمت الإضافة للسلة بنجاح!" });
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult RemoveFromCart(int id)
         {
             List<CartItem> cart = GetCart();
@@ -77,12 +85,14 @@ namespace Orkideya.Controllers
             return RedirectToAction("Index");
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult IncreaseQuantity(int id)
         {
             List<CartItem> cart = GetCart();
             var cartItem = cart.FirstOrDefault(item => item.ProductVariantId == id);
 
-            if (cartItem != null)
+            if (cartItem != null && CartLimits.CanAdd(cartItem.Quantity, 1))
             {
                 cartItem.Quantity++;
                 SaveCart(cart);
@@ -91,6 +101,8 @@ namespace Orkideya.Controllers
             return RedirectToAction("Index");
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult DecreaseQuantity(int id)
         {
             List<CartItem> cart = GetCart();
@@ -119,7 +131,7 @@ namespace Orkideya.Controllers
             {
                 return new List<CartItem>();
             }
-            return JsonSerializer.Deserialize<List<CartItem>>(cartJson);
+            return JsonSerializer.Deserialize<List<CartItem>>(cartJson) ?? new List<CartItem>();
         }
 
         private void SaveCart(List<CartItem> cart)

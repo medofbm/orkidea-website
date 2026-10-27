@@ -1,10 +1,14 @@
-﻿@model List<Orkideya.Models.CartItem>
+@model List<Orkideya.Models.CartItem>
 @{
     ViewData["Title"] = "سلة التسوق";
     var total = Model.Sum(item => item.SubTotal);
 }
 
 <section class="cart-section">
+    @if (TempData["CartError"] is string error)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
     <!-- خلفية زخرفية -->
     <div class="cart-bg-decor" aria-hidden="true">
         <div class="cart-circle cart-circle-1"></div>
@@ -62,21 +66,23 @@
 
                                     <!-- عداد الكمية -->
                                     <div class="cart-qty-control">
-                                        <a asp-controller="Cart"
-                                           asp-action="DecreaseQuantity"
-                                           asp-route-id="@item.ProductVariantId"
+                                        <form asp-controller="Cart" asp-action="DecreaseQuantity" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@item.ProductVariantId" />
+                                            <button type="submit"
                                            class="cart-qty-btn"
                                            aria-label="تقليل الكمية">
                                             <i class="fas fa-minus"></i>
-                                        </a>
+                                        </button>
+                                        </form>
                                         <span class="cart-qty-num">@item.Quantity</span>
-                                        <a asp-controller="Cart"
-                                           asp-action="IncreaseQuantity"
-                                           asp-route-id="@item.ProductVariantId"
+                                        <form asp-controller="Cart" asp-action="IncreaseQuantity" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@item.ProductVariantId" />
+                                            <button type="submit"
                                            class="cart-qty-btn"
                                            aria-label="زيادة الكمية">
                                             <i class="fas fa-plus"></i>
-                                        </a>
+                                        </button>
+                                        </form>
                                     </div>
 
                                     <!-- الإجمالي الفرعي -->
@@ -86,14 +92,15 @@
                                     </div>
 
                                     <!-- زر الحذف -->
-                                    <a asp-controller="Cart"
-                                       asp-action="RemoveFromCart"
-                                       asp-route-id="@item.ProductVariantId"
+                                    <form asp-controller="Cart" asp-action="RemoveFromCart" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@item.ProductVariantId" />
+                                            <button type="submit"
                                        class="cart-remove-btn"
                                        aria-label="حذف @item.ProductName من السلة"
                                        title="حذف">
                                         <i class="fas fa-trash-can"></i>
-                                    </a>
+                                    </button>
+                                        </form>
                                 </div>
                             }
                         </div>
@@ -115,11 +122,11 @@
                             </div>
                             <div class="cart-summary-row">
                                 <span>الشحن</span>
-                                <span class="text-success">مجاني</span>
+                                <span>تُحدد التكلفة عند إتمام الطلب</span>
                             </div>
                             <div class="cart-summary-divider"></div>
                             <div class="cart-summary-total">
-                                <span>الإجمالي الكلي</span>
+                                <span>إجمالي المنتجات قبل الشحن</span>
                                 <span class="cart-total-price">@total.ToString("0.00") <small>د.ل</small></span>
                             </div>
                         </div>

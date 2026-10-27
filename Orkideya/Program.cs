@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Data;
 using Orkideya.Services;
@@ -52,6 +53,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 
 // Application Services
 builder.Services.AddSingleton<ExcelExportService>();
+builder.Services.AddSingleton<ProductImageStorage>();
 builder.Services.AddScoped<WhatsAppNotificationService>();
 
 // Determine cookie security policy based on environment
@@ -60,6 +62,7 @@ var cookieSecurePolicy = builder.Environment.IsDevelopment()
     : CookieSecurePolicy.Always;
 
 // Session Configuration with Security
+builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
     options.Cookie.HttpOnly = true;
@@ -86,25 +89,20 @@ builder.Services.AddHsts(options =>
     options.MaxAge = TimeSpan.FromDays(365);
 });
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
 
 var app = builder.Build();
 
 // ============================================
 // DATABASE INITIALIZATION
 // ============================================
-using (var scope = app.Services.CreateScope())
+// Run migrations/bootstrap only as an explicit maintenance command.
+if (builder.Configuration.GetValue<bool>("Initialization:Run"))
 {
-    try
-    {
-        await DbInitializer.Initialize(scope.ServiceProvider);
-    }
-    catch (Exception ex)
-    {
-        // Log the error but don't crash the app - DB may be temporarily unavailable
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "خطأ في تهيئة قاعدة البيانات. التطبيق سيستمر بدون التهيئة الكاملة.");
-    }
+    using var scope = app.Services.CreateScope();
+    await DbInitializer.Initialize(scope.ServiceProvider);
+    return;
 }
 
 // ============================================
@@ -157,6 +155,16 @@ app.Use(async (context, next) =>
 });
 
 app.UseHttpsRedirection();
+// Never serve customer spreadsheets from the public document root.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.Value?.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) == true)
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await next();
+});
 app.UseStaticFiles();
 
 app.UseSession();
@@ -178,3 +186,4 @@ app.MapControllerRoute(
 app.MapRazorPages();
 
 app.Run();
+public partial class Program { }

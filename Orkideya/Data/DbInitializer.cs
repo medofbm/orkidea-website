@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Data;
 using Orkideya.Models;
@@ -17,46 +17,40 @@ public static class DbInitializer
             await context.Database.MigrateAsync();
         }
 
-        // --- معلومات حساب المدير ---
-        string adminEmail = "medobaghny@gmail.com";
-        string adminPassword = "Themen2004fb@";
-        // -------------------------
-
-        // 1. إنشاء صلاحية "Admin" إذا لم تكن موجودة
-        if (!await roleManager.RoleExistsAsync("Admin"))
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        var email = configuration["Bootstrap:AdminEmail"];
+        var password = configuration["Bootstrap:AdminPassword"];
+        if (!string.IsNullOrWhiteSpace(email))
         {
-            await roleManager.CreateAsync(new IdentityRole("Admin"));
-        }
-
-        // 2. البحث عن حساب المدير
-        IdentityUser adminUser = await userManager.FindByEmailAsync(adminEmail);
-
-        // 3. إذا لم يكن موجوداً، قم بإنشائه
-        if (adminUser == null)
-        {
-            adminUser = new IdentityUser
+            var user = await userManager.FindByEmailAsync(email);
+            if (user == null)
             {
-                UserName = adminEmail,
-                Email = adminEmail,
-                EmailConfirmed = true
-            };
-            await userManager.CreateAsync(adminUser, adminPassword);
+                if (string.IsNullOrWhiteSpace(password))
+                    throw new InvalidOperationException("Bootstrap password is required for a new administrator.");
+                user = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
+                EnsureSucceeded(await userManager.CreateAsync(user, password));
+            }
+            if (!await roleManager.RoleExistsAsync("Admin"))
+                EnsureSucceeded(await roleManager.CreateAsync(new IdentityRole("Admin")));
+            if (!await userManager.IsInRoleAsync(user, "Admin"))
+                EnsureSucceeded(await userManager.AddToRoleAsync(user, "Admin"));
         }
-
-        // 4. التأكد من أن المستخدم لديه صلاحية "Admin"
-        if (!await userManager.IsInRoleAsync(adminUser, "Admin"))
+        else if (!string.IsNullOrWhiteSpace(password))
         {
-            await userManager.AddToRoleAsync(adminUser, "Admin");
+            throw new InvalidOperationException("Bootstrap email is required.");
         }
+        await SeedShippingRatesAsync(context);
+    }
 
-        // 5. Clean up old Shipping Rates and Seed new ones
-        var existingRates = await context.ShippingRates.ToListAsync();
-        if (existingRates.Any())
-        {
-            context.ShippingRates.RemoveRange(existingRates);
-            await context.SaveChangesAsync();
-        }
+    private static void EnsureSucceeded(IdentityResult result)
+    {
+        if (!result.Succeeded)
+            throw new InvalidOperationException("Administrator bootstrap failed: " +
+                string.Join(", ", result.Errors.Select(error => error.Code)));
+    }
 
+    public static async Task SeedShippingRatesAsync(ApplicationDbContext context)
+    {
         var defaultCities = new List<ShippingRate>
         {
             // المنطقة الغربية
@@ -125,7 +119,9 @@ public static class DbInitializer
             new ShippingRate { CityName = "طبرق", Price = 35.00m, Region = "المنطقة الشرقية", DeliveryDuration = "ساعة 72-48" }
         };
 
-        await context.ShippingRates.AddRangeAsync(defaultCities);
+        var existingNames = (await context.ShippingRates.Select(rate => rate.CityName).ToListAsync())
+            .Select(name => name.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        await context.ShippingRates.AddRangeAsync(defaultCities.Where(rate => existingNames.Add(rate.CityName.Trim())));
         await context.SaveChangesAsync();
     }
 }

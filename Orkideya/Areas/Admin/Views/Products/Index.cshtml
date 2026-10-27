@@ -102,8 +102,8 @@
                         <td>
                             @if (!string.IsNullOrEmpty(item.Description))
                             {
-                                <div class="text-truncate" style="max-width: 250px;" title="@Html.Raw(item.Description)">
-                                    @Html.Raw(item.Description?.Length > 80 ? item.Description.Substring(0, 80) + "..." : item.Description)
+                                <div class="text-truncate" style="max-width: 250px;" title="@item.Description">
+                                    @(item.Description?.Length > 80 ? item.Description.Substring(0, 80) + "..." : item.Description)
                                 </div>
                             }
                             else
