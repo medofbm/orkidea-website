@@ -1,4 +1,4 @@
-﻿@model Orkideya.Models.Product
+@model Orkideya.Models.Product
 
 @{
     ViewData["Title"] = "Delete";
@@ -33,7 +33,7 @@
             @Html.DisplayNameFor(model => model.Category)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Category.Name)
+            @(Model.Category?.Name ?? "—")
         </dd>
     </dl>
     

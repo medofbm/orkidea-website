@@ -39,8 +39,8 @@ jobs:
       - name: Source safety checks
         run: python tests/check_safety.py
       - name: Restore backend and regression runner
-        run: dotnet restore tests/Orkideya.Regression/Orkideya.Regression.csproj --verbosity minimal
+        run: dotnet restore tests/Orkideya.Regression/Orkideya.Regression.csproj --verbosity minimal -p:NuGetAudit=true -p:NuGetAuditMode=all -warnaserror:NU1901,NU1902,NU1903,NU1904
       - name: Compile application, Razor views and regression runner
-        run: dotnet build tests/Orkideya.Regression/Orkideya.Regression.csproj --configuration Release --no-restore --nologo
+        run: dotnet build tests/Orkideya.Regression/Orkideya.Regression.csproj --configuration Release --no-restore --nologo --warnaserror
       - name: Run synthetic backend regressions
         run: dotnet run --project tests/Orkideya.Regression/Orkideya.Regression.csproj --configuration Release --no-build --no-restore
