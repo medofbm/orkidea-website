@@ -21,5 +21,14 @@ namespace Orkideya.Data
         public DbSet<Category> Categories { get; set; }
         public DbSet<ContactMessage> ContactMessages { get; set; }
         public DbSet<Review> Reviews { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
+            builder.Entity<Order>().HasIndex(order => order.CheckoutToken).IsUnique()
+                .HasFilter("[CheckoutToken] IS NOT NULL");
+            builder.Entity<Order>().HasMany(order => order.Items).WithOne()
+                .HasForeignKey(item => item.OrderId).OnDelete(DeleteBehavior.Cascade);
+        }
     }
 }
