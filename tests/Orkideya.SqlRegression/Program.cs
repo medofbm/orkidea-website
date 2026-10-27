@@ -1,7 +1,9 @@
 using Microsoft.Data.SqlClient;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.Extensions.DependencyInjection;
 using Orkideya.Application.Orders;
 using Orkideya.Data;
 using Orkideya.Models;
@@ -26,7 +28,14 @@ for (var attempt = 0; ; attempt++)
 }
 var name = "OrkideaTest_" + Guid.NewGuid().ToString("N");
 server.InitialCatalog = name;
-var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlServer(server.ConnectionString).Options;
+// Identity's store options participate in EF's model; use the same registration as the app.
+var services = new ServiceCollection();
+services.AddLogging();
+services.AddDbContext<ApplicationDbContext>(builder => builder.UseSqlServer(server.ConnectionString,
+    sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(30), null)));
+services.AddDefaultIdentity<IdentityUser>().AddRoles<IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
+using var provider = services.BuildServiceProvider();
+var options = provider.GetRequiredService<DbContextOptions<ApplicationDbContext>>();
 ApplicationDbContext Open() => new(options);
 Order Make(Guid token, string hash = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA") => new()
 {
