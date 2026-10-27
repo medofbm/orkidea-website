@@ -34,6 +34,7 @@ namespace Orkideya.Areas.Admin.Controllers
         
         // POST: Admin/Reviews/ToggleVisibility (AJAX)
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ToggleVisibility(int id)
         {
             try
@@ -82,7 +83,7 @@ namespace Orkideya.Areas.Admin.Controllers
         // GET: Admin/Reviews/Create
         public IActionResult Create()
         {
-            return View();
+            return View(new Review { CustomerName = "", Message = "", IsVisible = false });
         }
 
         // POST: Admin/Reviews/Create
@@ -90,10 +91,11 @@ namespace Orkideya.Areas.Admin.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,CustomerName,Message,IsVisible")] Review review)
+        public async Task<IActionResult> Create([Bind("Id,CustomerName,Message,Rating,IsVisible")] Review review)
         {
             if (ModelState.IsValid)
             {
+                review.Id = 0;
                 _context.Add(review);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
@@ -122,7 +124,7 @@ namespace Orkideya.Areas.Admin.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,CustomerName,Message,IsVisible")] Review review)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,CustomerName,Message,Rating,IsVisible")] Review review)
         {
             if (id != review.Id)
             {

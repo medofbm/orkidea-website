@@ -50,3 +50,9 @@ Thumbs.db
 
 ## wwwroot uploads (product images - large files)
 **/wwwroot/images/products/
+
+# Local SDKs, private exports and test output
+.local-tools/
+**/App_Data/
+**/wwwroot/*.xlsx
+**/TestResults/

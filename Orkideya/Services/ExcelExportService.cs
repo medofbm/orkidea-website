@@ -1,58 +1,87 @@
-﻿using ClosedXML.Excel;
+using ClosedXML.Excel;
 using Orkideya.Models;
+namespace Orkideya.Services;
 
-namespace Orkideya.Services
+public sealed class ExcelExportService
 {
-    public class ExcelExportService
+    public byte[] ExportOrders(IReadOnlyCollection<Order> orders)
     {
-        private readonly string _filePath;
-
-        public ExcelExportService(IWebHostEnvironment env)
-        {
-            // سنقوم بحفظ الملف داخل مجلد wwwroot ليسهل الوصول إليه
-            string wwwRootPath = env.WebRootPath;
-            _filePath = Path.Combine(wwwRootPath, "orders.xlsx");
-        }
-
-        public void AddOrderToSheet(Order order, List<CartItem> cartItems)
-        {
-            var workbook = File.Exists(_filePath) ? new XLWorkbook(_filePath) : new XLWorkbook();
-            var worksheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name == "Orders");
-
-            if (worksheet == null)
+            // Create Excel workbook using ClosedXML
+            using (var workbook = new XLWorkbook())
             {
-                worksheet = workbook.Worksheets.Add("Orders");
-                // إنشاء رأس الجدول عند إنشاء الملف لأول مرة
-                worksheet.Cell("A1").Value = "رقم الطلب";
-                worksheet.Cell("B1").Value = "اسم العميل";
-                worksheet.Cell("C1").Value = "رقم الواتساب";
-                worksheet.Cell("D1").Value = "المدينة";
-                worksheet.Cell("E1").Value = "العنوان";
-                worksheet.Cell("F1").Value = "تاريخ الطلب";
-                worksheet.Cell("G1").Value = "المنتج";
-                worksheet.Cell("H1").Value = "الكمية";
-                worksheet.Cell("I1").Value = "السعر الإجمالي";
+                var worksheet = workbook.Worksheets.Add("الطلبات");
+                
+                // Set RTL for Arabic
+                worksheet.RightToLeft = true;
+                
+                // Headers
+                var headers = new[] {
+                    "رقم الطلب", "اسم العميل", "رقم الواتساب", "المدينة", 
+                    "العنوان", "تاريخ الطلب", "المبلغ الإجمالي", "تكلفة الشحن", 
+                    "الحالة", "طريقة الدفع"
+                };
+                
+                for (int i = 0; i < headers.Length; i++)
+                {
+                    var cell = worksheet.Cell(1, i + 1);
+                    cell.Value = headers[i];
+                    cell.Style.Font.Bold = true;
+                    cell.Style.Font.FontSize = 12;
+                    cell.Style.Fill.BackgroundColor = XLColor.FromArgb(106, 27, 154); // Purple
+                    cell.Style.Font.FontColor = XLColor.White;
+                    cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                }
+                
+                // Data rows
+                int row = 2;
+                foreach (var order in orders)
+                {
+                    worksheet.Cell(row, 1).Value = order.OrderId;
+                    worksheet.Cell(row, 2).Value = order.CustomerName;
+                    worksheet.Cell(row, 3).Value = order.WhatsAppNumber;
+                    worksheet.Cell(row, 4).Value = order.City;
+                    worksheet.Cell(row, 5).Value = order.ShippingAddress;
+                    worksheet.Cell(row, 6).Value = order.OrderDate.ToString("yyyy-MM-dd HH:mm");
+                    worksheet.Cell(row, 7).Value = order.TotalAmount;
+                    worksheet.Cell(row, 7).Style.NumberFormat.Format = "0.00";
+                    worksheet.Cell(row, 8).Value = order.ShippingCost;
+                    worksheet.Cell(row, 8).Style.NumberFormat.Format = "0.00";
+                    worksheet.Cell(row, 9).Value = GetStatusArabic(order.Status);
+                    worksheet.Cell(row, 10).Value = order.PaymentMethod ?? "";
+                    
+                    row++;
+                }
+                
+                // Auto-fit columns
+                worksheet.Columns().AdjustToContents();
+                
+                // Add borders
+                var dataRange = worksheet.Range(1, 1, row - 1, headers.Length);
+                dataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                dataRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+                
+                // Generate file
+                using (var stream = new MemoryStream())
+                {
+                    workbook.SaveAs(stream);
+                    
+                    return stream.ToArray();
+                }
             }
-
-            int lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
-
-            foreach (var item in cartItems)
-            {
-                int newRow = lastRow + 1;
-                worksheet.Cell(newRow, 1).Value = order.OrderId;
-                worksheet.Cell(newRow, 2).Value = order.CustomerName;
-                worksheet.Cell(newRow, 3).Value = order.WhatsAppNumber;
-                worksheet.Cell(newRow, 4).Value = order.City;
-                worksheet.Cell(newRow, 5).Value = order.ShippingAddress;
-                worksheet.Cell(newRow, 6).Value = order.OrderDate.ToString("yyyy-MM-dd HH:mm");
-                worksheet.Cell(newRow, 7).Value = item.ProductName;
-                worksheet.Cell(newRow, 8).Value = item.Quantity;
-                worksheet.Cell(newRow, 9).Value = order.TotalAmount;
-
-                lastRow++;
-            }
-
-            workbook.SaveAs(_filePath);
-        }
     }
+        /// <summary>
+        /// Get Arabic status name
+        /// </summary>
+        private string GetStatusArabic(string status)
+        {
+            return status?.ToLower() switch
+            {
+                "pending" => "جديد",
+                "processing" => "قيد المعالجة",
+                "shipped" => "تم الشحن",
+                "delivered" => "مكتمل",
+                "cancelled" => "ملغي",
+                _ => "جديد"
+            };
+        }
 }

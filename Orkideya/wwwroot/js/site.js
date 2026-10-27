@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ============================================
  * ORKIDEA - MAIN JAVASCRIPT FILE
  * Modern ES6+ | No jQuery Required
@@ -221,17 +221,22 @@ function initAddToCart() {
 
             try {
                 // Read variantId directly from the button (works on both product cards AND product detail page)
-                const variantId = this.dataset.variantId;
+                const variantId = Number(this.dataset.variantId);
 
                 // Try to get quantity from a nearby input, or fall back to data-quantity attr
                 const card = this.closest('.product-card-wrapper, .product-card');
                 const quantityInput = card ? Utils.qs('.quantity-input', card) : null;
-                const quantity = quantityInput
-                    ? parseInt(quantityInput.value, 10)
-                    : parseInt(this.dataset.quantity, 10) || 1;
+                const quantity = Number(quantityInput ? quantityInput.value : (this.dataset.quantity ?? 1));
 
-                if (!variantId) {
+                if (!Number.isSafeInteger(variantId) || variantId <= 0) {
+                    this.innerHTML = originalHTML;
                     showNotification('الرجاء اختيار الحجم أولاً', 'error');
+                    return;
+                }
+
+                if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) {
+                    this.innerHTML = originalHTML;
+                    showNotification('الكمية المطلوبة يجب أن تكون بين 1 و99', 'error');
                     return;
                 }
 

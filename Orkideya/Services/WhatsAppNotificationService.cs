@@ -1,60 +1,56 @@
-﻿using Orkideya.Models;
+using System.Text.RegularExpressions;
+using Orkideya.Models;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
 using Twilio.Types;
 
-namespace Orkideya.Services
+namespace Orkideya.Services;
+
+public class WhatsAppNotificationService
 {
-    public class WhatsAppNotificationService
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<WhatsAppNotificationService> _logger;
+    public WhatsAppNotificationService(IConfiguration configuration, ILogger<WhatsAppNotificationService> logger)
     {
-        private readonly IConfiguration _configuration;
+        _configuration = configuration;
+        _logger = logger;
+    }
 
-        public WhatsAppNotificationService(IConfiguration configuration)
+    public async Task SendNotification(Order order)
+    {
+        // Explicit opt-in; building/testing/staging must not send real messages.
+        if (!_configuration.GetValue<bool>("Notifications:WhatsAppEnabled")) return;
+        var accountSid = _configuration["Twilio:AccountSID"];
+        var authToken = _configuration["Twilio:AuthToken"];
+        var sender = _configuration["Twilio:PhoneNumber"];
+        var recipient = _configuration["Twilio:AdminNumber"];
+        if (string.IsNullOrWhiteSpace(accountSid) || string.IsNullOrWhiteSpace(authToken) ||
+            !IsInternationalPhone(sender) || !IsInternationalPhone(recipient))
         {
-            _configuration = configuration;
+            _logger.LogWarning("WhatsApp notification configuration is incomplete; no message was sent.");
+            return;
         }
-
-        public async Task SendNotification(Order order)
+        try
         {
-            var accountSid = _configuration["Twilio:AccountSID"];
-            var authToken = _configuration["Twilio:AuthToken"];
-            var twilioNumber = _configuration["Twilio:PhoneNumber"];
-
-            // التحقق من وجود بيانات الاعتماد قبل الاتصال
-            if (string.IsNullOrWhiteSpace(accountSid) || accountSid == "YOUR_ACCOUNT_SID" ||
-                string.IsNullOrWhiteSpace(authToken) || authToken == "YOUR_AUTH_TOKEN" ||
-                string.IsNullOrWhiteSpace(twilioNumber))
-            {
-                Console.WriteLine("⚠️ Twilio credentials are missing or not configured. Skipping WhatsApp notification.");
-                return;
-            }
-
-            // --- رقم هاتفك الشخصي الذي سيستقبل الإشعار ---
-            var adminNumber = "+218916749962";
-
             TwilioClient.Init(accountSid, authToken);
-
-            var messageBody = $"طلب جديد! 🎉\n" +
-                              $"رقم الطلب: {order.OrderId}\n" +
-                              $"اسم العميل: {order.CustomerName}\n" +
-                              $"رقم الواتساب: {order.WhatsAppNumber}\n" +
-                              $"المبلغ الإجمالي: {order.TotalAmount:0.00} د.ل";
-
-            try
+            var messageOptions = new CreateMessageOptions(new PhoneNumber($"whatsapp:{recipient}"))
             {
-                var messageOptions = new CreateMessageOptions(
-                    new PhoneNumber($"whatsapp:{adminNumber}"))
-                {
-                    From = new PhoneNumber($"whatsapp:{twilioNumber}"),
-                    Body = messageBody
-                };
-
-                var message = await MessageResource.CreateAsync(messageOptions);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
+                From = new PhoneNumber($"whatsapp:{sender}"),
+                Body = $"طلب جديد! رقم الطلب: {order.OrderId}\n" +
+                    $"اسم العميل: {order.CustomerName}\n" +
+                    $"رقم الواتساب: {order.WhatsAppNumber}\n" +
+                    $"المبلغ الإجمالي: {order.TotalAmount:0.00} د.ل"
+            };
+            await MessageResource.CreateAsync(messageOptions);
+        }
+        catch (Exception exception)
+        {
+            // Do not log provider payloads, tokens, phone numbers or customer content.
+            _logger.LogWarning("WhatsApp notification failed for order {OrderId}; failure type {FailureType}.",
+                order.OrderId, exception.GetType().Name);
         }
     }
+
+    private static bool IsInternationalPhone(string? value) => value != null &&
+        Regex.IsMatch(value, @"^\+[1-9][0-9]{6,14}$");
 }

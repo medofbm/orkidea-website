@@ -1,4 +1,4 @@
-@model Orkideya.Models.Product
+@model Orkideya.Models.ProductInput
 
 @{
     ViewData["Title"] = "إضافة منتج جديد";
@@ -34,7 +34,7 @@
             </div>
             
             <form asp-action="Create" method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
-                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
                 
                 <div class="row g-3">
                     <div class="col-md-12">
@@ -82,7 +82,7 @@
                                    class="form-control" 
                                    id="imageFile" 
                                    name="imageFile"
-                                   accept="image/*"
+                                   accept="image/png,image/jpeg"
                                    onchange="previewUploadedImage(event)">
                         </div>
                         
@@ -94,7 +94,7 @@
                         <div>
                             <label asp-for="ImageUrl" class="form-label small text-muted">
                                 <i class="fas fa-link me-1"></i>
-                                رابط صورة خارجي
+                                رابط صورة خارجي HTTPS
                             </label>
                             <input asp-for="ImageUrl" 
                                    class="form-control" 
