@@ -45,6 +45,13 @@ try
         await db.GetService<IMigrator>().MigrateAsync("20260304060822_AddShippingRegionAndDuration");
         await db.Database.ExecuteSqlRawAsync("INSERT INTO Orders (CustomerName, WhatsAppNumber, ShippingAddress, City, ShippingCost, TotalAmount, OrderDate, PaymentMethod, Status) VALUES (N'Synthetic legacy', N'+218000000000', N'Test only', N'Tripoli', 10, 42.5, '2026-01-01', N'cash', N'Pending'), (N'Synthetic legacy two', N'+218000000000', N'Test only', N'Tripoli', 10, 42.5, '2026-01-01', N'cash', N'Pending')");
         await db.Database.ExecuteSqlRawAsync("INSERT INTO OrderItems (OrderId, ProductId, Quantity, UnitPrice, VariantSize) SELECT MIN(OrderId), 1, 1, 32.5, N'legacy' FROM Orders");
+        await db.Database.ExecuteSqlRawAsync("INSERT INTO OrderItems (OrderId, ProductId, Quantity, UnitPrice, VariantSize) VALUES (2147483647, 1, 1, 1, N'ORPHAN_TEST')");
+        var orphanBlocked = false;
+        try { await db.Database.MigrateAsync(); }
+        catch (SqlException exception) when (exception.Number == 51001) { orphanBlocked = true; }
+        Check(orphanBlocked, "Upgrade stops explicitly when legacy orphan items exist");
+        Check(await db.OrderItems.CountAsync() == 2, "Blocked upgrade preserves every legacy row for reconciliation");
+        await db.Database.ExecuteSqlRawAsync("DELETE FROM OrderItems WHERE OrderId = 2147483647 AND VariantSize = N'ORPHAN_TEST'");
         await db.Database.MigrateAsync();
         Check(await db.Orders.CountAsync(order => order.CheckoutToken == null) == 2, "Upgrade retains legacy orders and permits multiple null retry keys");
         Check(await db.OrderItems.CountAsync() == 1, "Upgrade retains legacy order items");
@@ -107,6 +114,7 @@ try
         await db.Database.ExecuteSqlRawAsync("DROP TRIGGER RejectSyntheticItem");
         Check((await new OrderService(db).PlaceAsync(Make(failedToken))).IsNew, "A failed request can retry safely after recovery");
     }
+    await using (var db = Open()) await CheckoutScenario.Run(db, Check);
     Console.WriteLine("SQL SERVER VERIFICATION COMPLETE: dedicated generated test database only.");
 }
 finally

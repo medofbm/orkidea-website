@@ -29,7 +29,7 @@ public class CheckoutController : Controller
         if (!RefreshPrices(cart, variants, out _)) return InvalidCart();
         HttpContext.Session.SetString("Cart", JsonSerializer.Serialize(cart));
         var token = HttpContext.Session.GetString("CheckoutToken");
-        if (!Guid.TryParse(token, out var checkoutToken) || token == HttpContext.Session.GetString("CompletedCheckoutToken"))
+        if (!Guid.TryParse(token, out var checkoutToken) || checkoutToken == Guid.Empty || token == HttpContext.Session.GetString("CompletedCheckoutToken"))
         {
             checkoutToken = Guid.NewGuid();
             HttpContext.Session.SetString("CheckoutToken", checkoutToken.ToString("D"));
@@ -52,8 +52,7 @@ public class CheckoutController : Controller
                 var existing = await _orders.FindAsync(input.CheckoutToken.Value, requestHash, HttpContext.RequestAborted);
                 if (existing != null)
                 {
-                    HttpContext.Session.Remove("Cart");
-                    HttpContext.Session.SetString("CompletedCheckoutToken", input.CheckoutToken.Value.ToString("D"));
+                    MarkCheckoutComplete(input.CheckoutToken.Value);
                     return RedirectToAction(nameof(Confirmation));
                 }
             }
@@ -105,13 +104,21 @@ public class CheckoutController : Controller
             ModelState.AddModelError("", "تعذر حفظ الطلب. لم يتم تأكيده؛ راجع البيانات وحاول مرة أخرى.");
             return View("Index", await BuildViewModel(cart, input));
         }
-        HttpContext.Session.Remove("Cart");
-        HttpContext.Session.SetString("CompletedCheckoutToken", input.CheckoutToken.Value.ToString("D"));
+        MarkCheckoutComplete(input.CheckoutToken.Value);
         if (placed.IsNew) await _whatsAppService.SendNotification(placed.Order);
         return RedirectToAction(nameof(Confirmation));
     }
 
     public IActionResult Confirmation() => View();
+
+    private void MarkCheckoutComplete(Guid token)
+    {
+        var key = token.ToString("D");
+        // A late retry must not clear a new basket created after the original checkout.
+        if (HttpContext.Session.GetString("CompletedCheckoutToken") == key) return;
+        HttpContext.Session.Remove("Cart");
+        HttpContext.Session.SetString("CompletedCheckoutToken", key);
+    }
 
     private async Task<CheckoutViewModel> BuildViewModel(List<CartItem> cart, CheckoutInput input) => new()
     {
