@@ -50,7 +50,7 @@ public sealed class OrderService(ApplicationDbContext context)
         catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 2601 or 2627 })
         {
             // A concurrent request may have committed this token first. Do not replay its notification.
-            foreach (var item in order.Items) context.Entry(item).State = EntityState.Detached;
+            foreach (var item in order.Items.ToArray()) context.Entry(item).State = EntityState.Detached;
             context.Entry(order).State = EntityState.Detached;
             existing = await FindAsync(order.CheckoutToken.Value, order.CheckoutRequestHash, cancellationToken);
             if (existing == null) throw;
