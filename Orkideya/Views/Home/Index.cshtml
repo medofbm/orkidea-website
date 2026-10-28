@@ -42,9 +42,9 @@
                     مصنوعة بحب من خيرات الطبيعة.
                 </p>
                 <div class="d-flex flex-wrap gap-3 justify-content-center">
-                    <a href="#shop-categories"
+                    <a href="#all-products"
                        class="btn btn-hero-primary btn-glowing"
-                       aria-label="انتقل إلى قسم التصنيفات للتسوق">
+                       aria-label="تصفح المنتجات واختر ما يناسبك">
                         <i class="fas fa-shopping-bag me-2" aria-hidden="true"></i>
                         تسوقي الآن
                     </a>
@@ -116,6 +116,8 @@
 </section>
 
 @* ============ CATEGORIES SECTION ============ *@
+@if (ViewBag.Categories != null && ViewBag.Categories.Count > 0)
+{
 <section class="categories-section" id="shop-categories" aria-labelledby="categories-heading">
     <div class="container">
         <div class="section-header text-center mb-5">
@@ -154,6 +156,8 @@
     </div>
 </section>
 
+}
+
 @* ============ FEATURED PRODUCTS SWIPER ============ *@
 @if (ViewBag.FeaturedProducts != null && ViewBag.FeaturedProducts.Count > 0)
 {
@@ -184,7 +188,7 @@
 }
 
 @* ============ ALL PRODUCTS SECTION ============ *@
-<section class="products-section" aria-labelledby="all-products-heading">
+<section class="products-section" id="all-products" aria-labelledby="all-products-heading">
     <div class="container">
         <div class="section-header text-center mb-5">
             <span class="section-badge">

@@ -1,4 +1,5 @@
-﻿@{
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnvironment
+@{
     ViewData["Title"] = "تم استلام طلبك!";
 }
 
@@ -20,13 +21,13 @@
         </div>
 
         <h1 class="confirm-title">شكراً لك! 🌸</h1>
-        <p class="confirm-msg">لقد تم استلام طلبك بنجاح.<br />سنتواصل معك عبر الواتساب قريباً لتأكيد الطلب والتوصيل.</p>
+        <p class="confirm-msg">@(HostEnvironment.EnvironmentName == "Staging" ? "تم تسجيل طلب الاختبار بنجاح. لا يوجد دفع أو توصيل فعلي لهذه التجربة." : "تم تسجيل طلبك بنجاح. احتفظ بتفاصيل طلبك إلى حين مراجعته من المتجر.")</p>
 
         <!-- بطاقة المعلومات -->
         <div class="confirm-card">
             <div class="confirm-card-row">
                 <i class="fas fa-truck-fast" aria-hidden="true"></i>
-                <span>سيتم التوصيل خلال 2–5 أيام عمل</span>
+                <span>@(HostEnvironment.EnvironmentName == "Staging" ? "طلب تجريبي — لا يوجد توصيل فعلي" : "التوصيل وفق المدينة والمدة المعروضة عند الطلب")</span>
             </div>
             <div class="confirm-card-row">
                 <i class="fas fa-wallet" aria-hidden="true"></i>
@@ -34,7 +35,7 @@
             </div>
             <div class="confirm-card-row">
                 <i class="fab fa-whatsapp" aria-hidden="true"></i>
-                <span>سنتواصل معك عبر الواتساب للتأكيد</span>
+                <span>تسجيل الطلب لا يعني إرسال رسالة واتساب</span>
             </div>
         </div>
 

@@ -95,7 +95,10 @@
 
                     <!-- أزرار تسجيل الدخول (ديسكتوب فقط) -->
                     <div class="d-none d-lg-flex align-items-center gap-2">
-                        <partial name="_LoginPartial" />
+                        @if (User.Identity?.IsAuthenticated == true)
+ {
+<partial name="_LoginPartial" />
+ }
                     </div>
                 </div>
 
@@ -136,11 +139,11 @@
                         <span>الرئيسية</span>
                         <i class="fas fa-chevron-left sidebar-nav-arrow ms-auto"></i>
                     </a>
-                    <a class="sidebar-nav-link" href="#shop-categories">
+                    <a class="sidebar-nav-link" asp-area="" asp-controller="Home" asp-action="Index" asp-fragment="all-products">
                         <span class="sidebar-nav-icon bg-green-soft">
                             <i class="fas fa-th-large"></i>
                         </span>
-                        <span>التصنيفات</span>
+                        <span>المنتجات</span>
                         <i class="fas fa-chevron-left sidebar-nav-arrow ms-auto"></i>
                     </a>
                     <a class="sidebar-nav-link" href="#contact-section">
@@ -205,7 +208,10 @@
 
         <!-- تذييل السايدبار -->
         <div class="sidebar-foot">
-            <partial name="_LoginPartial" />
+            @if (User.Identity?.IsAuthenticated == true)
+ {
+<partial name="_LoginPartial" />
+ }
             <div class="sidebar-copyright">
                 © @DateTime.Now.Year Orkidea · صنع بـ <i class="fas fa-heart text-danger"></i> في ليبيا
             </div>
