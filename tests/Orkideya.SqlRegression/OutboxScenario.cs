@@ -26,6 +26,8 @@ internal static class OutboxScenario
                 ShippingAddress = "Synthetic address", ShippingCost = 10, TotalAmount = 11,
                 Items = new() { new() { ProductId = 1, UnitPrice = 1, Quantity = 1 } } };
             await new OrderService(db).PlaceAsync(order);
+            if (!(await new OrderService(db).PlaceAsync(order)).IsNew && order.Notifications.Count == 1) { }
+            else throw new InvalidOperationException("Reusing a committed aggregate must not create another notification.");
             return order.Notifications.Single().Id;
         }
         async Task<OrderNotification> Row(Guid id)
