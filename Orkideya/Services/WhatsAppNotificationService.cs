@@ -1,53 +1,54 @@
 using System.Text.RegularExpressions;
+using Orkideya.Application.Notifications;
 using Orkideya.Models;
-using Twilio;
+using Twilio.Clients;
+using Twilio.Exceptions;
 using Twilio.Rest.Api.V2010.Account;
 using Twilio.Types;
 
 namespace Orkideya.Services;
 
-public class WhatsAppNotificationService
+public sealed class WhatsAppNotificationService(IConfiguration configuration, ILogger<WhatsAppNotificationService> logger)
+    : IOrderNotificationTransport
 {
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<WhatsAppNotificationService> _logger;
-    public WhatsAppNotificationService(IConfiguration configuration, ILogger<WhatsAppNotificationService> logger)
-    {
-        _configuration = configuration;
-        _logger = logger;
-    }
+    public bool IsConfigured => configuration.GetValue<bool>("Notifications:WhatsAppEnabled") &&
+        !string.IsNullOrWhiteSpace(configuration["Twilio:AccountSID"]) &&
+        !string.IsNullOrWhiteSpace(configuration["Twilio:AuthToken"]) &&
+        IsInternationalPhone(configuration["Twilio:PhoneNumber"]) && IsInternationalPhone(configuration["Twilio:AdminNumber"]);
 
-    public async Task SendNotification(Order order)
+    public async Task<NotificationAttempt> SendAsync(Order order, CancellationToken cancellationToken = default)
     {
-        // Explicit opt-in; building/testing/staging must not send real messages.
-        if (!_configuration.GetValue<bool>("Notifications:WhatsAppEnabled")) return;
-        var accountSid = _configuration["Twilio:AccountSID"];
-        var authToken = _configuration["Twilio:AuthToken"];
-        var sender = _configuration["Twilio:PhoneNumber"];
-        var recipient = _configuration["Twilio:AdminNumber"];
-        if (string.IsNullOrWhiteSpace(accountSid) || string.IsNullOrWhiteSpace(authToken) ||
-            !IsInternationalPhone(sender) || !IsInternationalPhone(recipient))
+        if (!configuration.GetValue<bool>("Notifications:WhatsAppEnabled")) return new(NotificationOutcome.NotConfigured);
+        if (!IsConfigured)
         {
-            _logger.LogWarning("WhatsApp notification configuration is incomplete; no message was sent.");
-            return;
+            logger.LogWarning("WhatsApp notification configuration is incomplete; no message was sent.");
+            return new(NotificationOutcome.NotConfigured);
         }
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            TwilioClient.Init(accountSid, authToken);
-            var messageOptions = new CreateMessageOptions(new PhoneNumber($"whatsapp:{recipient}"))
+            // Per-call client avoids mutable global credentials; accepted is not delivered.
+            var client = new TwilioRestClient(configuration["Twilio:AccountSID"], configuration["Twilio:AuthToken"]);
+            var options = new CreateMessageOptions(new PhoneNumber($"whatsapp:{configuration["Twilio:AdminNumber"]}"))
             {
-                From = new PhoneNumber($"whatsapp:{sender}"),
+                From = new PhoneNumber($"whatsapp:{configuration["Twilio:PhoneNumber"]}"),
                 Body = $"طلب جديد! رقم الطلب: {order.OrderId}\n" +
-                    $"اسم العميل: {order.CustomerName}\n" +
-                    $"رقم الواتساب: {order.WhatsAppNumber}\n" +
+                    $"اسم العميل: {order.CustomerName}\nرقم الواتساب: {order.WhatsAppNumber}\n" +
                     $"المبلغ الإجمالي: {order.TotalAmount:0.00} د.ل"
             };
-            await MessageResource.CreateAsync(messageOptions);
+            var message = await MessageResource.CreateAsync(options, client: client)
+                .WaitAsync(TimeSpan.FromSeconds(30), cancellationToken);
+            return string.IsNullOrWhiteSpace(message.Sid) ? new(NotificationOutcome.Uncertain)
+                : new(NotificationOutcome.Accepted, message.Sid);
         }
-        catch (Exception exception)
+        catch (ApiException exception) when (exception.Status == 429)
+        { return new(NotificationOutcome.Retryable); }
+        catch (ApiException exception) when (exception.Status is >= 400 and < 500)
+        { return new(NotificationOutcome.PermanentFailure); }
+        catch (Exception)
         {
-            // Do not log provider payloads, tokens, phone numbers or customer content.
-            _logger.LogWarning("WhatsApp notification failed for order {OrderId}; failure type {FailureType}.",
-                order.OrderId, exception.GetType().Name);
+            // A timeout, 5xx or lost response may follow provider acceptance. Do not auto-resend.
+            return new(NotificationOutcome.Uncertain);
         }
     }
 

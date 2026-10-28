@@ -21,6 +21,7 @@ namespace Orkideya.Data
         public DbSet<Category> Categories { get; set; }
         public DbSet<ContactMessage> ContactMessages { get; set; }
         public DbSet<Review> Reviews { get; set; }
+        public DbSet<OrderNotification> OrderNotifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -29,6 +30,10 @@ namespace Orkideya.Data
                 .HasFilter("[CheckoutToken] IS NOT NULL");
             builder.Entity<Order>().HasMany(order => order.Items).WithOne()
                 .HasForeignKey(item => item.OrderId).OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<Order>().HasMany(order => order.Notifications).WithOne(notification => notification.Order)
+                .HasForeignKey(notification => notification.OrderId).OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<OrderNotification>().HasIndex(notification => notification.OrderId).IsUnique();
+            builder.Entity<OrderNotification>().HasIndex(notification => new { notification.State, notification.NextAttemptAtUtc });
         }
     }
 }

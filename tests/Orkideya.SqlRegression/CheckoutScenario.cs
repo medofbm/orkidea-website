@@ -23,8 +23,7 @@ internal static class CheckoutScenario
             ProductName = product.Name, Price = variant.Price, Quantity = 2 } };
         var session = new MemorySession();
         session.SetString("Cart", JsonSerializer.Serialize(cart));
-        var controller = new CheckoutController(db,
-            new WhatsAppNotificationService(new ConfigurationBuilder().Build(), NullLogger<WhatsAppNotificationService>.Instance), new OrderService(db))
+        var controller = new CheckoutController(db, new OrderService(db))
         { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { Session = session } } };
         var index = (ViewResult)await controller.Index();
         var model = (CheckoutViewModel)index.Model!;

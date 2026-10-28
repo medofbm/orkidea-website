@@ -12,12 +12,10 @@ namespace Orkideya.Controllers;
 public class CheckoutController : Controller
 {
     private readonly ApplicationDbContext _context;
-    private readonly WhatsAppNotificationService _whatsAppService;
     private readonly OrderService _orders;
-    public CheckoutController(ApplicationDbContext context, WhatsAppNotificationService whatsAppService, OrderService orders)
+    public CheckoutController(ApplicationDbContext context, OrderService orders)
     {
         _context = context;
-        _whatsAppService = whatsAppService;
         _orders = orders;
     }
 
@@ -96,8 +94,7 @@ public class CheckoutController : Controller
                 UnitPrice = item.Price,
                 VariantSize = variants[item.ProductVariantId].Size
             }).ToList();
-        PlacedOrder placed;
-        try { placed = await _orders.PlaceAsync(order, HttpContext.RequestAborted); }
+        try { await _orders.PlaceAsync(order, HttpContext.RequestAborted); }
         catch (CheckoutConflictException) { return Conflict("تم استعمال هذا التأكيد لطلب مختلف. افتح صفحة إتمام الطلب من جديد."); }
         catch (DbUpdateException)
         {
@@ -105,7 +102,6 @@ public class CheckoutController : Controller
             return View("Index", await BuildViewModel(cart, input));
         }
         MarkCheckoutComplete(input.CheckoutToken.Value);
-        if (placed.IsNew) await _whatsAppService.SendNotification(placed.Order);
         return RedirectToAction(nameof(Confirmation));
     }
 

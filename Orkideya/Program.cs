@@ -55,6 +55,10 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 builder.Services.AddSingleton<ExcelExportService>();
 builder.Services.AddSingleton<ProductImageStorage>();
 builder.Services.AddScoped<WhatsAppNotificationService>();
+builder.Services.AddScoped<Orkideya.Application.Notifications.IOrderNotificationTransport>(services => services.GetRequiredService<WhatsAppNotificationService>());
+builder.Services.AddScoped<Orkideya.Application.Notifications.NotificationDispatcher>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddHostedService<Orkideya.Application.Notifications.NotificationWorker>();
 builder.Services.AddScoped<Orkideya.Application.Orders.OrderService>();
 
 // Determine cookie security policy based on environment

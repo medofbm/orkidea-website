@@ -52,8 +52,8 @@ checks['review create and edit bind submitted Rating']=reviews.count('Id,Custome
 checks['new review is hidden by default']='Message = "", IsVisible = false' in reviews
 checks['review views use shared rating script']=all('~/js/review-rating.js' in read('Areas/Admin/Views/Reviews/'+name+'.cshtml') for name in ['Create','Edit'])
 notifications=read('Services/WhatsAppNotificationService.cs')
-checks['WhatsApp requires explicit opt-in']='if (!_configuration.GetValue<bool>("Notifications:WhatsAppEnabled")) return;' in notifications
-checks['WhatsApp recipient comes from configuration']='_configuration["Twilio:AdminNumber"]' in notifications
+checks['WhatsApp requires explicit opt-in']='if (!configuration.GetValue<bool>("Notifications:WhatsAppEnabled")) return new(NotificationOutcome.NotConfigured);' in notifications
+checks['WhatsApp recipient comes from configuration']='configuration["Twilio:AdminNumber"]' in notifications
 checks['WhatsApp does not print exception payload']='Console.WriteLine' not in notifications and 'exception.Message' not in notifications
 for name,passed in checks.items():print(('PASS' if passed else 'FAIL')+': '+name)
 raise SystemExit(0 if all(checks.values()) else 1)

@@ -32,7 +32,7 @@ public sealed class OrderService(ApplicationDbContext context)
     public async Task<PlacedOrder> PlaceAsync(Order order, CancellationToken cancellationToken = default)
     {
         if (order.CheckoutToken is null || order.CheckoutToken == Guid.Empty ||
-            order.CheckoutRequestHash?.Length != 64 || order.Items.Count == 0 || order.ShippingCost < 0 ||
+            order.CheckoutRequestHash?.Length != 64 || order.Items.Count == 0 || order.Notifications.Count != 0 || order.ShippingCost < 0 ||
             order.Items.Any(item => item.Quantity is < 1 or > 99 || item.UnitPrice <= 0 ||
                 decimal.Round(item.UnitPrice, 2) != item.UnitPrice) ||
             order.TotalAmount != order.Items.Sum(item => item.UnitPrice * item.Quantity) + order.ShippingCost)
@@ -40,6 +40,8 @@ public sealed class OrderService(ApplicationDbContext context)
 
         var existing = await FindAsync(order.CheckoutToken.Value, order.CheckoutRequestHash, cancellationToken);
         if (existing != null) return new(existing, false);
+        var createdAt = DateTime.UtcNow;
+        order.Notifications.Add(new OrderNotification { CreatedAtUtc = createdAt, NextAttemptAtUtc = createdAt });
         context.Orders.Add(order);
         try
         {
@@ -51,6 +53,7 @@ public sealed class OrderService(ApplicationDbContext context)
         {
             // A concurrent request may have committed this token first. Do not replay its notification.
             foreach (var item in order.Items.ToArray()) context.Entry(item).State = EntityState.Detached;
+            foreach (var notification in order.Notifications.ToArray()) context.Entry(notification).State = EntityState.Detached;
             context.Entry(order).State = EntityState.Detached;
             existing = await FindAsync(order.CheckoutToken.Value, order.CheckoutRequestHash, cancellationToken);
             if (existing == null) throw;
