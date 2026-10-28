@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnvironment
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="utf-8" />
@@ -27,6 +28,13 @@
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
+@if (HostEnvironment.EnvironmentName == "Staging")
+{
+    <div role="status" style="background:#6a1b9a;color:#fff;text-align:center;padding:12px">
+        نسخة تجريبية — الأسعار والأحجام والطلبات للاختبار فقط. لا تدخل بيانات حقيقية.
+    </div>
+}
+
     <a href="#main-content" class="skip-to-main visually-hidden-focusable">الانتقال إلى المحتوى الرئيسي</a>
 
     <!-- ============ HEADER ============ -->

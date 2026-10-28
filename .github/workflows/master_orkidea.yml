@@ -82,3 +82,46 @@ jobs:
       - name: Remove this run's disposable database container
         if: always()
         run: docker rm --force "orkidea-sql-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" || true
+
+  preview-image:
+    needs: [verify, sql-server]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the immutable preview image from a clean checkout
+        run: docker build --tag "orkidea-preview:${GITHUB_SHA}" .
+      - name: Inspect the image and run the real web process safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="orkidea-preview:${GITHUB_SHA}"
+          test "$(docker image inspect "$image" --format '{{.Config.User}}')" = 1654
+          docker run --rm --entrypoint sh "$image" -c 'test ! -e /app/appsettings.json && test ! -e /app/wwwroot/orders.xlsx && test ! -e /app/App_Data'
+          name="orkidea-preview-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker run --detach --name "$name" --read-only --cap-drop ALL --security-opt no-new-privileges=true \
+            --memory 768m --cpus 1 --tmpfs /tmp:rw,nosuid,size=128m --publish 127.0.0.1::8080 \
+            --env ASPNETCORE_ENVIRONMENT=Staging --env 'AllowedHosts=localhost;127.0.0.1' \
+            --env DataProtection__KeysPath=/tmp/keys --env DataProtection__ApplicationName=Orkidea.ImageSmoke \
+            --env Notifications__WhatsAppEnabled=false --env Notifications__OutboxWorkerEnabled=false \
+            --env Initialization__Run=false "$image"
+          port="$(docker port "$name" 8080/tcp | awk -F: '{print $NF}')"
+          curl --fail --silent --show-error --retry 30 --retry-connrefused --retry-delay 1 "http://127.0.0.1:$port/health/live"
+          curl --fail --silent --show-error --dump-header /tmp/preview-headers.txt "http://127.0.0.1:$port/Identity/Account/Login" -o /tmp/preview-login.html
+          python - <<'PY'
+          from pathlib import Path
+          assert 'noindex' in Path('/tmp/preview-headers.txt').read_text().lower()
+          assert 'نسخة تجريبية' in Path('/tmp/preview-login.html').read_text(encoding='utf-8')
+          print('PASS: non-root, read-only web image; live endpoint and preview login/banner; noindex; private files excluded.')
+          PY
+      - name: Save the verified web image for controlled transfer
+        run: docker save "orkidea-preview:${GITHUB_SHA}" | gzip > orkidea-preview-image.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orkidea-preview-image-${{ github.sha }}
+          path: orkidea-preview-image.tar.gz
+          retention-days: 3
+          if-no-files-found: error
+      - name: Remove only this run's preview web container
+        if: always()
+        run: docker rm --force "orkidea-preview-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" || true

@@ -3,8 +3,26 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Data;
 using Orkideya.Services;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+    options.RequireHeaderSymmetry = true;
+    foreach (var value in builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
+    {
+        if (!IPAddress.TryParse(value, out var proxy)) throw new InvalidOperationException("Invalid trusted proxy address.");
+        options.KnownProxies.Add(proxy);
+    }
+});
+var protection = builder.Services.AddDataProtection().SetApplicationName(
+    builder.Configuration["DataProtection:ApplicationName"] ?? "Orkidea");
+if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath)
+    protection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 
 // ============================================
 // SERVICE CONFIGURATION
@@ -98,6 +116,13 @@ builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
 
 var app = builder.Build();
+app.UseForwardedHeaders();
+if (app.Environment.IsStaging())
+    app.Use(async (context, next) =>
+    {
+        context.Response.Headers["X-Robots-Tag"] = "noindex, nofollow, noarchive";
+        await next();
+    });
 
 // ============================================
 // DATABASE INITIALIZATION
@@ -159,7 +184,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
-app.UseHttpsRedirection();
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/health"), branch => branch.UseHttpsRedirection());
 // Never serve customer spreadsheets from the public document root.
 app.Use(async (context, next) =>
 {
@@ -189,6 +214,17 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapRazorPages();
+app.MapGet("/health/live", () => Results.Text("live"));
+app.MapGet("/health/ready", async (ApplicationDbContext context, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var ready = await context.Database.CanConnectAsync(cancellationToken) &&
+            !(await context.Database.GetPendingMigrationsAsync(cancellationToken)).Any();
+        return Results.Text(ready ? "ready" : "not ready", statusCode: ready ? 200 : 503);
+    }
+    catch { return Results.Text("not ready", statusCode: 503); }
+});
 
 app.Run();
 public partial class Program { }
