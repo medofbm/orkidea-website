@@ -40,6 +40,9 @@ public sealed class OrderService(ApplicationDbContext context)
 
         var existing = await FindAsync(order.CheckoutToken.Value, order.CheckoutRequestHash, cancellationToken);
         if (existing != null) return new(existing, false);
+        if (order.Notifications.Count != 0) throw new ArgumentException("New order notifications are managed by the order service.", nameof(order));
+        var createdAt = DateTime.UtcNow;
+        order.Notifications.Add(new OrderNotification { CreatedAtUtc = createdAt, NextAttemptAtUtc = createdAt });
         context.Orders.Add(order);
         try
         {
@@ -51,6 +54,7 @@ public sealed class OrderService(ApplicationDbContext context)
         {
             // A concurrent request may have committed this token first. Do not replay its notification.
             foreach (var item in order.Items.ToArray()) context.Entry(item).State = EntityState.Detached;
+            foreach (var notification in order.Notifications.ToArray()) context.Entry(notification).State = EntityState.Detached;
             context.Entry(order).State = EntityState.Detached;
             existing = await FindAsync(order.CheckoutToken.Value, order.CheckoutRequestHash, cancellationToken);
             if (existing == null) throw;

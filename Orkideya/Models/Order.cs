@@ -10,6 +10,7 @@ namespace Orkideya.Models
         [MaxLength(64)]
         public string? CheckoutRequestHash { get; set; }
         public List<OrderItem> Items { get; set; } = new();
+        public List<OrderNotification> Notifications { get; set; } = new();
         public required string CustomerName { get; set; }
         public required string WhatsAppNumber { get; set; }
         public required string ShippingAddress { get; set; }
