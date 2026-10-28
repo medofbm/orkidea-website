@@ -64,6 +64,7 @@ internal static class HttpSecurityRegression
             using var response = await client.PostAsync(path, new FormUrlEncodedContent(new Dictionary<string, string>()));
             check(response.StatusCode == HttpStatusCode.BadRequest, "Missing antiforgery token rejected: " + path);
         }
+        await RoleAuthorizationRegression.Run(factory, check);
         using var getMutation = await client.GetAsync("/Cart/IncreaseQuantity?id=1");
         check(getMutation.StatusCode == HttpStatusCode.MethodNotAllowed, "GET cannot increase cart quantity");
     }
