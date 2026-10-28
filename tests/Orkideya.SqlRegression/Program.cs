@@ -105,7 +105,7 @@ try
     await using (var db = Open())
     {
         Check(await db.Orders.CountAsync(order => order.CheckoutToken == concurrentToken) == 1, "Unique retry key is enforced by SQL Server");
-        await db.Database.ExecuteSqlRawAsync("CREATE TRIGGER RejectSyntheticItem ON dbo.OrderItems AFTER INSERT AS BEGIN IF EXISTS (SELECT 1 FROM inserted WHERE VariantSize = N'FAIL_TEST') THROW 51000, 'Synthetic item failure', 1; END");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE OrderItems ADD CONSTRAINT CK_SyntheticItemFailure CHECK (VariantSize <> N'FAIL_TEST')");
     }
     var failedToken = Guid.NewGuid();
     await using (var db = Open())
@@ -113,14 +113,14 @@ try
         var failed = Make(failedToken); failed.Items[1].VariantSize = "FAIL_TEST";
         var rejected = false;
         try { await new OrderService(db).PlaceAsync(failed); }
-        catch (DbUpdateException) { rejected = true; }
+        catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 547 }) { rejected = true; }
         Check(rejected, "SQL failure during item insertion reaches the caller");
     }
     await using (var db = Open())
     {
         Check(!await db.Orders.AnyAsync(order => order.CheckoutToken == failedToken), "Failed item rolls back its parent order");
         Check(!await db.OrderItems.AnyAsync(item => !db.Orders.Any(order => order.OrderId == item.OrderId)), "Failed item leaves no orphan or partial rows");
-        await db.Database.ExecuteSqlRawAsync("DROP TRIGGER RejectSyntheticItem");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE OrderItems DROP CONSTRAINT CK_SyntheticItemFailure");
         Check((await new OrderService(db).PlaceAsync(Make(failedToken))).IsNew, "A failed request can retry safely after recovery");
     }
     await using (var db = Open()) await CheckoutScenario.Run(db, Check);
