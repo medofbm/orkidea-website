@@ -6,6 +6,10 @@ namespace Orkideya.Models
     {
         [Key]
         public int OrderId { get; set; }
+        public Guid? CheckoutToken { get; set; }
+        [MaxLength(64)]
+        public string? CheckoutRequestHash { get; set; }
+        public List<OrderItem> Items { get; set; } = new();
         public required string CustomerName { get; set; }
         public required string WhatsAppNumber { get; set; }
         public required string ShippingAddress { get; set; }

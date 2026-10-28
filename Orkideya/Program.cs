@@ -55,6 +55,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 builder.Services.AddSingleton<ExcelExportService>();
 builder.Services.AddSingleton<ProductImageStorage>();
 builder.Services.AddScoped<WhatsAppNotificationService>();
+builder.Services.AddScoped<Orkideya.Application.Orders.OrderService>();
 
 // Determine cookie security policy based on environment
 var cookieSecurePolicy = builder.Environment.IsDevelopment() 

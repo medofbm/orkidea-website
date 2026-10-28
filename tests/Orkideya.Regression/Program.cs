@@ -43,7 +43,7 @@ static bool ValidCheckout(CheckoutInput input) =>
     System.ComponentModel.DataAnnotations.Validator.TryValidateObject(input,
         new System.ComponentModel.DataAnnotations.ValidationContext(input),
         new List<System.ComponentModel.DataAnnotations.ValidationResult>(), true);
-var request = new CheckoutInput { WhatsAppNumber = "+218910000000", FirstName = "Test",
+var request = new CheckoutInput { CheckoutToken = Guid.NewGuid(), WhatsAppNumber = "+218910000000", FirstName = "Test",
     LastName = "Customer", ShippingAddress = "Synthetic address", ShippingRateId = 1 };
 Check(ValidCheckout(request), "Valid synthetic checkout accepted");
 request.ShippingRateId = 0;

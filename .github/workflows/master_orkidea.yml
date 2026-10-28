@@ -44,3 +44,41 @@ jobs:
         run: dotnet build tests/Orkideya.Regression/Orkideya.Regression.csproj --configuration Release --no-restore --nologo --warnaserror
       - name: Run synthetic backend regressions
         run: dotnet run --project tests/Orkideya.Regression/Orkideya.Regression.csproj --configuration Release --no-build --no-restore
+
+  sql-server:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+      ORKIDEA_RUN_SQL_TESTS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Start disposable SQL Server bound only to loopback
+        shell: bash
+        run: |
+          set -euo pipefail
+          password="A!$(openssl rand -base64 30)"
+          echo "::add-mask::$password"
+          export MSSQL_SA_PASSWORD="$password"
+          name="orkidea-sql-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker run --detach --name "$name" --memory 3g --cpus 2 \
+            --publish 127.0.0.1::1433 --env ACCEPT_EULA=Y --env MSSQL_PID=Developer \
+            --env MSSQL_MEMORY_LIMIT_MB=2048 --env MSSQL_SA_PASSWORD \
+            mcr.microsoft.com/mssql/server@sha256:cf8f0ab2ebe61feec2eed2629061a07d247f791c2a8ddda74a4ac9f06a291718
+          port="$(docker port "$name" 1433/tcp | awk -F: '{print $NF}')"
+          printf 'ORKIDEA_SQL_TEST_CONNECTION=Server=127.0.0.1,%s;Database=master;User Id=sa;Password=%s;Encrypt=True;TrustServerCertificate=True;Connect Timeout=2\n' "$port" "$password" >> "$GITHUB_ENV"
+          docker image inspect mcr.microsoft.com/mssql/server@sha256:cf8f0ab2ebe61feec2eed2629061a07d247f791c2a8ddda74a4ac9f06a291718 --format '{{index .RepoDigests 0}}'
+      - name: Restore SQL verification
+        run: dotnet restore tests/Orkideya.SqlRegression/Orkideya.SqlRegression.csproj --verbosity minimal -p:NuGetAudit=true -p:NuGetAuditMode=all -warnaserror:NU1901,NU1902,NU1903,NU1904
+      - name: Build SQL verification
+        run: dotnet build tests/Orkideya.SqlRegression/Orkideya.SqlRegression.csproj -c Release --no-restore --warnaserror
+      - name: Verify migrations, rollback and concurrent retry protection
+        run: dotnet run --project tests/Orkideya.SqlRegression/Orkideya.SqlRegression.csproj -c Release --no-build --no-restore
+      - name: Remove this run's disposable database container
+        if: always()
+        run: docker rm --force "orkidea-sql-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" || true

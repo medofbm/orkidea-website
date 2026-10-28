@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Application.Cart;
+using Orkideya.Application.Orders;
 using Orkideya.Data;
 using Orkideya.Models;
 using Orkideya.Services;
@@ -12,10 +13,12 @@ public class CheckoutController : Controller
 {
     private readonly ApplicationDbContext _context;
     private readonly WhatsAppNotificationService _whatsAppService;
-    public CheckoutController(ApplicationDbContext context, WhatsAppNotificationService whatsAppService)
+    private readonly OrderService _orders;
+    public CheckoutController(ApplicationDbContext context, WhatsAppNotificationService whatsAppService, OrderService orders)
     {
         _context = context;
         _whatsAppService = whatsAppService;
+        _orders = orders;
     }
 
     public async Task<IActionResult> Index()
@@ -25,13 +28,36 @@ public class CheckoutController : Controller
         var variants = await LoadVariants(cart);
         if (!RefreshPrices(cart, variants, out _)) return InvalidCart();
         HttpContext.Session.SetString("Cart", JsonSerializer.Serialize(cart));
-        return View(await BuildViewModel(cart, new CheckoutInput()));
+        var token = HttpContext.Session.GetString("CheckoutToken");
+        if (!Guid.TryParse(token, out var checkoutToken) || checkoutToken == Guid.Empty || token == HttpContext.Session.GetString("CompletedCheckoutToken"))
+        {
+            checkoutToken = Guid.NewGuid();
+            HttpContext.Session.SetString("CheckoutToken", checkoutToken.ToString("D"));
+        }
+        return View(await BuildViewModel(cart, new CheckoutInput { CheckoutToken = checkoutToken }));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PlaceOrder([Bind(Prefix = "Input")] CheckoutInput input)
     {
+        if (input.CheckoutToken is null || input.CheckoutToken == Guid.Empty ||
+            HttpContext.Session.GetString("CheckoutToken") != input.CheckoutToken.Value.ToString("D"))
+            return BadRequest("انتهت صلاحية تأكيد الطلب. افتح صفحة إتمام الطلب من جديد.");
+        var requestHash = ModelState.IsValid ? OrderService.RequestHash(input) : null;
+        if (requestHash != null)
+        {
+            try
+            {
+                var existing = await _orders.FindAsync(input.CheckoutToken.Value, requestHash, HttpContext.RequestAborted);
+                if (existing != null)
+                {
+                    MarkCheckoutComplete(input.CheckoutToken.Value);
+                    return RedirectToAction(nameof(Confirmation));
+                }
+            }
+            catch (CheckoutConflictException) { return Conflict("تم استعمال هذا التأكيد لطلب مختلف. افتح صفحة إتمام الطلب من جديد."); }
+        }
         var cart = GetCart();
         if (!IsValidCart(cart)) return InvalidCart();
         var variants = await LoadVariants(cart);
@@ -61,27 +87,38 @@ public class CheckoutController : Controller
             PaymentMethod = "الدفع عند الاستلام",
             Status = "Pending"
         };
-
-        // The existing two-save persistence flow is retained until transaction and
-        // retry/idempotency behavior can be verified against an isolated SQL Server.
-        _context.Orders.Add(order);
-        await _context.SaveChangesAsync();
-        foreach (var item in cart)
-            _context.OrderItems.Add(new OrderItem
+        order.CheckoutToken = input.CheckoutToken;
+        order.CheckoutRequestHash = requestHash;
+        order.Items = cart.Select(item => new OrderItem
             {
-                OrderId = order.OrderId,
                 ProductId = variants[item.ProductVariantId].ProductId,
                 Quantity = item.Quantity,
                 UnitPrice = item.Price,
                 VariantSize = variants[item.ProductVariantId].Size
-            });
-        await _context.SaveChangesAsync();
-        HttpContext.Session.Remove("Cart");
-        await _whatsAppService.SendNotification(order);
+            }).ToList();
+        PlacedOrder placed;
+        try { placed = await _orders.PlaceAsync(order, HttpContext.RequestAborted); }
+        catch (CheckoutConflictException) { return Conflict("تم استعمال هذا التأكيد لطلب مختلف. افتح صفحة إتمام الطلب من جديد."); }
+        catch (DbUpdateException)
+        {
+            ModelState.AddModelError("", "تعذر حفظ الطلب. لم يتم تأكيده؛ راجع البيانات وحاول مرة أخرى.");
+            return View("Index", await BuildViewModel(cart, input));
+        }
+        MarkCheckoutComplete(input.CheckoutToken.Value);
+        if (placed.IsNew) await _whatsAppService.SendNotification(placed.Order);
         return RedirectToAction(nameof(Confirmation));
     }
 
     public IActionResult Confirmation() => View();
+
+    private void MarkCheckoutComplete(Guid token)
+    {
+        var key = token.ToString("D");
+        // A late retry must not clear a new basket created after the original checkout.
+        if (HttpContext.Session.GetString("CompletedCheckoutToken") == key) return;
+        HttpContext.Session.Remove("Cart");
+        HttpContext.Session.SetString("CompletedCheckoutToken", key);
+    }
 
     private async Task<CheckoutViewModel> BuildViewModel(List<CartItem> cart, CheckoutInput input) => new()
     {

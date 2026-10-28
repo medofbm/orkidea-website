@@ -17,7 +17,7 @@ namespace Orkideya.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.9")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -281,6 +281,13 @@ namespace Orkideya.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderId"));
 
+                    b.Property<string>("CheckoutRequestHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid?>("CheckoutToken")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("City")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -315,6 +322,10 @@ namespace Orkideya.Migrations
 
                     b.HasKey("OrderId");
 
+                    b.HasIndex("CheckoutToken")
+                        .IsUnique()
+                        .HasFilter("[CheckoutToken] IS NOT NULL");
+
                     b.ToTable("Orders");
                 });
 
@@ -342,6 +353,8 @@ namespace Orkideya.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("OrderItemId");
+
+                    b.HasIndex("OrderId");
 
                     b.ToTable("OrderItems");
                 });
@@ -505,6 +518,15 @@ namespace Orkideya.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Orkideya.Models.OrderItem", b =>
+                {
+                    b.HasOne("Orkideya.Models.Order", null)
+                        .WithMany("Items")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Orkideya.Models.Product", b =>
                 {
                     b.HasOne("Orkideya.Models.Category", "Category")
@@ -523,6 +545,11 @@ namespace Orkideya.Migrations
                         .IsRequired();
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Orkideya.Models.Order", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("Orkideya.Models.Product", b =>
