@@ -26,6 +26,8 @@ public sealed class NotificationDispatcher(ApplicationDbContext context, IOrderN
         foreach (var id in candidates)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!configuration.GetValue<bool>("Notifications:OutboxWorkerEnabled") ||
+                !configuration.GetValue<bool>("Notifications:WhatsAppEnabled") || !transport.IsConfigured) break;
             now = clock.GetUtcNow().UtcDateTime;
             var lease = Guid.NewGuid();
             var claimed = await context.OrderNotifications

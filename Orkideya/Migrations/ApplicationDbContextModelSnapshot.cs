@@ -359,6 +359,53 @@ namespace Orkideya.Migrations
                     b.ToTable("OrderItems");
                 });
 
+            modelBuilder.Entity("Orkideya.Models.OrderNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LastFailureCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid?>("LeaseToken")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("LeaseUntilUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("NextAttemptAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.HasIndex("State", "NextAttemptAtUtc");
+
+                    b.ToTable("OrderNotifications");
+                });
+
             modelBuilder.Entity("Orkideya.Models.Product", b =>
                 {
                     b.Property<int>("ProductId")
@@ -527,6 +574,17 @@ namespace Orkideya.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Orkideya.Models.OrderNotification", b =>
+                {
+                    b.HasOne("Orkideya.Models.Order", "Order")
+                        .WithMany("Notifications")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("Orkideya.Models.Product", b =>
                 {
                     b.HasOne("Orkideya.Models.Category", "Category")
@@ -550,6 +608,8 @@ namespace Orkideya.Migrations
             modelBuilder.Entity("Orkideya.Models.Order", b =>
                 {
                     b.Navigation("Items");
+
+                    b.Navigation("Notifications");
                 });
 
             modelBuilder.Entity("Orkideya.Models.Product", b =>

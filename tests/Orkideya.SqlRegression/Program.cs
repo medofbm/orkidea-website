@@ -64,6 +64,7 @@ try
         await db.Database.MigrateAsync();
         Check(await db.Orders.CountAsync(order => order.CheckoutToken == null) == 2, "Upgrade retains legacy orders and permits multiple null retry keys");
         Check(await db.OrderItems.CountAsync() == 1, "Upgrade retains legacy order items");
+        Check(await db.OrderNotifications.CountAsync() == 0, "Upgrade does not retroactively notify historical customers");
         Check(!db.Database.HasPendingModelChanges(), "Committed migration snapshot matches the EF model");
         await db.Database.MigrateAsync();
         Check(await db.Orders.CountAsync() == 2, "Repeating migrations preserves existing orders");
@@ -86,9 +87,11 @@ try
     await using (var db = Open())
     {
         Check(await db.OrderItems.CountAsync(item => item.OrderId == firstId) == 2, "Order and all items persist together");
+        Check(await db.OrderNotifications.CountAsync(n => n.OrderId == firstId) == 1, "Notification intent commits atomically with the new order");
         var placed = await new OrderService(db).PlaceAsync(Make(token));
         Check(!placed.IsNew && placed.Order.OrderId == firstId, "Retry returns the original order without a new notification event");
         Check(await db.Orders.CountAsync(order => order.CheckoutToken == token) == 1, "Retry does not duplicate the order");
+        Check(await db.OrderNotifications.CountAsync(n => n.OrderId == firstId) == 1, "Order replay creates no duplicate notification intent");
         var conflicted = false;
         try { await new OrderService(db).PlaceAsync(Make(token, new string('B', 64))); }
         catch (CheckoutConflictException) { conflicted = true; }
@@ -102,8 +105,10 @@ try
     }));
     Check(concurrent.Count(result => result.IsNew) == 1, "Eight simultaneous requests create exactly one new order");
     Check(concurrent.Select(result => result.Order.OrderId).Distinct().Count() == 1, "Concurrent retries return the same order identity");
+    var notificationCountBeforeFailure = 0;
     await using (var db = Open())
     {
+        notificationCountBeforeFailure = await db.OrderNotifications.CountAsync();
         Check(await db.Orders.CountAsync(order => order.CheckoutToken == concurrentToken) == 1, "Unique retry key is enforced by SQL Server");
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE OrderItems ADD CONSTRAINT CK_SyntheticItemFailure CHECK (VariantSize <> N'FAIL_TEST')");
     }
@@ -119,11 +124,14 @@ try
     await using (var db = Open())
     {
         Check(!await db.Orders.AnyAsync(order => order.CheckoutToken == failedToken), "Failed item rolls back its parent order");
+        Check(await db.OrderNotifications.CountAsync() == notificationCountBeforeFailure, "Failed item rolls back notification intent with the order");
+        Check(!await db.OrderNotifications.AnyAsync(n => !db.Orders.Any(order => order.OrderId == n.OrderId)), "Failed order leaves no orphan notification intent");
         Check(!await db.OrderItems.AnyAsync(item => !db.Orders.Any(order => order.OrderId == item.OrderId)), "Failed item leaves no orphan or partial rows");
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE OrderItems DROP CONSTRAINT CK_SyntheticItemFailure");
         Check((await new OrderService(db).PlaceAsync(Make(failedToken))).IsNew, "A failed request can retry safely after recovery");
     }
     await using (var db = Open()) await CheckoutScenario.Run(db, Check);
+    await OutboxScenario.Run(options, Check);
     Console.WriteLine("SQL SERVER VERIFICATION COMPLETE: dedicated generated test database only.");
 }
 finally
