@@ -99,15 +99,16 @@ jobs:
           test "$(docker image inspect "$image" --format '{{.Config.User}}')" = 1654
           docker run --rm --entrypoint sh "$image" -c 'test ! -e /app/appsettings.json && test ! -e /app/wwwroot/orders.xlsx && test ! -e /app/App_Data'
           name="orkidea-preview-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gateway="$(docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}')"
           docker run --detach --name "$name" --read-only --cap-drop ALL --security-opt no-new-privileges=true \
             --memory 768m --cpus 1 --tmpfs /tmp:rw,nosuid,size=128m --publish 127.0.0.1::8080 \
             --env ASPNETCORE_ENVIRONMENT=Staging --env 'AllowedHosts=localhost;127.0.0.1' \
             --env DataProtection__KeysPath=/tmp/keys --env DataProtection__ApplicationName=Orkidea.ImageSmoke \
             --env Notifications__WhatsAppEnabled=false --env Notifications__OutboxWorkerEnabled=false \
-            --env Initialization__Run=false "$image"
+            --env "ReverseProxy__KnownProxies__0=$gateway" --env Initialization__Run=false "$image"
           port="$(docker port "$name" 8080/tcp | awk -F: '{print $NF}')"
           curl --fail --silent --show-error --retry 30 --retry-all-errors --retry-connrefused --retry-delay 1 --max-time 5 "http://127.0.0.1:$port/health/live"
-          curl --fail --silent --show-error --dump-header /tmp/preview-headers.txt "http://127.0.0.1:$port/Identity/Account/Login" -o /tmp/preview-login.html
+          curl --fail --silent --show-error --header 'X-Forwarded-Proto: https' --header 'X-Forwarded-For: 127.0.0.1' --dump-header /tmp/preview-headers.txt "http://127.0.0.1:$port/Identity/Account/Login" -o /tmp/preview-login.html
           python - <<'PY'
           from pathlib import Path
           assert 'noindex' in Path('/tmp/preview-headers.txt').read_text().lower()
