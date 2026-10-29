@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore; // <<<--- أضف هذا السطر
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore; // <<<--- أضف هذا السطر
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Models;
 
@@ -23,9 +23,14 @@ namespace Orkideya.Data
         public DbSet<Review> Reviews { get; set; }
         public DbSet<OrderNotification> OrderNotifications { get; set; }
 
+        public DbSet<OrderStatusChange> OrderStatusChanges { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            builder.Entity<OrderStatusChange>().HasOne<Order>().WithMany()
+                .HasForeignKey(change => change.OrderId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<OrderStatusChange>().HasIndex(change => new { change.OrderId, change.Revision }).IsUnique();
             builder.Entity<Order>().HasIndex(order => order.CheckoutToken).IsUnique()
                 .HasFilter("[CheckoutToken] IS NOT NULL");
             builder.Entity<Order>().HasMany(order => order.Items).WithOne()

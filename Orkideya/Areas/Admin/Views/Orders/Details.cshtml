@@ -1,8 +1,14 @@
-﻿@model Order
+@model Order
 @{
     ViewData["Title"] = $"تفاصيل الطلب #{Model.OrderId}";
     var orderItems = ViewBag.OrderItems as List<OrderItem> ?? new List<OrderItem>();
     var productNames = ViewBag.ProductNames as Dictionary<int, string> ?? new Dictionary<int, string>();
+
+    var actorNames = ViewBag.StatusActors as Dictionary<string, string> ?? new Dictionary<string, string>();
+    string StatusLabel(string status) => status switch {
+        "Pending" => "جديد", "Processing" => "قيد المعالجة", "Shipped" => "تم الشحن",
+        "Delivered" => "مكتمل", "Cancelled" => "ملغي", _ => status
+    };
 
     // دالة بناء رابط واتساب دولي للأرقام الليبية
     string BuildWaLink(string phone, string message = "")
@@ -256,6 +262,26 @@
         </div>
     </div>
 </div>
+
+<section class="card-admin mb-4" aria-labelledby="status-history-title">
+    <h2 id="status-history-title" class="h5">سجل تغييرات حالة الطلب</h2>
+    <p>التواريخ بالتوقيت العالمي UTC. حالة الطلب لا تثبت تحصيل المبلغ.</p>
+    @if (ViewBag.StatusHistory is List<OrderStatusChange> history && history.Count > 0)
+    {
+        <ul>
+        @foreach (var change in history)
+        {
+            <li>نسخة @change.Revision: من @StatusLabel(change.PreviousStatus) إلى @StatusLabel(change.NewStatus) —
+                <time>@change.ChangedAtUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</time>
+                — بواسطة @(actorNames.GetValueOrDefault(change.ActorUserId, "حساب إداري سابق"))</li>
+        }
+        </ul>
+    }
+    else
+    {
+        <p>لا تغييرات مسجلة بعد. التغييرات السابقة لإضافة السجل غير متاحة.</p>
+    }
+</section>
 
 <!-- Hidden Delete Form -->
 <form id="deleteForm" method="post" style="display: none;">

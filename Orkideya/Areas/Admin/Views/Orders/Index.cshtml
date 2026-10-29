@@ -20,6 +20,11 @@
     }
 }
 
+@if (TempData["OrderError"] is string orderError)
+{
+    <div class="alert alert-warning" role="alert">@orderError</div>
+}
+
 <!-- Page Header -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="page-title-section">
@@ -211,32 +216,32 @@
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="statusDropdown@(order.OrderId)">
                                     <li>
-                                        <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'pending'); return false;">
+                                        <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'pending', @order.StatusRevision); return false;">
                                             <i class="fas fa-clock text-warning me-2"></i>
                                             جديد
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'processing'); return false;">
+                                        <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'processing', @order.StatusRevision); return false;">
                                             <i class="fas fa-cog text-primary me-2"></i>
                                             قيد المعالجة
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'shipped'); return false;">
+                                        <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'shipped', @order.StatusRevision); return false;">
                                             <i class="fas fa-truck text-info me-2"></i>
                                             تم الشحن
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'delivered'); return false;">
+                                        <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'delivered', @order.StatusRevision); return false;">
                                             <i class="fas fa-check-circle text-success me-2"></i>
                                             مكتمل
                                         </a>
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
-                                        <a class="dropdown-item text-danger" href="#" onclick="updateOrderStatus(@order.OrderId, 'cancelled'); return false;">
+                                        <a class="dropdown-item text-danger" href="#" onclick="updateOrderStatus(@order.OrderId, 'cancelled', @order.StatusRevision); return false;">
                                             <i class="fas fa-times-circle me-2"></i>
                                             ملغي
                                         </a>
@@ -292,7 +297,7 @@
 @section Scripts {
     <script>
         // Update Order Status
-        async function updateOrderStatus(orderId, status) {
+        async function updateOrderStatus(orderId, status, expectedRevision) {
             const confirmed = await AdminUtils.confirm(
                 'سيتم تحديث حالة الطلب إلى حالة جديدة',
                 'هل تريد تحديث حالة الطلب؟'
@@ -303,7 +308,7 @@
             try {
                 const token = document.querySelector('[name="__RequestVerificationToken"]')?.value;
                 
-                const url = '@Url.Action("UpdateStatus")?id=' + orderId + '&status=' + status;
+                const url = '@Url.Action("UpdateStatus")?id=' + orderId + '&status=' + status + '&expectedRevision=' + expectedRevision;
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
@@ -313,40 +318,14 @@
                     credentials: 'same-origin'
                 });
                 
-                if (!response.ok) {
-                    throw new Error('HTTP error ' + response.status);
-                }
-                
                 const data = await response.json();
-                
-                if (data.success) {
-                    AdminUtils.showToast(data.message, 'success');
-                    
-                    // Smooth UI update
-                    const currentFilter = '@currentStatus';
-                    
-                    if (currentFilter !== 'all' && currentFilter.toLowerCase() !== status.toLowerCase()) {
-                        // Row no longer matches filter - fade out and remove
-                        const row = document.querySelector(`button[onclick*="updateOrderStatus(${orderId}"]`).closest('tr');
-                        if (row) {
-                            row.style.transition = 'opacity 0.5s ease';
-                            row.style.opacity = '0';
-                            setTimeout(() => {
-                                row.remove();
-                                // If no rows left, show empty state or reload
-                                const tbody = document.querySelector('#ordersTable tbody');
-                                if (tbody && tbody.children.length === 0) {
-                                    window.location.reload();
-                                }
-                            }, 500);
-                        }
-                    } else {
-                        // Just reload to update counts and badge
-                        setTimeout(() => window.location.reload(), 1000);
-                    }
-                } else {
-                    AdminUtils.showToast(data.message, 'error');
+                if (!response.ok || !data.success) {
+                    AdminUtils.showToast(data.message || 'تعذر حفظ الحالة', 'error');
+                    return;
                 }
+                AdminUtils.showToast(data.message, 'success');
+                // Reload counts, filters and concurrency revisions from the saved database state.
+                setTimeout(() => window.location.reload(), 700);
             } catch (error) {
                 console.error('Error updating status:', error);
                 AdminUtils.showToast('حدث خطأ في تحديث الحالة', 'error');
