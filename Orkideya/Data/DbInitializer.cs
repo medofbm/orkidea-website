@@ -39,7 +39,9 @@ public static class DbInitializer
         {
             throw new InvalidOperationException("Bootstrap email is required.");
         }
-        await SeedShippingRatesAsync(context);
+        if (configuration.GetValue<bool>("Initialization:SeedPreviewData"))
+            await PreviewDataSeeder.SeedAsync(context, serviceProvider.GetRequiredService<IWebHostEnvironment>());
+        else await SeedShippingRatesAsync(context);
     }
 
     private static void EnsureSucceeded(IdentityResult result)

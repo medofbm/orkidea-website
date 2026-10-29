@@ -11,7 +11,7 @@ namespace Orkideya.Areas.Admin.Models
         public int PendingOrdersCount { get; set; }
         public int LowStockProductsCount { get; set; }
         public int TotalUsersCount { get; set; }
-        public decimal SalesChangePercentage { get; set; }
+        public decimal? SalesChangePercentage { get; set; }
         public required SalesChartDataViewModel SalesChartData { get; set; }
         public required CategoriesDataViewModel CategoriesData { get; set; }
         public required List<Order> RecentOrders { get; set; }

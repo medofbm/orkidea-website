@@ -132,6 +132,8 @@ try
     }
     await using (var db = Open()) await CheckoutScenario.Run(db, Check);
     await OutboxScenario.Run(options, Check);
+    await DashboardScenario.Run(Open, Check);
+    await IdentityCookieScenario.Run(server.ConnectionString, Check);
     Console.WriteLine("SQL SERVER VERIFICATION COMPLETE: dedicated generated test database only.");
 }
 finally

@@ -18,15 +18,19 @@
     <div class="col-xl-3 col-md-6">
         <div class="stats-card primary">
             <div class="icon">
-                <i class="fas fa-dollar-sign"></i>
+                <i class="fas fa-receipt"></i>
             </div>
             <div class="value">@Model.TotalSales.ToString("N2")</div>
-            <div class="label">إجمالي المبيعات (30 يوم)</div>
-            <div class="change @(Model.SalesChangePercentage >= 0 ? "positive" : "negative")">
-                <i class="fas fa-arrow-@(Model.SalesChangePercentage >= 0 ? "up" : "down")"></i>
-                @Math.Abs(Model.SalesChangePercentage).ToString("N1")%
-                <span class="text-muted small">مقارنة بالأسبوع السابق</span>
-            </div>
+            <div class="label">قيمة منتجات الطلبات (30 يوم)</div>
+            <small>د.ل — بدون أجرة التوصيل، باستثناء الملغي؛ ليست مبالغ محصّلة</small>
+            @if (Model.SalesChangePercentage is decimal change)
+            {
+                <div class="change">@change.ToString("+0.0;-0.0;0.0")% مقارنة بقيمة المنتجات في الأيام السبعة السابقة</div>
+            }
+            else
+            {
+                <div class="change">لا توجد قيمة سابقة كافية لحساب نسبة المقارنة</div>
+            }
         </div>
     </div>
 
@@ -37,7 +41,7 @@
                 <i class="fas fa-clock"></i>
             </div>
             <div class="value">@Model.PendingOrdersCount</div>
-            <div class="label">طلبات جديدة (7 أيام)</div>
+            <div class="label">طلبات بانتظار المعالجة</div>
             @if (Model.PendingOrdersCount > 0)
             {
                 <div class="change">
@@ -57,13 +61,13 @@
                 <i class="fas fa-exclamation-triangle"></i>
             </div>
             <div class="value">@Model.LowStockProductsCount</div>
-            <div class="label">منتجات تحتاج اهتمام</div>
+            <div class="label">منتجات بدون أحجام</div>
             @if (Model.LowStockProductsCount > 0)
             {
                 <div class="change">
                     <a href="@Url.Action("Index", "Products")" class="text-danger text-decoration-none">
                         <i class="fas fa-tasks me-1"></i>
-                        إدارة المخزون
+                        إدارة المنتجات
                     </a>
                 </div>
             }
@@ -93,7 +97,7 @@
             <div class="chart-header">
                 <h5 class="chart-title">
                     <i class="fas fa-chart-area me-2"></i>
-                    <span id="chartTimeRangeLabel">المبيعات - آخر 30 يوم</span>
+                    <span id="chartTimeRangeLabel">قيمة منتجات الطلبات - آخر 30 يوم</span>
                 </h5>
                 <div class="btn-group" role="group">
                     <button type="button" 
@@ -185,7 +189,18 @@
                                         @order.TotalAmount.ToString("N2") د.ل
                                     </td>
                                     <td>
-                                        <span class="status-badge pending">جديد</span>
+                                        @{
+    var status = order.Status switch
+    {
+        "Pending" => ("pending", "جديد"),
+        "Processing" => ("processing", "قيد المعالجة"),
+        "Shipped" => ("shipped", "تم الشحن"),
+        "Delivered" => ("delivered", "مكتمل"),
+        "Cancelled" => ("cancelled", "ملغي"),
+        _ => ("", "غير معروفة")
+    };
+}
+<span class="status-badge @status.Item1">@status.Item2</span>
                                     </td>
                                     <td>
                                         <a href="@Url.Action("Details", "Orders", new { id = order.OrderId })" 
@@ -266,7 +281,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'المبيعات (د.ل)',
+                    label: 'قيمة المنتجات (د.ل)',
                     data: data,
                     borderColor: '#6a1b9a',
                     backgroundColor: 'rgba(106, 27, 154, 0.1)',
@@ -314,7 +329,7 @@
                         cornerRadius: 8,
                         callbacks: {
                             label: function(context) {
-                                return 'المبيعات: ' + context.parsed.y.toFixed(2) + ' د.ل';
+                                return 'قيمة المنتجات: ' + context.parsed.y.toFixed(2) + ' د.ل';
                             }
                         }
                     }
@@ -361,7 +376,7 @@
                 
                 // Update label
                 const label = document.getElementById('chartTimeRangeLabel');
-                label.textContent = `المبيعات - آخر ${days} يوم`;
+                label.textContent = `قيمة منتجات الطلبات - آخر ${days} يوم`;
                 
                 // Fetch data
                 const response = await fetch(`@Url.Action("GetSalesChartData")?days=${days}`);
