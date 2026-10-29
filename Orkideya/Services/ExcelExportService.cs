@@ -17,8 +17,8 @@ public sealed class ExcelExportService
                 // Headers
                 var headers = new[] {
                     "رقم الطلب", "اسم العميل", "رقم الواتساب", "المدينة", 
-                    "العنوان", "تاريخ الطلب", "المبلغ الإجمالي", "تكلفة الشحن", 
-                    "الحالة", "طريقة الدفع"
+                    "العنوان", "تاريخ الطلب", "إجمالي الطلب شامل التوصيل (د.ل)", "أجرة التوصيل (د.ل)", 
+                    "حالة الطلب (لا تثبت التحصيل)", "طريقة الدفع", "قيمة المنتجات دون التوصيل (د.ل)"
                 };
                 
                 for (int i = 0; i < headers.Length; i++)
@@ -48,12 +48,17 @@ public sealed class ExcelExportService
                     worksheet.Cell(row, 8).Style.NumberFormat.Format = "0.00";
                     worksheet.Cell(row, 9).Value = GetStatusArabic(order.Status);
                     worksheet.Cell(row, 10).Value = order.PaymentMethod ?? "";
+                    // Use the saved order amounts, never today's product prices.
+                    worksheet.Cell(row, 11).Value = order.TotalAmount - order.ShippingCost;
+                    worksheet.Cell(row, 11).Style.NumberFormat.Format = "0.00";
                     
                     row++;
                 }
                 
                 // Auto-fit columns
                 worksheet.Columns().AdjustToContents();
+                worksheet.SheetView.FreezeRows(1);
+                worksheet.Range(1, 1, row - 1, headers.Length).SetAutoFilter();
                 
                 // Add borders
                 var dataRange = worksheet.Range(1, 1, row - 1, headers.Length);
@@ -81,7 +86,7 @@ public sealed class ExcelExportService
                 "shipped" => "تم الشحن",
                 "delivered" => "مكتمل",
                 "cancelled" => "ملغي",
-                _ => "جديد"
+                _ => status ?? ""
             };
         }
 }

@@ -26,10 +26,24 @@ using (var workbook = new XLWorkbook(stream))
     Check(!sheet.Cell(2, 2).HasFormula, "Customer input stays text");
     Check(sheet.Cell(2, 2).GetString() == "=1+1", "Customer text preserved");
     Check(sheet.RightToLeft, "Arabic worksheet direction");
+    Check(sheet.Cell(2, 11).GetValue<decimal>() == 32.50m, "Merchandise excludes delivery exactly");
+    Check(sheet.Cell(1, 9).GetString().Contains("لا تثبت التحصيل"), "Order status does not claim collection");
+    Check(sheet.Cell(2, 9).GetString() == "جديد", "Known status remains translated");
+    Check(sheet.Cell(2, 10).GetString() == "", "Payment method column stays in place");
 }
 using (var stream = new MemoryStream(service.ExportOrders(Array.Empty<Order>())))
 using (var workbook = new XLWorkbook(stream))
     Check(workbook.Worksheet(1).LastRowUsed()!.RowNumber() == 1, "Empty export contains headers only");
+
+order.Status = "LegacyUnknown";
+order.ShippingCost = 0m;
+using (var stream = new MemoryStream(service.ExportOrders(new[] { order })))
+using (var workbook = new XLWorkbook(stream))
+{
+    var sheet = workbook.Worksheet(1);
+    Check(sheet.Cell(2, 9).GetString() == "LegacyUnknown", "Unknown status is not misreported as new");
+    Check(sheet.Cell(2, 11).GetValue<decimal>() == order.TotalAmount, "Free delivery preserves merchandise value");
+}
 
 Check(Orkideya.Application.Cart.CartLimits.CanAdd(0, 1), "First item is allowed");
 Check(Orkideya.Application.Cart.CartLimits.CanAdd(98, 1), "Quantity can reach the cap");

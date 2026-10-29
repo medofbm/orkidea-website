@@ -122,6 +122,9 @@ internal static class IdentityCookieScenario
                 "Authenticated HTTP export contains all SQL rows and RTL sheet");
             var total = sheet.RowsUsed().Skip(1).Sum(row => row.Cell(7).GetValue<decimal>());
             check(total == await db.Orders.SumAsync(o => o.TotalAmount), "Authenticated XLSX amounts match SQL without adding shipping twice");
+            var merchandise = sheet.RowsUsed().Skip(1).Sum(row => row.Cell(11).GetValue<decimal>());
+            check(merchandise == await db.Orders.SumAsync(o => o.TotalAmount - o.ShippingCost),
+                "Authenticated XLSX merchandise values match saved SQL amounts excluding delivery");
         }
         var logoutToken = await Token(adminClient, "/");
         using (var logout = await adminClient.PostAsync("/Identity/Account/Logout?returnUrl=%2F", new FormUrlEncodedContent(new Dictionary<string, string>
