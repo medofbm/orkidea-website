@@ -65,6 +65,8 @@ try
         Check(await db.Orders.CountAsync(order => order.CheckoutToken == null) == 2, "Upgrade retains legacy orders and permits multiple null retry keys");
         Check(await db.OrderItems.CountAsync() == 1, "Upgrade retains legacy order items");
         Check(await db.OrderNotifications.CountAsync() == 0, "Upgrade does not retroactively notify historical customers");
+        Check(!await db.OrderStatusChanges.AnyAsync() && await db.Orders.AllAsync(order => order.StatusRevision == 0),
+            "Status history upgrade preserves legacy orders without inventing revisions or events");
         Check(!db.Database.HasPendingModelChanges(), "Committed migration snapshot matches the EF model");
         await db.Database.MigrateAsync();
         Check(await db.Orders.CountAsync() == 2, "Repeating migrations preserves existing orders");
@@ -133,6 +135,7 @@ try
     await using (var db = Open()) await CheckoutScenario.Run(db, Check);
     await OutboxScenario.Run(options, Check);
     await DashboardScenario.Run(Open, Check);
+    await OrderStatusScenario.Run(Open, Check);
     await IdentityCookieScenario.Run(server.ConnectionString, Check);
     Console.WriteLine("SQL SERVER VERIFICATION COMPLETE: dedicated generated test database only.");
 }

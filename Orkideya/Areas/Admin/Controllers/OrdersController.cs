@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Orkideya.Application.Orders;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,11 +15,15 @@ namespace Orkideya.Areas.Admin.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ExcelExportService _excelService;
+        private readonly OrderStatusService _statusService;
+        private readonly ILogger<OrdersController> _logger;
 
-        public OrdersController(ApplicationDbContext context, ExcelExportService excelService)
+        public OrdersController(ApplicationDbContext context, ExcelExportService excelService, OrderStatusService statusService, ILogger<OrdersController> logger)
         {
             _context = context;
             _excelService = excelService;
+            _statusService = statusService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -93,6 +99,12 @@ namespace Orkideya.Areas.Admin.Controllers
             }
 
             ViewBag.OrderItems = orderItems;
+            var history = await _context.OrderStatusChanges.AsNoTracking()
+                .Where(change => change.OrderId == id).OrderBy(change => change.Revision).ToListAsync();
+            ViewBag.StatusHistory = history;
+            var actorIds = history.Select(change => change.ActorUserId).Distinct().ToArray();
+            ViewBag.StatusActors = await _context.Users.AsNoTracking().Where(user => actorIds.Contains(user.Id))
+                .ToDictionaryAsync(user => user.Id, user => user.UserName ?? "حساب إداري");
 
             return View(order);
         }
@@ -101,38 +113,27 @@ namespace Orkideya.Areas.Admin.Controllers
         /// Update Order Status (AJAX)
         /// </summary>
         [HttpPost]
-        public async Task<IActionResult> UpdateStatus(int id, string status)
+        public async Task<IActionResult> UpdateStatus(int id, string? status, int? expectedRevision)
         {
-            var order = await _context.Orders.FindAsync(id);
-            if (order == null)
-            {
-                return Json(new { success = false, message = "الطلب غير موجود" });
-            }
-
-            // Validate status
-            var validStatuses = new[] { "Pending", "Processing", "Shipped", "Delivered", "Cancelled" };
-            if (!validStatuses.Contains(status, StringComparer.OrdinalIgnoreCase))
-            {
-                return Json(new { success = false, message = "حالة غير صالحة" });
-            }
-
-            // Update status
-            order.Status = validStatuses.First(value => value.Equals(status, StringComparison.OrdinalIgnoreCase));
-
+            var actor = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(actor)) return Forbid();
             try
             {
-                _context.Update(order);
-                await _context.SaveChangesAsync();
-                
-                return Json(new { 
-                    success = true, 
-                    message = $"تم تحديث حالة الطلب #{order.OrderId} بنجاح",
-                    newStatus = order.Status 
-                });
+                var result = await _statusService.ChangeAsync(id, status, expectedRevision, actor, HttpContext.RequestAborted);
+                return result switch
+                {
+                    StatusChangeResult.Changed or StatusChangeResult.Unchanged => Json(new {
+                        success = true, message = $"تم حفظ حالة الطلب #{id}", newStatus = status }),
+                    StatusChangeResult.Conflict => Conflict(new { success = false,
+                        message = "تغيّر الطلب من صفحة أخرى. حدّث الصفحة قبل إعادة المحاولة." }),
+                    StatusChangeResult.Missing => NotFound(new { success = false, message = "الطلب غير موجود" }),
+                    _ => BadRequest(new { success = false, message = "بيانات التحديث غير صالحة. حدّث الصفحة وأعد المحاولة." })
+                };
             }
-            catch (Exception ex)
+            catch (DbUpdateException)
             {
-                return Json(new { success = false, message = $"خطأ: {ex.Message}" });
+                _logger.LogError("Order status save failed for order {OrderId}", id);
+                return StatusCode(500, new { success = false, message = "تعذر حفظ الحالة. حدّث الصفحة للتحقق قبل إعادة المحاولة." });
             }
         }
 
@@ -146,13 +147,23 @@ namespace Orkideya.Areas.Admin.Controllers
             var order = await _context.Orders.FindAsync(id);
             if (order != null)
             {
+                if (await _context.OrderStatusChanges.AnyAsync(change => change.OrderId == id))
+                {
+                    TempData["OrderError"] = "هذا الطلب لديه سجل تغييرات محفوظ؛ استخدم الإلغاء بدلاً من حذف تاريخه.";
+                    return RedirectToAction(nameof(Index));
+                }
                 // Delete order items first
                 var orderItems = await _context.OrderItems.Where(oi => oi.OrderId == id).ToListAsync();
                 _context.OrderItems.RemoveRange(orderItems);
 
                 // Delete order
                 _context.Orders.Remove(order);
-                await _context.SaveChangesAsync();
+                try { await _context.SaveChangesAsync(); }
+                catch (DbUpdateException)
+                {
+                    TempData["OrderError"] = "تعذر حذف الطلب؛ قد يكون تغيّر من صفحة أخرى. حدّث الصفحة.";
+                    return RedirectToAction(nameof(Index));
+                }
 
                 TempData["SuccessMessage"] = "تم حذف الطلب بنجاح";
             }

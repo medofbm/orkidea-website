@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: '3.13'
       - name: JavaScript regressions
-        run: node --test tests/cart.test.cjs tests/checkout.test.cjs tests/review-rating.test.cjs
+        run: node --test tests/cart.test.cjs tests/checkout.test.cjs tests/review-rating.test.cjs tests/admin-order-status.test.cjs
       - name: Source safety checks
         run: python tests/check_safety.py
       - name: Restore backend and regression runner

@@ -64,7 +64,7 @@ internal static class IdentityCookieScenario
             return user;
         }
         var customer = await Seed("cookie-customer@orkidea.test", false);
-        await Seed("cookie-admin@orkidea.test", true);
+        var adminUser = await Seed("cookie-admin@orkidea.test", true);
         check(!(await users.GetRolesAsync(customer)).Contains("Admin"), "Real customer account has no Admin role");
 
         async Task<string> Token(HttpClient client, string path)
@@ -126,6 +126,27 @@ internal static class IdentityCookieScenario
             check(merchandise == await db.Orders.SumAsync(o => o.TotalAmount - o.ShippingCost),
                 "Authenticated XLSX merchandise values match saved SQL amounts excluding delivery");
         }
+        var audited = await db.Orders.AsNoTracking().FirstAsync(order => order.Status == "Pending");
+        var statusToken = await Token(adminClient, "/Admin/Orders");
+        Dictionary<string, string> StatusForm(int revision) => new()
+        {
+            ["__RequestVerificationToken"] = statusToken, ["id"] = audited.OrderId.ToString(),
+            ["status"] = "processing", ["expectedRevision"] = revision.ToString(), ["actorUserId"] = "forged-client-actor"
+        };
+        using (var changed = await adminClient.PostAsync("/Admin/Orders/UpdateStatus", new FormUrlEncodedContent(StatusForm(audited.StatusRevision))))
+            check(changed.StatusCode == HttpStatusCode.OK, "Real admin cookie and antiforgery change order status");
+        var savedHistory = await db.OrderStatusChanges.AsNoTracking().SingleAsync(change => change.OrderId == audited.OrderId);
+        check(savedHistory.ActorUserId == adminUser.Id && savedHistory.NewStatus == "Processing",
+            "Audit actor comes from authenticated identity, never client input");
+        using (var stale = await adminClient.PostAsync("/Admin/Orders/UpdateStatus", new FormUrlEncodedContent(StatusForm(audited.StatusRevision))))
+            check(stale.StatusCode == HttpStatusCode.Conflict, "Stale authenticated page gets HTTP409 instead of overwriting status");
+        using (var details = await adminClient.GetAsync($"/Admin/Orders/Details/{audited.OrderId}"))
+            check(details.StatusCode == HttpStatusCode.OK && (await details.Content.ReadAsStringAsync()).Contains("status-history-title"),
+                "Authenticated details render saved status history");
+        using (var deleted = await adminClient.PostAsync($"/Admin/Orders/Delete/{audited.OrderId}",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = statusToken })))
+            check(deleted.StatusCode == HttpStatusCode.Redirect && await db.Orders.AsNoTracking().AnyAsync(order => order.OrderId == audited.OrderId),
+                "Admin delete preserves an order with recorded history");
         var logoutToken = await Token(adminClient, "/");
         using (var logout = await adminClient.PostAsync("/Identity/Account/Logout?returnUrl=%2F", new FormUrlEncodedContent(new Dictionary<string, string>
             { ["__RequestVerificationToken"] = logoutToken })))

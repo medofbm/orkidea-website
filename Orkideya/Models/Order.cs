@@ -6,6 +6,8 @@ namespace Orkideya.Models
     {
         [Key]
         public int OrderId { get; set; }
+        [ConcurrencyCheck]
+        public int StatusRevision { get; set; }
         public Guid? CheckoutToken { get; set; }
         [MaxLength(64)]
         public string? CheckoutRequestHash { get; set; }
