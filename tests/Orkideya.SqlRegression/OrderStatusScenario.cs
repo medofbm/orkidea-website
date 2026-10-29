@@ -83,10 +83,10 @@ internal static class OrderStatusScenario
             check(order.StatusRevision == 2 && changes.Count == 2 && changes[1].PreviousStatus == "Processing" &&
                 changes[1].NewStatus == order.Status && order.TotalAmount == 3 && order.ShippingCost == 1,
                 "Winning history matches persisted state without touching amounts");
-            db.Orders.Remove(order);
+            // Bypass EF's earlier tracked-relationship guard to exercise the actual SQL FK.
             var blocked = false;
-            try { await db.SaveChangesAsync(); }
-            catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 547 }) { blocked = true; }
+            try { await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM Orders WHERE OrderId={id}"); }
+            catch (SqlException exception) when (exception.Number == 547) { blocked = true; }
             check(blocked, "SQL prevents deleting an order with recorded history");
         }
         await using (var db = open()) check(await db.OrderStatusChanges.CountAsync(change => change.OrderId == id) == 2 &&
