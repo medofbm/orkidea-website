@@ -31,30 +31,15 @@ namespace Orkideya.Areas.Admin.Controllers
         /// </summary>
         public async Task<IActionResult> Index(string status = "all", string search = "", int page = 1)
         {
-            var query = _context.Orders.AsQueryable();
-
-            // Search filter
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                query = query.Where(o =>
-                    o.CustomerName.Contains(search) ||
-                    o.WhatsAppNumber.Contains(search) ||
-                    o.City.Contains(search));
-            }
-
-            // Status filter
-            if (status != "all")
-            {
-                query = query.Where(o => o.Status.ToLower() == status.ToLower());
-            }
-
-            var orders = await query
-                .OrderByDescending(o => o.OrderDate)
-                .ToListAsync();
-
-            ViewBag.CurrentStatus = status;
-            ViewBag.SearchTerm = search;
-            ViewBag.TotalOrders = orders.Count;
+            if (!ModelState.IsValid || page < 1 || !OrderListFilter.TryCreate(status, search, out var filter))
+                return BadRequest("بيانات البحث أو رقم الصفحة غير صالح.");
+            var result = await new OrderListQuery(_context).PageAsync(filter, page, HttpContext.RequestAborted);
+            ViewBag.CurrentStatus = filter.Status;
+            ViewBag.SearchTerm = filter.Search;
+            ViewBag.TotalOrders = result.Total;
+            ViewBag.CurrentPage = result.Page;
+            ViewBag.TotalPages = result.Pages;
+            ViewBag.PageSize = result.PageSize;
 
             // Calculate status counts
             ViewBag.AllCount = await _context.Orders.CountAsync();
@@ -64,7 +49,7 @@ namespace Orkideya.Areas.Admin.Controllers
             ViewBag.DeliveredCount = await _context.Orders.CountAsync(o => o.Status == "Delivered");
             ViewBag.CancelledCount = await _context.Orders.CountAsync(o => o.Status == "Cancelled");
 
-            return View(orders);
+            return View(result.Orders);
         }
 
         /// <summary>
@@ -183,25 +168,10 @@ namespace Orkideya.Areas.Admin.Controllers
         /// </summary>
         public async Task<IActionResult> ExportToExcel(string status = "all", string search = "")
         {
-            var query = _context.Orders.AsQueryable();
-
-            // Apply same filters as Index
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                query = query.Where(o =>
-                    o.CustomerName.Contains(search) ||
-                    o.WhatsAppNumber.Contains(search) ||
-                    o.City.Contains(search));
-            }
-
-            if (status != "all")
-            {
-                query = query.Where(o => o.Status.ToLower() == status.ToLower());
-            }
-
-            var orders = await query
-                .OrderByDescending(o => o.OrderDate)
-                .ToListAsync();
+            if (!ModelState.IsValid || !OrderListFilter.TryCreate(status, search, out var filter))
+                return BadRequest("بيانات البحث غير صالحة.");
+            // Export every matching row, not just the current screen page.
+            var orders = await new OrderListQuery(_context).Ordered(filter).ToListAsync(HttpContext.RequestAborted);
 
             return File(_excelService.ExportOrders(orders),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

@@ -128,6 +128,13 @@ internal static class IdentityCookieScenario
             check(merchandise == await db.Orders.SumAsync(o => o.TotalAmount - o.ShippingCost),
                 "Authenticated XLSX merchandise values match saved SQL amounts excluding delivery");
         }
+        using (var invalidList = await adminClient.GetAsync("/Admin/Orders?page=not-a-number"))
+            check(invalidList.StatusCode == HttpStatusCode.BadRequest, "Real admin route rejects malformed page binding");
+        using (var invalidExport = await adminClient.GetAsync("/Admin/Orders/ExportToExcel?status=unknown"))
+            check(invalidExport.StatusCode == HttpStatusCode.BadRequest, "Real admin export rejects unsupported status");
+        using (var pagedList = await adminClient.GetAsync("/Admin/Orders?page=2147483647&search=ListQA_"))
+            check(pagedList.StatusCode == HttpStatusCode.OK && (await pagedList.Content.ReadAsStringAsync()).Contains("rel=\"prev\""),
+                "Real Razor page clamps oversized page and renders navigation for a multi-page search");
         var audited = await db.Orders.AsNoTracking().FirstAsync(order => order.Status == "Pending" && order.StockState == "Untracked");
         var statusToken = await Token(adminClient, "/Admin/Orders");
         Dictionary<string, string> StatusForm(int revision) => new()
