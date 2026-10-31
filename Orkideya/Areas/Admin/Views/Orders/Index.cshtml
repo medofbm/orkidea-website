@@ -4,6 +4,11 @@
     var currentStatus = ViewBag.CurrentStatus as string ?? "all";
     var searchTerm = ViewBag.SearchTerm as string ?? "";
 
+    var currentPage = (int)(ViewBag.CurrentPage ?? 1);
+    var totalPages = (int)(ViewBag.TotalPages ?? 1);
+    var totalOrders = (int)(ViewBag.TotalOrders ?? 0);
+    var pageSize = (int)(ViewBag.PageSize ?? 25);
+
     // دالة بناء رابط واتساب دولي للأرقام الليبية
     string BuildWaLink(string phone)
     {
@@ -39,7 +44,7 @@
         <a href="@Url.Action("ExportToExcel", new { status = currentStatus, search = searchTerm })" 
            class="btn btn-success"
            target="_blank"
-           title="تنزيل ملف Excel">
+           title="تصدير جميع الطلبات المطابقة للبحث والحالة، وليس الصفحة الحالية فقط">
             <i class="fas fa-file-excel me-2"></i>
             تصدير Excel
         </a>
@@ -54,7 +59,7 @@
             <ul class="nav nav-pills">
                 <li class="nav-item">
                     <a class="nav-link @(currentStatus == "all" ? "active" : "")" 
-                       href="@Url.Action("Index", new { status = "all" })">
+                       href="@Url.Action("Index", new { status = "all", search = searchTerm })">
                         <i class="fas fa-list me-1"></i>
                         الكل
                         <span class="badge bg-secondary ms-2">@ViewBag.AllCount</span>
@@ -111,7 +116,8 @@
                     <input type="text" 
                            name="search" 
                            class="form-control" 
-                           placeholder="بحث بالاسم، رقم الهاتف، المدينة..." 
+                           maxlength="100"
+                           placeholder="رقم الطلب، الاسم، الهاتف، المدينة..."
                            value="@searchTerm"
                            aria-label="بحث في الطلبات">
                     <button class="btn btn-primary" type="submit">
@@ -158,7 +164,7 @@
                                 "shipped" => ("shipped", "truck", "تم الشحن"),
                                 "delivered" => ("delivered", "check-circle", "مكتمل"),
                                 "cancelled" => ("cancelled", "ban", "ملغي"),
-                                _ => ("pending", "clock", "جديد")
+                                _ => ("unknown", "question-circle", "حالة غير معروفة")
                             };
                         }
                     }
@@ -293,6 +299,35 @@
             <h4 class="text-muted">لا توجد طلبات</h4>
             <p class="text-muted">لم يتم العثور على طلبات تطابق المعايير المحددة</p>
         </div>
+    }
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-3">
+    <p class="text-muted mb-0" role="status">
+        @if (totalOrders == 0)
+        {
+            <span>لا توجد نتائج مطابقة.</span>
+        }
+        else
+        {
+            <span>عرض @((currentPage - 1) * pageSize + 1)–@((currentPage - 1) * pageSize + Model.Count()) من @totalOrders طلباً</span>
+        }
+    </p>
+    @if (totalPages > 1)
+    {
+        <nav aria-label="صفحات الطلبات">
+            <ul class="pagination mb-0">
+                @if (currentPage > 1)
+                {
+                    <li class="page-item"><a class="page-link" asp-action="Index" asp-route-status="@currentStatus" asp-route-search="@searchTerm" asp-route-page="@(currentPage - 1)" rel="prev">السابق</a></li>
+                }
+                <li class="page-item active"><span class="page-link" aria-current="page">@currentPage من @totalPages</span></li>
+                @if (currentPage < totalPages)
+                {
+                    <li class="page-item"><a class="page-link" asp-action="Index" asp-route-status="@currentStatus" asp-route-search="@searchTerm" asp-route-page="@(currentPage + 1)" rel="next">التالي</a></li>
+                }
+            </ul>
+        </nav>
     }
 </div>
 
