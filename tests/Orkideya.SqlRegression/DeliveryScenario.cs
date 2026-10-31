@@ -1,3 +1,5 @@
+using System.Data.Common;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -155,10 +157,27 @@ internal static class DeliveryScenario
         var emptyHandoff=Handoff(0);emptyHandoff.ConfirmLegacyPrepared=true;
         check(await Act(emptyOrder.OrderId,emptyHandoff)==DeliveryResult.RequiresPreparation,"Empty historical order cannot hand over a nonexistent package");
 
+        var interleaved = await Place(); var interleavedRequest = Handoff(2);
+        var gate = new DeliveryReadGate();
+        await using (var template = open())
+        await using (var delayedDb = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>(
+            (DbContextOptions<ApplicationDbContext>)template.GetService<IDbContextOptions>()).AddInterceptors(gate).Options))
+        {
+            var delayed = new DeliveryService(delayedDb,clock).ApplyAsync(interleaved,interleavedRequest,actor);
+            DeliveryResult winning;
+            try
+            {
+                await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                winning = await Act(interleaved,interleavedRequest);
+            }
+            finally { gate.Release.TrySetResult(); }
+            check(winning==DeliveryResult.Changed && await delayed==DeliveryResult.Unchanged,
+                "Identical replay resolves after order was read before commit but shipment after commit");
+        }
         var same = await Place(); var sameRequest = Handoff(2);
         var repeats = await Task.WhenAll(Enumerable.Range(0,8).Select(_ => Act(same,sameRequest)));
         check(repeats.Count(r=>r==DeliveryResult.Changed)==1 && repeats.Count(r=>r==DeliveryResult.Unchanged)==7,
-            "Eight identical concurrent delivery requests commit once and resolve as idempotent replays");
+            "Eight identical concurrent delivery requests commit once and resolve as idempotent replays: " + string.Join(",",repeats));
         var different = await Place();
         var competing = await Task.WhenAll(Enumerable.Range(0,8).Select(_=>Act(different,Handoff(2))));
         check(competing.Count(r=>r==DeliveryResult.Changed)==1 && competing.Count(r=>r==DeliveryResult.Conflict)==7,
@@ -203,4 +222,21 @@ internal static class DeliveryScenario
                 "Delivery downgrade refuses to erase shipment state or immutable event history");
         }
     }
+    private sealed class DeliveryReadGate : DbCommandInterceptor
+    {
+        private int intercepted;
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command,
+            CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("FROM [OrderDeliveries]",StringComparison.Ordinal) && Interlocked.Exchange(ref intercepted,1)==0)
+            {
+                Entered.TrySetResult();
+                await Release.Task.WaitAsync(TimeSpan.FromSeconds(15),cancellationToken);
+            }
+            return result;
+        }
+    }
+
 }

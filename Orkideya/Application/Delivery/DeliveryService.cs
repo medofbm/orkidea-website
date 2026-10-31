@@ -62,7 +62,10 @@ public sealed class DeliveryService(ApplicationDbContext db, TimeProvider clock)
         if (order is null) return DeliveryResult.Missing;
         if (order.StatusRevision != input.ExpectedRevision) return await ResolveReplay(input.RequestId.Value, hash, ct);
         var delivery = await db.OrderDeliveries.SingleOrDefaultAsync(d => d.OrderId == orderId, ct);
-        if (delivery is not null && order.Status != OrderState(delivery.State)) return DeliveryResult.Invalid;
+        // The order may have been read just before a competing commit and its shipment just after it.
+        // Resolve a matching committed key before treating those cross-query reads as a conflict.
+        if (delivery is not null && order.Status != OrderState(delivery.State))
+            return await ResolveReplay(input.RequestId.Value, hash, ct);
         var previousState = delivery?.State;
         string next;
         switch (action)
