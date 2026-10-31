@@ -241,10 +241,17 @@
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
+                                        @if (order.StockState != "Untracked")
+                                        {
+                                            <a class="dropdown-item text-danger" asp-action="Details" asp-route-id="@order.OrderId">إلغاء مع سبب من التفاصيل</a>
+                                        }
+                                        else
+                                        {
                                         <a class="dropdown-item text-danger" href="#" onclick="updateOrderStatus(@order.OrderId, 'cancelled', @order.StatusRevision); return false;">
                                             <i class="fas fa-times-circle me-2"></i>
                                             ملغي
                                         </a>
+                                        }
                                     </li>
                                 </ul>
                             </div>

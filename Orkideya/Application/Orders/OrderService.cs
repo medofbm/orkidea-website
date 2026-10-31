@@ -38,6 +38,14 @@ public sealed class OrderService(ApplicationDbContext context)
             order.TotalAmount != order.Items.Sum(item => item.UnitPrice * item.Quantity) + order.ShippingCost)
             throw new ArgumentException("Order aggregate is invalid.", nameof(order));
 
+        if (order.Items.Any(item => item.StockAccountId is not null &&
+            (item.StockAccountId != item.ProductId || item.StockUnitsPerItem is null or <= 0 or > 1000000 ||
+             decimal.Round(item.StockUnitsPerItem.Value, 3) != item.StockUnitsPerItem ||
+             item.StockUnit is not ("ml" or "piece") || item.StockUnit == "piece" && decimal.Truncate(item.StockUnitsPerItem.Value) != item.StockUnitsPerItem)))
+            throw new ArgumentException("Invalid stock snapshot.", nameof(order));
+        if (order.Items.Any(item => item.StockAccountId is not null) && order.Items.Any(item => item.StockAccountId is null))
+            throw new ArgumentException("Partially tracked orders require full stock configuration.", nameof(order));
+        order.StockState = order.Items.All(item => item.StockAccountId is not null) ? "AwaitingConfirmation" : "Untracked";
         var existing = await FindAsync(order.CheckoutToken.Value, order.CheckoutRequestHash, cancellationToken);
         if (existing != null) return new(existing, false);
         if (order.Notifications.Count != 0) throw new ArgumentException("New order notifications are managed by the order service.", nameof(order));

@@ -96,9 +96,11 @@ internal static class OrderStatusScenario
             var downgradeBlocked = false;
             try { await db.GetService<IMigrator>().MigrateAsync("20261028150717_DurableOrderNotifications"); }
             catch (SqlException exception) when (exception.Number == 51002) { downgradeBlocked = true; }
-            check(downgradeBlocked && await db.OrderStatusChanges.CountAsync(change => change.OrderId == id) == 2 &&
-                !(await db.Database.GetPendingMigrationsAsync()).Any(),
-                "Downgrade refuses to discard history and preserves applied migration");
+            check(downgradeBlocked && await db.OrderStatusChanges.CountAsync(change => change.OrderId == id) == 2,
+                "Downgrade refuses to discard status history");
+            // Later empty additive migrations may already have been reverted before reaching that guard.
+            await db.Database.MigrateAsync();
+            check(!(await db.Database.GetPendingMigrationsAsync()).Any(), "Latest schema can be reapplied after a blocked historical downgrade");
         }
     }
 }

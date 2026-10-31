@@ -67,6 +67,9 @@ try
         Check(await db.OrderNotifications.CountAsync() == 0, "Upgrade does not retroactively notify historical customers");
         Check(!await db.OrderStatusChanges.AnyAsync() && await db.Orders.AllAsync(order => order.StatusRevision == 0),
             "Status history upgrade preserves legacy orders without inventing revisions or events");
+        Check(!await db.StockAccounts.AnyAsync() && !await db.StockMovements.AnyAsync() &&
+            await db.Orders.AllAsync(o=>o.StockState=="Untracked") && await db.OrderItems.AllAsync(i=>i.StockAccountId==null && i.StockUnitsPerItem==null && i.StockUnit==null),
+            "Stock migration preserves legacy uncertainty without invented balances or snapshots");
         Check(!db.Database.HasPendingModelChanges(), "Committed migration snapshot matches the EF model");
         await db.Database.MigrateAsync();
         Check(await db.Orders.CountAsync() == 2, "Repeating migrations preserves existing orders");
@@ -132,10 +135,11 @@ try
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE OrderItems DROP CONSTRAINT CK_SyntheticItemFailure");
         Check((await new OrderService(db).PlaceAsync(Make(failedToken))).IsNew, "A failed request can retry safely after recovery");
     }
+    await OrderStatusScenario.Run(Open, Check);
     await using (var db = Open()) await CheckoutScenario.Run(db, Check);
     await OutboxScenario.Run(options, Check);
     await DashboardScenario.Run(Open, Check);
-    await OrderStatusScenario.Run(Open, Check);
+    await StockScenario.Run(Open, Check);
     await IdentityCookieScenario.Run(server.ConnectionString, Check);
     Console.WriteLine("SQL SERVER VERIFICATION COMPLETE: dedicated generated test database only.");
 }

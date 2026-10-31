@@ -1,0 +1,41 @@
+@model StockDetailsViewModel
+@using System.Globalization
+@{ ViewData["Title"] = "مخزون " + Model.Product.Name; var unit = Model.Account.Unit == "ml" ? "مل" : "قطعة"; }
+<h1>مخزون @Model.Product.Name</h1>
+<a asp-action="Index">العودة للمخزون</a>
+@if (TempData["StockNotice"] is string notice) { <div class="alert alert-info" role="status">@notice</div> }
+<p>الرصيد الفعلي <strong>@Model.Account.OnHand.ToString("0.###") @unit</strong> — المحجوز @Model.Account.Reserved.ToString("0.###") @unit — المتاح للتأكيد @((Model.Account.OnHand-Model.Account.Reserved).ToString("0.###")) @unit</p>
+<section class="card-admin mb-4"><h2 class="h5">إضافة أو تصحيح كمية</h2>
+<p>الزيادة موجبة والتصحيح بالنقص سالب، مع سبب. لا يمكن خفض الرصيد تحت المحجوز. الكمية المصروفة عند التعبئة لا ترجع تلقائياً عند الإلغاء.</p>
+<form asp-action="Adjust" asp-route-id="@Model.Product.ProductId" method="post">
+    <input type="hidden" name="ExpectedRevision" value="@Model.Account.Revision" /><input type="hidden" name="RequestId" value="@Model.RequestId" />
+    <label class="form-label">التغير في الكمية (@unit)<input name="Delta" type="number" step="@(Model.Account.Unit == "piece" ? "1" : "0.001")" min="-1000000000" max="1000000000" required class="form-control" /></label>
+    <label class="form-label">السبب أو مرجع الإضافة<input name="Reason" maxlength="500" required class="form-control" /></label>
+    <button type="submit" class="btn btn-primary">حفظ حركة الكمية</button>
+</form></section>
+<section class="card-admin mb-4"><h2 class="h5">استهلاك كل حجم</h2>
+<p>أدخل مقدار ما تستهلكه وحدة مباعة من هذا الحجم. لا نستنتج الكمية من الاسم. التعديل يؤثر على الطلبات الجديدة فقط؛ الطلب المحفوظ يحتفظ باستهلاكه الأصلي.</p>
+@foreach (var variant in Model.Product.ProductVariants.OrderBy(v => v.ProductVariantId))
+{
+    <form asp-action="Configure" asp-route-id="@Model.Product.ProductId" method="post" class="mb-3">
+        <input type="hidden" name="VariantId" value="@variant.ProductVariantId" /><input type="hidden" name="ExpectedRevision" value="@Model.Account.Revision" />
+        <label class="form-label">@variant.Size — الاستهلاك (@unit)
+        <input type="number" name="Units" value="@(variant.StockUnitsPerItem?.ToString("0.###", CultureInfo.InvariantCulture))" step="@(Model.Account.Unit == "piece" ? "1" : "0.001")" min="@(Model.Account.Unit == "piece" ? "1" : "0.001")" max="1000000" required class="form-control" /></label>
+        <button type="submit" class="btn btn-outline-primary">حفظ استهلاك الحجم</button>
+    </form>
+}
+</section>
+<section class="card-admin"><h2 class="h5">سجل الحركات — التوقيت العالمي UTC</h2>
+<div class="table-responsive"><table class="table"><thead><tr><th>الوقت</th><th>العملية</th><th>تغير الفعلي</th><th>تغير المحجوز</th><th>المرجع والسبب</th><th>بواسطة</th></tr></thead><tbody>
+@foreach (var move in Model.Movements)
+{
+    var kind = move.Kind switch { "Setup" => "تفعيل", "Configure" => "استهلاك حجم", "Adjust" => "إضافة/تصحيح", "Reserve" => "حجز", "Consume" => "صرف", "Release" => "تحرير الحجز", _ => move.Kind };
+    <tr><td>@move.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</td><td>@kind</td><td>@move.OnHandDelta.ToString("0.###") @unit</td><td>@move.ReservedDelta.ToString("0.###") @unit</td><td>@move.Reason @if(move.OrderId is int orderId) { <a asp-controller="Orders" asp-action="Details" asp-route-id="@orderId">طلب #@orderId</a> }</td><td>@Model.Actors.GetValueOrDefault(move.ActorUserId,"حساب إداري سابق")</td></tr>
+}
+</tbody></table></div></section>
+
+<nav aria-label="صفحات سجل المخزون" class="d-flex gap-3 mt-3">
+    @if (Model.Page > 1) { <a asp-action="Details" asp-route-id="@Model.Product.ProductId" asp-route-page="@(Model.Page-1)">السابق</a> }
+    <span>صفحة @Model.Page — عدد الحركات @Model.TotalMovements</span>
+    @if ((long)Model.Page*50 < Model.TotalMovements) { <a asp-action="Details" asp-route-id="@Model.Product.ProductId" asp-route-page="@(Model.Page+1)">التالي</a> }
+</nav>

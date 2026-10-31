@@ -263,6 +263,50 @@
     </div>
 </div>
 
+@if (TempData["StockNotice"] is string stockNotice) { <div class="alert alert-info" role="status">@stockNotice</div> }
+<section class="card-admin mb-4" aria-labelledby="stock-order-title">
+<h2 id="stock-order-title" class="h5">التأكيد والتعبئة</h2>
+@if (Model.StockState == "Untracked")
+{
+    <p>هذا الطلب غير متتبع بالمخزون، لوجود بيانات قديمة أو بنود غير مهيأة. لا حجز أو خصم تلقائي، ولا نفترض استهلاكاً من اسم الحجم.</p>
+}
+else
+{
+    <p>حالة الكمية: @(Model.StockState switch { "AwaitingConfirmation" => "بانتظار تأكيدك — لا كمية محجوزة", "Reserved" => "محجوزة بعد التأكيد", "Filled" => "تمت التعبئة وصُرفت الكمية", "Cancelled" => "ملغي بلا حجز", _ => Model.StockState })</p>
+    @if ((Model.StockState is "AwaitingConfirmation" or "Reserved") && (Model.Status is "Pending" or "Processing"))
+    {
+        <form asp-controller="Inventory" asp-action="OrderOperation" asp-route-id="@Model.OrderId" method="post" class="mb-3">
+            <input type="hidden" name="expectedRevision" value="@Model.StatusRevision" />
+            <input type="hidden" name="operation" value="@(Model.StockState == "Reserved" ? "Consume" : "Reserve")" />
+            <button class="btn btn-primary" type="submit">@(Model.StockState == "Reserved" ? "تمت التعبئة — صرف الكمية" : "تأكيد التوفر وحجز الكمية")</button>
+        </form>
+    }
+    @if (Model.Status != "Cancelled")
+    {
+        <form asp-controller="Inventory" asp-action="Cancel" asp-route-id="@Model.OrderId" method="post">
+            <input type="hidden" name="expectedRevision" value="@Model.StatusRevision" />
+            <label>سبب الإلغاء<input name="reason" maxlength="500" required class="form-control" /></label>
+            <p>قبل التعبئة يحرر الحجز؛ بعد التعبئة لا يرجع الزيت المصروف للمخزون تلقائياً.</p>
+            <button class="btn btn-outline-danger" type="submit">إلغاء الطلب مع حفظ السبب</button>
+        </form>
+    }
+}
+@if (ViewBag.StockMovements is List<StockMovement> stockMoves && stockMoves.Count > 0)
+{
+    <h3 class="h6 mt-3">حركات كمية الطلب — UTC</h3>
+    <ul>
+    @foreach (var move in stockMoves)
+    {
+        var kind = move.Kind switch { "Reserve" => "حجز", "Consume" => "صرف عند التعبئة", "Release" => "تحرير الحجز", _ => move.Kind };
+        <li>@kind — @productNames.GetValueOrDefault(move.StockAccountId, "منتج محفوظ"):
+            تغير الفعلي @move.OnHandDelta.ToString("0.###")، تغير المحجوز @move.ReservedDelta.ToString("0.###") —
+            @move.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC — @actorNames.GetValueOrDefault(move.ActorUserId,"حساب إداري سابق") — @move.Reason
+            <a asp-controller="Inventory" asp-action="Details" asp-route-id="@move.StockAccountId">سجل المنتج ووحدته</a></li>
+    }
+    </ul>
+}
+</section>
+
 <section class="card-admin mb-4" aria-labelledby="status-history-title">
     <h2 id="status-history-title" class="h5">سجل تغييرات حالة الطلب</h2>
     <p>التواريخ بالتوقيت العالمي UTC. حالة الطلب لا تثبت تحصيل المبلغ.</p>
@@ -273,7 +317,7 @@
         {
             <li>نسخة @change.Revision: من @StatusLabel(change.PreviousStatus) إلى @StatusLabel(change.NewStatus) —
                 <time>@change.ChangedAtUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</time>
-                — بواسطة @(actorNames.GetValueOrDefault(change.ActorUserId, "حساب إداري سابق"))</li>
+                — بواسطة @(actorNames.GetValueOrDefault(change.ActorUserId, "حساب إداري سابق")) @change.Reason</li>
         }
         </ul>
     }

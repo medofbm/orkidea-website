@@ -1,3 +1,5 @@
+using Orkideya.Application.Orders;
+using Orkideya.Models;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -91,7 +93,7 @@ internal static class IdentityCookieScenario
             response.Headers.Location?.OriginalString.Contains("/Identity/Account/Login", StringComparison.Ordinal) == true;
         bool Denied(HttpResponseMessage response) => response.StatusCode == HttpStatusCode.Forbidden ||
             (response.StatusCode == HttpStatusCode.Redirect && response.Headers.Location?.OriginalString.Contains("/Identity/Account/AccessDenied", StringComparison.Ordinal) == true);
-        foreach (var path in new[] { "/Admin", "/Admin/Orders", "/Admin/Orders/ExportToExcel" })
+        foreach (var path in new[] { "/Admin", "/Admin/Orders", "/Admin/Orders/ExportToExcel", "/Admin/Inventory", "/Admin/Inventory/Details/1" })
         {
             using var response = await guest.GetAsync(path);
             check(LoginRequired(response), "Anonymous real-cookie host cannot read admin: " + path);
@@ -100,7 +102,7 @@ internal static class IdentityCookieScenario
         await Login(buyer, customer.Email!);
         using (var manage = await buyer.GetAsync("/Identity/Account/Manage"))
             check(manage.StatusCode == HttpStatusCode.OK, "Customer cookie accesses own account");
-        foreach (var path in new[] { "/Admin", "/Admin/Products", "/Admin/Orders/Details/1", "/Admin/Orders/ExportToExcel" })
+        foreach (var path in new[] { "/Admin", "/Admin/Products", "/Admin/Orders/Details/1", "/Admin/Orders/ExportToExcel", "/Admin/Inventory", "/Admin/Inventory/Details/1" })
         {
             using var response = await buyer.GetAsync(path);
             check(Denied(response), "Real customer cookie denied admin access: " + path);
@@ -126,7 +128,7 @@ internal static class IdentityCookieScenario
             check(merchandise == await db.Orders.SumAsync(o => o.TotalAmount - o.ShippingCost),
                 "Authenticated XLSX merchandise values match saved SQL amounts excluding delivery");
         }
-        var audited = await db.Orders.AsNoTracking().FirstAsync(order => order.Status == "Pending");
+        var audited = await db.Orders.AsNoTracking().FirstAsync(order => order.Status == "Pending" && order.StockState == "Untracked");
         var statusToken = await Token(adminClient, "/Admin/Orders");
         Dictionary<string, string> StatusForm(int revision) => new()
         {
@@ -147,6 +149,50 @@ internal static class IdentityCookieScenario
             new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = statusToken })))
             check(deleted.StatusCode == HttpStatusCode.Redirect && await db.Orders.AsNoTracking().AnyAsync(order => order.OrderId == audited.OrderId),
                 "Admin delete preserves an order with recorded history");
+        var httpProduct = new Product { Name = "Synthetic HTTP stock" };
+        var httpVariant = new ProductVariant { Product = httpProduct, Size = "50ml test", Price = 2 };
+        db.ProductVariants.Add(httpVariant); await db.SaveChangesAsync();
+        var inventoryToken = await Token(adminClient, "/Admin/Inventory");
+        async Task PostStock(string action, Dictionary<string,string> fields)
+        {
+            fields["__RequestVerificationToken"] = inventoryToken;
+            using var response = await adminClient.PostAsync($"/Admin/Inventory/{action}/{httpProduct.ProductId}",new FormUrlEncodedContent(fields));
+            check(response.StatusCode==HttpStatusCode.Redirect,"Real admin inventory form succeeds: "+action);
+        }
+        await PostStock("Open",new(){{"unit","ml"}});
+        await PostStock("Configure",new(){{"VariantId",httpVariant.ProductVariantId.ToString()},{"Units","50"},{"ExpectedRevision","0"}});
+        var receiptKey=Guid.NewGuid().ToString();
+        Dictionary<string,string> Receipt() => new(){{"Delta","500"},{"ExpectedRevision","1"},{"RequestId",receiptKey},{"Reason","Synthetic HTTP opening"},{"ActorUserId","forged-actor"}};
+        await PostStock("Adjust",Receipt()); await PostStock("Adjust",Receipt());
+        var httpStock=await db.StockAccounts.AsNoTracking().SingleAsync(s=>s.ProductId==httpProduct.ProductId);
+        check(httpStock.OnHand==500 && httpStock.Reserved==0 &&
+            await db.StockMovements.CountAsync(m=>m.StockAccountId==httpProduct.ProductId && m.Kind=="Adjust")==1 &&
+            await db.StockMovements.AnyAsync(m=>m.StockAccountId==httpProduct.ProductId && m.ActorUserId==adminUser.Id && m.Kind=="Adjust"),
+            "Real HTTP receipt retry saves once with server-side identity");
+        using(var stockDetails=await adminClient.GetAsync($"/Admin/Inventory/Details/{httpProduct.ProductId}"))
+            check(stockDetails.StatusCode==HttpStatusCode.OK,"Real admin stock details render quantities, size form and ledger");
+        var httpOrder=new Order { CustomerName="Synthetic HTTP inventory",WhatsAppNumber="0000000000",City="Test",ShippingAddress="Test only",
+            CheckoutToken=Guid.NewGuid(),CheckoutRequestHash=new string('A',64),OrderDate=DateTime.UtcNow,ShippingCost=1,TotalAmount=5,
+            Items=[new(){ProductId=httpProduct.ProductId,Quantity=2,UnitPrice=2,VariantSize="50ml test",StockAccountId=httpProduct.ProductId,StockUnitsPerItem=50,StockUnit="ml"}] };
+        await new OrderService(db).PlaceAsync(httpOrder);
+        var orderToken=await Token(adminClient,$"/Admin/Orders/Details/{httpOrder.OrderId}");
+        async Task Operate(string operation,int revision)
+        {
+            using var response=await adminClient.PostAsync($"/Admin/Inventory/OrderOperation/{httpOrder.OrderId}",new FormUrlEncodedContent(new Dictionary<string,string>
+                {{"__RequestVerificationToken",orderToken},{"operation",operation},{"expectedRevision",revision.ToString()}}));
+            check(response.StatusCode==HttpStatusCode.Redirect,"Real admin stock order operation completes: "+operation);
+        }
+        await Operate("Reserve",0); await Operate("Consume",0);
+        httpStock=await db.StockAccounts.AsNoTracking().SingleAsync(s=>s.ProductId==httpProduct.ProductId);
+        check(httpStock.OnHand==500 && httpStock.Reserved==100,"Real stale filling form cannot overwrite a confirmed reservation");
+        await Operate("Consume",1);
+        using(var cancelled=await adminClient.PostAsync($"/Admin/Inventory/Cancel/{httpOrder.OrderId}",new FormUrlEncodedContent(new Dictionary<string,string>
+            {{"__RequestVerificationToken",orderToken},{"expectedRevision","2"},{"reason","Synthetic HTTP cancellation"}})))
+            check(cancelled.StatusCode==HttpStatusCode.Redirect,"Real admin cancellation form preserves a reason");
+        httpStock=await db.StockAccounts.AsNoTracking().SingleAsync(s=>s.ProductId==httpProduct.ProductId);
+        var httpSaved=await db.Orders.AsNoTracking().SingleAsync(o=>o.OrderId==httpOrder.OrderId);
+        check(httpSaved.Status=="Cancelled" && httpSaved.StockState=="Filled" && httpStock.OnHand==400 && httpStock.Reserved==0,
+            "Real admin reserve-fill-cancel flow does not return consumed oil");
         var logoutToken = await Token(adminClient, "/");
         using (var logout = await adminClient.PostAsync("/Identity/Account/Logout?returnUrl=%2F", new FormUrlEncodedContent(new Dictionary<string, string>
             { ["__RequestVerificationToken"] = logoutToken })))

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
 namespace Orkideya.Models
@@ -8,6 +9,7 @@ namespace Orkideya.Models
         public int OrderId { get; set; }
         [ConcurrencyCheck]
         public int StatusRevision { get; set; }
+        [MaxLength(32)] public string StockState { get; set; } = "Untracked";
         public Guid? CheckoutToken { get; set; }
         [MaxLength(64)]
         public string? CheckoutRequestHash { get; set; }
@@ -17,7 +19,9 @@ namespace Orkideya.Models
         public required string WhatsAppNumber { get; set; }
         public required string ShippingAddress { get; set; }
         public required string City { get; set; }
+        [Column(TypeName = "decimal(18,2)")]
         public decimal ShippingCost { get; set; }
+        [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; }
         public string? PaymentMethod { get; set; }
         public DateTime OrderDate { get; set; }

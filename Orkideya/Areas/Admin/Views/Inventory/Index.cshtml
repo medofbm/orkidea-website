@@ -1,0 +1,28 @@
+@model StockIndexViewModel
+@{ ViewData["Title"] = "المخزون والتعبئة"; }
+<h1>المخزون والتعبئة</h1>
+<p>الزيت بالملليلتر والصابون بالقطع. تفعيل التتبع يبدأ من صفر؛ أدخل الكمية الفعلية بسجل إضافة. الطلب الجديد لا يحجز كمية قبل تأكيدك.</p>
+@if (TempData["StockNotice"] is string notice) { <div class="alert alert-info" role="status">@notice</div> }
+<div class="table-responsive">
+<table class="table"><thead><tr><th>المنتج</th><th>الرصيد الفعلي</th><th>المحجوز</th><th>المتاح للتأكيد</th><th>الإدارة</th></tr></thead><tbody>
+@foreach (var product in Model.Products)
+{
+    <tr><td>@product.Name</td>
+    @if (Model.Accounts.TryGetValue(product.ProductId, out var account))
+    {
+        var unit = account.Unit == "ml" ? "مل" : "قطعة";
+        <td>@account.OnHand.ToString("0.###") @unit</td><td>@account.Reserved.ToString("0.###") @unit</td>
+        <td>@((account.OnHand-account.Reserved).ToString("0.###")) @unit</td>
+        <td><a asp-action="Details" asp-route-id="@product.ProductId" class="btn btn-outline-primary">الرصيد والأحجام والسجل</a></td>
+    }
+    else
+    {
+        <td colspan="3">غير متتبع — لا توجد كمية مفترضة</td>
+        <td><form asp-action="Open" asp-route-id="@product.ProductId" method="post" class="d-flex gap-2">
+            <label>وحدة المخزون <select name="unit" class="form-select" required><option value="">اختر الوحدة</option><option value="ml">ملليلتر (زيت)</option><option value="piece">قطعة (صابون)</option></select></label>
+            <button class="btn btn-primary" type="submit">تفعيل برصيد صفر</button>
+        </form></td>
+    }
+    </tr>
+}
+</tbody></table></div>

@@ -73,6 +73,16 @@ public class CheckoutController : Controller
         if (!ModelState.IsValid)
             return View("Index", await BuildViewModel(cart, input));
 
+        var productIds = variants.Values.Select(v => v.ProductId).Distinct().ToArray();
+        var stock = await _context.StockAccounts.AsNoTracking().Where(s => productIds.Contains(s.ProductId))
+            .ToDictionaryAsync(s => s.ProductId);
+        if (variants.Values.Any(v => stock.ContainsKey(v.ProductId) && v.StockUnitsPerItem is null or <= 0) ||
+            stock.Count > 0 && variants.Values.Any(v => !stock.ContainsKey(v.ProductId)))
+        {
+            ModelState.AddModelError("", "تعذر تأكيد بيانات أحد الأحجام. راجع السلة أو تواصل معنا.");
+            return View("Index", await BuildViewModel(cart, input));
+        }
+
         var order = new Order
         {
             CustomerName = $"{input.FirstName.Trim()} {input.LastName.Trim()}",
@@ -92,7 +102,10 @@ public class CheckoutController : Controller
                 ProductId = variants[item.ProductVariantId].ProductId,
                 Quantity = item.Quantity,
                 UnitPrice = item.Price,
-                VariantSize = variants[item.ProductVariantId].Size
+                VariantSize = variants[item.ProductVariantId].Size,
+                StockAccountId = stock.ContainsKey(item.ProductId) ? item.ProductId : null,
+                StockUnitsPerItem = stock.ContainsKey(item.ProductId) ? variants[item.ProductVariantId].StockUnitsPerItem : null,
+                StockUnit = stock.TryGetValue(item.ProductId, out var account) ? account.Unit : null
             }).ToList();
         try { await _orders.PlaceAsync(order, HttpContext.RequestAborted); }
         catch (CheckoutConflictException) { return Conflict("تم استعمال هذا التأكيد لطلب مختلف. افتح صفحة إتمام الطلب من جديد."); }

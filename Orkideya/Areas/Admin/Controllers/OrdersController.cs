@@ -102,7 +102,10 @@ namespace Orkideya.Areas.Admin.Controllers
             var history = await _context.OrderStatusChanges.AsNoTracking()
                 .Where(change => change.OrderId == id).OrderBy(change => change.Revision).ToListAsync();
             ViewBag.StatusHistory = history;
-            var actorIds = history.Select(change => change.ActorUserId).Distinct().ToArray();
+            var stockMoves = await _context.StockMovements.AsNoTracking().Where(m => m.OrderId == id)
+                .OrderBy(m => m.CreatedAtUtc).ThenBy(m => m.StockMovementId).ToListAsync();
+            ViewBag.StockMovements = stockMoves;
+            var actorIds = history.Select(change => change.ActorUserId).Concat(stockMoves.Select(m => m.ActorUserId)).Distinct().ToArray();
             ViewBag.StatusActors = await _context.Users.AsNoTracking().Where(user => actorIds.Contains(user.Id))
                 .ToDictionaryAsync(user => user.Id, user => user.UserName ?? "حساب إداري");
 
@@ -127,6 +130,9 @@ namespace Orkideya.Areas.Admin.Controllers
                     StatusChangeResult.Conflict => Conflict(new { success = false,
                         message = "تغيّر الطلب من صفحة أخرى. حدّث الصفحة قبل إعادة المحاولة." }),
                     StatusChangeResult.Missing => NotFound(new { success = false, message = "الطلب غير موجود" }),
+                    StatusChangeResult.RequiresFilling => BadRequest(new { success = false, message = "سجّل التعبئة وصرف الكمية من تفاصيل الطلب قبل الشحن أو الإكمال." }),
+                    StatusChangeResult.RequiresCancellationReason => BadRequest(new { success = false, message = "افتح تفاصيل الطلب لإلغائه مع السبب وتحرير الحجز." }),
+                    StatusChangeResult.ClosedStockOrder => BadRequest(new { success = false, message = "هذا الطلب ملغي؛ لا تعاد فتح حركات مخزونه." }),
                     _ => BadRequest(new { success = false, message = "بيانات التحديث غير صالحة. حدّث الصفحة وأعد المحاولة." })
                 };
             }
@@ -147,7 +153,8 @@ namespace Orkideya.Areas.Admin.Controllers
             var order = await _context.Orders.FindAsync(id);
             if (order != null)
             {
-                if (await _context.OrderStatusChanges.AnyAsync(change => change.OrderId == id))
+                if (await _context.OrderStatusChanges.AnyAsync(change => change.OrderId == id) ||
+                    await _context.StockMovements.AnyAsync(move => move.OrderId == id))
                 {
                     TempData["OrderError"] = "هذا الطلب لديه سجل تغييرات محفوظ؛ استخدم الإلغاء بدلاً من حذف تاريخه.";
                     return RedirectToAction(nameof(Index));

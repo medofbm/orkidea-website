@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Identity
 @inject SignInManager<IdentityUser> SignInManager
 @inject UserManager<IdentityUser> UserManager
 
@@ -81,7 +81,8 @@
                     </a>
                 </li>
                 
-                <li class="nav-item">
+                <li class="nav-item"><a class="nav-link" asp-area="Admin" asp-controller="Inventory" asp-action="Index"><i class="fas fa-boxes"></i><span>المخزون والتعبئة</span></a></li>
+                  <li class="nav-item">
                     <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Products" ? "active" : "")" 
                        asp-area="Admin" 
                        asp-controller="Products" 
