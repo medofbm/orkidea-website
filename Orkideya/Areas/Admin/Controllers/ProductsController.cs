@@ -207,6 +207,11 @@ namespace Orkideya.Areas.Admin.Controllers
             var product = await _context.Products.FindAsync(id);
             if (product != null)
             {
+                if (await _context.StockAccounts.AnyAsync(s => s.ProductId == id))
+                {
+                    TempData["StockNotice"] = "هذا المنتج له سجل مخزون محفوظ؛ لا يحذف مع حركاته.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
                 var variants = _context.ProductVariants.Where(v => v.ProductId == id);
                 _context.ProductVariants.RemoveRange(variants);
 

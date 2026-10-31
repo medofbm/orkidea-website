@@ -73,6 +73,8 @@ public class ProductVariantsController : Controller
         if (variant == null) return NotFound();
         var product = await _context.Products.FindAsync(input.ProductId);
         if (product == null) ModelState.AddModelError(nameof(input.ProductId), "المنتج غير موجود.");
+        if (variant.ProductId != input.ProductId && variant.StockUnitsPerItem is not null)
+            ModelState.AddModelError(nameof(input.ProductId), "هذا الحجم له استهلاك مخزون محدد؛ أنشئ حجماً جديداً للمنتج الآخر بدلاً من نقله.");
         if (!ModelState.IsValid)
         {
             SetProducts(input.ProductId);
@@ -82,7 +84,13 @@ public class ProductVariantsController : Controller
         variant.Product = product;
         variant.Size = input.Size.Trim();
         variant.Price = input.Price;
-        await _context.SaveChangesAsync();
+        try { await _context.SaveChangesAsync(); }
+        catch (DbUpdateConcurrencyException)
+        {
+            ModelState.AddModelError("", "تغيّر الحجم من صفحة أخرى؛ افتحه من جديد قبل التعديل.");
+            SetProducts(input.ProductId);
+            return View(input);
+        }
         return RedirectToAction(nameof(Index));
     }
 

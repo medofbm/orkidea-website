@@ -10,5 +10,6 @@ public sealed class OrderStatusChange
     [MaxLength(32)] public required string PreviousStatus { get; set; }
     [MaxLength(32)] public required string NewStatus { get; set; }
     [MaxLength(450)] public required string ActorUserId { get; set; }
+    [MaxLength(500)] public string? Reason { get; set; }
     public DateTime ChangedAtUtc { get; set; }
 }

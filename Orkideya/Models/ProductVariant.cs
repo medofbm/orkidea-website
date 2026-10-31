@@ -8,6 +8,7 @@ namespace Orkideya.Models
         public int ProductVariantId { get; set; }
 
         [Required]
+        [ConcurrencyCheck]
         public int ProductId { get; set; }
         [ForeignKey("ProductId")]
         public required virtual Product Product { get; set; }
@@ -19,5 +20,6 @@ namespace Orkideya.Models
         [Required]
         [Column(TypeName = "decimal(18,2)")]
         public decimal Price { get; set; }
+        [ConcurrencyCheck, Column(TypeName = "decimal(18,3)")] public decimal? StockUnitsPerItem { get; set; }
     }
 }

@@ -8,6 +8,7 @@
     <h1>إتمام الطلب</h1>
     <div class="row g-4">
         <div class="col-lg-7">
+            <p class="alert alert-info" role="note">طلبك يخضع لتأكيد التوفر. لا تُحجز الكمية قبل مراجعتنا وتأكيد الطلب.</p>
             <form asp-action="PlaceOrder" method="post" id="checkoutForm">
                 <input asp-for="Input.CheckoutToken" type="hidden" />
                 <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>

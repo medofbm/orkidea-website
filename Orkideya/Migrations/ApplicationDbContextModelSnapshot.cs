@@ -302,10 +302,6 @@ namespace Orkideya.Migrations
                     b.Property<string>("PaymentMethod")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("StatusRevision")
-                        .IsConcurrencyToken()
-                        .HasColumnType("int");
-
                     b.Property<string>("ShippingAddress")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -316,6 +312,17 @@ namespace Orkideya.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("StatusRevision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("StockState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasDefaultValue("Untracked");
 
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18,2)");
@@ -331,21 +338,6 @@ namespace Orkideya.Migrations
                         .HasFilter("[CheckoutToken] IS NOT NULL");
 
                     b.ToTable("Orders");
-                });
-
-            modelBuilder.Entity("Orkideya.Models.OrderStatusChange", b =>
-                {
-                    b.Property<int>("OrderStatusChangeId").ValueGeneratedOnAdd().HasColumnType("int");
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderStatusChangeId"));
-                    b.Property<int>("OrderId").HasColumnType("int");
-                    b.Property<int>("Revision").HasColumnType("int");
-                    b.Property<string>("PreviousStatus").IsRequired().HasMaxLength(32).HasColumnType("nvarchar(32)");
-                    b.Property<string>("NewStatus").IsRequired().HasMaxLength(32).HasColumnType("nvarchar(32)");
-                    b.Property<string>("ActorUserId").IsRequired().HasMaxLength(450).HasColumnType("nvarchar(450)");
-                    b.Property<DateTime>("ChangedAtUtc").HasColumnType("datetime2");
-                    b.HasKey("OrderStatusChangeId");
-                    b.HasIndex("OrderId", "Revision").IsUnique();
-                    b.ToTable("OrderStatusChanges");
                 });
 
             modelBuilder.Entity("Orkideya.Models.OrderItem", b =>
@@ -365,6 +357,16 @@ namespace Orkideya.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
+                    b.Property<int?>("StockAccountId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StockUnit")
+                        .HasMaxLength(8)
+                        .HasColumnType("nvarchar(8)");
+
+                    b.Property<decimal?>("StockUnitsPerItem")
+                        .HasColumnType("decimal(18,3)");
+
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(18,2)");
 
@@ -375,7 +377,12 @@ namespace Orkideya.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("OrderItems");
+                    b.HasIndex("StockAccountId");
+
+                    b.ToTable("OrderItems", t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderItem_StockSnapshot", "([StockAccountId] IS NULL AND [StockUnitsPerItem] IS NULL AND [StockUnit] IS NULL) OR ([StockAccountId] IS NOT NULL AND [StockAccountId] = [ProductId] AND [StockUnitsPerItem] IS NOT NULL AND [StockUnitsPerItem] > 0 AND [StockUnitsPerItem] <= 1000000 AND [StockUnit] IS NOT NULL AND [StockUnit] IN ('ml','piece') AND ([StockUnit] <> 'piece' OR [StockUnitsPerItem] = FLOOR([StockUnitsPerItem])))");
+                        });
                 });
 
             modelBuilder.Entity("Orkideya.Models.OrderNotification", b =>
@@ -425,6 +432,50 @@ namespace Orkideya.Migrations
                     b.ToTable("OrderNotifications");
                 });
 
+            modelBuilder.Entity("Orkideya.Models.OrderStatusChange", b =>
+                {
+                    b.Property<int>("OrderStatusChangeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderStatusChangeId"));
+
+                    b.Property<string>("ActorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("ChangedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PreviousStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("int");
+
+                    b.HasKey("OrderStatusChangeId");
+
+                    b.HasIndex("OrderId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("OrderStatusChanges");
+                });
+
             modelBuilder.Entity("Orkideya.Models.Product", b =>
                 {
                     b.Property<int>("ProductId")
@@ -465,11 +516,16 @@ namespace Orkideya.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("ProductId")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<string>("Size")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("StockUnitsPerItem")
+                        .IsConcurrencyToken()
+                        .HasColumnType("decimal(18,3)");
 
                     b.HasKey("ProductVariantId");
 
@@ -533,6 +589,81 @@ namespace Orkideya.Migrations
                     b.ToTable("ShippingRates");
                 });
 
+            modelBuilder.Entity("Orkideya.Models.StockAccount", b =>
+                {
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("OnHand")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<decimal>("Reserved")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("nvarchar(8)");
+
+                    b.HasKey("ProductId");
+
+                    b.ToTable("StockAccounts", t =>
+                        {
+                            t.HasCheckConstraint("CK_StockAccount_Balances", "[OnHand] >= 0 AND [Reserved] >= 0 AND [Reserved] <= [OnHand] AND [OnHand] <= 1000000000 AND [Unit] IN ('ml','piece') AND ([Unit] <> 'piece' OR ([OnHand] = FLOOR([OnHand]) AND [Reserved] = FLOOR([Reserved])))");
+                        });
+                });
+
+            modelBuilder.Entity("Orkideya.Models.StockMovement", b =>
+                {
+                    b.Property<Guid>("StockMovementId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<decimal>("OnHandDelta")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<int?>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("ReservedDelta")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<int>("StockAccountId")
+                        .HasColumnType("int");
+
+                    b.HasKey("StockMovementId");
+
+                    b.HasIndex("StockAccountId");
+
+                    b.HasIndex("OrderId", "StockAccountId", "Kind")
+                        .IsUnique()
+                        .HasFilter("[OrderId] IS NOT NULL");
+
+                    b.ToTable("StockMovements");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -591,6 +722,11 @@ namespace Orkideya.Migrations
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Orkideya.Models.StockAccount", null)
+                        .WithMany()
+                        .HasForeignKey("StockAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Orkideya.Models.OrderNotification", b =>
@@ -602,6 +738,15 @@ namespace Orkideya.Migrations
                         .IsRequired();
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("Orkideya.Models.OrderStatusChange", b =>
+                {
+                    b.HasOne("Orkideya.Models.Order", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Orkideya.Models.Product", b =>
@@ -624,10 +769,27 @@ namespace Orkideya.Migrations
                     b.Navigation("Product");
                 });
 
-            modelBuilder.Entity("Orkideya.Models.OrderStatusChange", b =>
+            modelBuilder.Entity("Orkideya.Models.StockAccount", b =>
                 {
-                    b.HasOne("Orkideya.Models.Order", null).WithMany()
-                        .HasForeignKey("OrderId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("Orkideya.Models.Product", null)
+                        .WithOne()
+                        .HasForeignKey("Orkideya.Models.StockAccount", "ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Orkideya.Models.StockMovement", b =>
+                {
+                    b.HasOne("Orkideya.Models.Order", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Orkideya.Models.StockAccount", null)
+                        .WithMany()
+                        .HasForeignKey("StockAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Orkideya.Models.Order", b =>

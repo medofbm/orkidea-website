@@ -5,6 +5,7 @@
 }
 
 <!-- Page Header -->
+@if (TempData["StockNotice"] is string stockNotice) { <div class="alert alert-info" role="status">@stockNotice</div> }
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="page-title-section">
         <h1 class="page-title">
