@@ -1,7 +1,7 @@
 # Bulk stock reservations and filling
 
 ## Approved operating rule
-New orders do not reserve stock. An administrator explicitly confirms availability to reserve it, then records filling/preparation to consume the reserved amount. Oil uses millilitres; soap uses whole pieces. Processing remains a general order status and never implicitly reserves/consumes stock. Shipping/delivery of a tracked order requires filling first.
+New orders do not reserve stock. An administrator explicitly confirms availability to reserve it, then records filling/preparation to consume the reserved amount. Oil uses millilitres; soap uses whole pieces. The explicit reservation action advances Pending to Processing with a status-history entry, so confirmed requests leave the new-order queue. Setting Processing through the generic status menu never implicitly reserves/consumes stock. Shipping/delivery of a tracked order requires filling first.
 
 Example (synthetic): 1000ml on hand; 2 x 100ml + 1 x 250ml reserves 450ml, leaving 550ml available and 1000ml physically on hand. Filling changes on hand to 550ml and reserved to zero. Cancellation before filling releases the reservation once. Cancellation after filling does not restore the bulk oil; inspect any returned goods and record a deliberate correction with a reason if appropriate. Ready filled bottles, lot/expiry tracking, packaging consumption and returns grading are not implemented in this batch.
 

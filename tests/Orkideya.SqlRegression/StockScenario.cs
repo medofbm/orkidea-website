@@ -60,6 +60,9 @@ internal static class StockScenario
             var balance = await db.StockAccounts.SingleAsync(s => s.ProductId == oil.Product);
             check(balance.OnHand == 1000 && balance.Reserved == 450 && balance.OnHand-balance.Reserved == 550,
                 "Two 100ml bottles and one 250ml bottle share the same bulk account using original snapshots");
+            check(await db.Orders.AnyAsync(o=>o.OrderId==oilOrder && o.Status=="Processing") &&
+                await db.OrderStatusChanges.AnyAsync(h=>h.OrderId==oilOrder && h.PreviousStatus=="Pending" && h.NewStatus=="Processing"),
+                "Explicit inventory confirmation also advances the new order with status history");
             var svc = new StockService(db,clock);
             check(await svc.ApplyOrderAsync(oilOrder,1,"Reserve",actor) == StockResult.Unchanged &&
                 await db.StockMovements.CountAsync(m => m.OrderId == oilOrder && m.Kind == "Reserve") == 1,

@@ -86,6 +86,13 @@ public sealed class StockService(ApplicationDbContext db, TimeProvider clock)
         var result = await StageOrderAsync(order, operation, actor, ct);
         if (result != StockResult.Changed) return result;
         order.StockState = target; order.StatusRevision++;
+        if (operation == "Reserve" && order.Status == "Pending")
+        {
+            order.Status = "Processing";
+            db.OrderStatusChanges.Add(new OrderStatusChange { OrderId = id, Revision = order.StatusRevision,
+                PreviousStatus = "Pending", NewStatus = "Processing", ActorUserId = actor,
+                Reason = "تأكيد التوفر وحجز الكمية", ChangedAtUtc = clock.GetUtcNow().UtcDateTime });
+        }
         return await SaveAsync(ct);
     }
 
