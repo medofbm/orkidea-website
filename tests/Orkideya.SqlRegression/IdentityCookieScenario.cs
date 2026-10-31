@@ -93,7 +93,7 @@ internal static class IdentityCookieScenario
             response.Headers.Location?.OriginalString.Contains("/Identity/Account/Login", StringComparison.Ordinal) == true;
         bool Denied(HttpResponseMessage response) => response.StatusCode == HttpStatusCode.Forbidden ||
             (response.StatusCode == HttpStatusCode.Redirect && response.Headers.Location?.OriginalString.Contains("/Identity/Account/AccessDenied", StringComparison.Ordinal) == true);
-        foreach (var path in new[] { "/Admin", "/Admin/Orders", "/Admin/Orders/ExportToExcel", "/Admin/Inventory", "/Admin/Inventory/Details/1" })
+        foreach (var path in new[] { "/Admin", "/Admin/Orders", "/Admin/Orders/ExportToExcel", "/Admin/Inventory", "/Admin/Inventory/Details/1", "/Admin/Delivery" })
         {
             using var response = await guest.GetAsync(path);
             check(LoginRequired(response), "Anonymous real-cookie host cannot read admin: " + path);
@@ -102,7 +102,7 @@ internal static class IdentityCookieScenario
         await Login(buyer, customer.Email!);
         using (var manage = await buyer.GetAsync("/Identity/Account/Manage"))
             check(manage.StatusCode == HttpStatusCode.OK, "Customer cookie accesses own account");
-        foreach (var path in new[] { "/Admin", "/Admin/Products", "/Admin/Orders/Details/1", "/Admin/Orders/ExportToExcel", "/Admin/Inventory", "/Admin/Inventory/Details/1" })
+        foreach (var path in new[] { "/Admin", "/Admin/Products", "/Admin/Orders/Details/1", "/Admin/Orders/ExportToExcel", "/Admin/Inventory", "/Admin/Inventory/Details/1", "/Admin/Delivery" })
         {
             using var response = await buyer.GetAsync(path);
             check(Denied(response), "Real customer cookie denied admin access: " + path);
@@ -200,6 +200,63 @@ internal static class IdentityCookieScenario
         var httpSaved=await db.Orders.AsNoTracking().SingleAsync(o=>o.OrderId==httpOrder.OrderId);
         check(httpSaved.Status=="Cancelled" && httpSaved.StockState=="Filled" && httpStock.OnHand==400 && httpStock.Reserved==0,
             "Real admin reserve-fill-cancel flow does not return consumed oil");
+        var deliveryOrder = new Order { CustomerName="Synthetic HTTP delivery", WhatsAppNumber="0000000000", City="Test", ShippingAddress="Test only",
+            CheckoutToken=Guid.NewGuid(),CheckoutRequestHash=new string('A',64),OrderDate=DateTime.UtcNow,ShippingCost=1,TotalAmount=3,
+            Items=[new(){ProductId=httpProduct.ProductId,Quantity=1,UnitPrice=2,VariantSize="50ml test",StockAccountId=httpProduct.ProductId,StockUnitsPerItem=50,StockUnit="ml"}] };
+        await new OrderService(db).PlaceAsync(deliveryOrder);
+        var stockForDelivery = new Orkideya.Application.Inventory.StockService(db,TimeProvider.System);
+        await stockForDelivery.ApplyOrderAsync(deliveryOrder.OrderId,0,"Reserve",adminUser.Id);
+        await stockForDelivery.ApplyOrderAsync(deliveryOrder.OrderId,1,"Consume",adminUser.Id);
+        var deliveryToken=await Token(adminClient,$"/Admin/Orders/Details/{deliveryOrder.OrderId}");
+        Dictionary<string,string> DeliveryForm(string action,int revision) => new()
+        {
+            {"__RequestVerificationToken",deliveryToken},{"Action",action},{"ExpectedRevision",revision.ToString()},
+            {"RequestId",Guid.NewGuid().ToString()},{"ActorUserId","forged-delivery-actor"}
+        };
+        async Task PostDelivery(Dictionary<string,string> form)
+        {
+            using var response=await adminClient.PostAsync($"/Admin/Delivery/Apply/{deliveryOrder.OrderId}",new FormUrlEncodedContent(form));
+            check(response.StatusCode==HttpStatusCode.Redirect,"Authenticated delivery form returns to order details: "+form["Action"]);
+        }
+        using(var noCsrf=await adminClient.PostAsync($"/Admin/Delivery/Apply/{deliveryOrder.OrderId}",new FormUrlEncodedContent(new Dictionary<string,string>{{"Action","HandOver"}})))
+            check(noCsrf.StatusCode==HttpStatusCode.BadRequest,"Real admin delivery mutation requires antiforgery");
+        var httpHandoff=DeliveryForm("HandOver",2);httpHandoff["Mode"]="Company";httpHandoff["CarrierName"]="Synthetic HTTP carrier";httpHandoff["ShipmentReference"]="HTTP-QA-SHIP";
+        await PostDelivery(httpHandoff);await PostDelivery(httpHandoff);
+        check(await db.OrderDeliveryEvents.CountAsync(e=>e.OrderId==deliveryOrder.OrderId)==1 &&
+            await db.OrderDeliveryEvents.AnyAsync(e=>e.OrderId==deliveryOrder.OrderId && e.ActorUserId==adminUser.Id),
+            "Real HTTP handoff replay stores one event with authenticated actor rather than posted actor");
+        var staleDelivery=DeliveryForm("MarkReturning",2);staleDelivery["Reason"]="Synthetic stale page";await PostDelivery(staleDelivery);
+        check(await db.OrderDeliveryEvents.CountAsync(e=>e.OrderId==deliveryOrder.OrderId)==1,
+            "Stale real delivery form cannot change a newer shipment");
+        using(var bypass=await adminClient.PostAsync("/Admin/Orders/UpdateStatus",new FormUrlEncodedContent(new Dictionary<string,string>
+            {{"__RequestVerificationToken",deliveryToken},{"id",deliveryOrder.OrderId.ToString()},{"status","delivered"},{"expectedRevision","3"}})))
+            check(bypass.StatusCode==HttpStatusCode.BadRequest,"Real generic status route cannot bypass registered delivery workflow");
+        var failedDelivery=DeliveryForm("MarkReturning",3);failedDelivery["Reason"]="Synthetic client unreachable";await PostDelivery(failedDelivery);
+        var returnedDelivery=DeliveryForm("ReceiveReturn",4);await PostDelivery(returnedDelivery);
+        check(await db.OrderDeliveries.AsNoTracking().AnyAsync(d=>d.OrderId==deliveryOrder.OrderId && d.State=="Returning"),
+            "Real return form without physical receipt confirmation remains awaiting return");
+        returnedDelivery["ConfirmReturnReceived"]="true";await PostDelivery(returnedDelivery);
+        var resend=DeliveryForm("Redispatch",5);resend["Mode"]="Self";resend["ConfirmSamePackageReusable"]="true";resend["Reason"]="Synthetic reviewed same package";await PostDelivery(resend);
+        await PostDelivery(DeliveryForm("Deliver",6));
+        var deliveredHttp=await db.Orders.AsNoTracking().SingleAsync(o=>o.OrderId==deliveryOrder.OrderId);
+        httpStock=await db.StockAccounts.AsNoTracking().SingleAsync(s=>s.ProductId==httpProduct.ProductId);
+        check(deliveredHttp.Status=="Delivered" && deliveredHttp.StatusRevision==7 && deliveredHttp.StockState=="Filled" &&
+            httpStock.OnHand==350 && httpStock.Reserved==0 && await db.OrderDeliveryEvents.CountAsync(e=>e.OrderId==deliveryOrder.OrderId)==5,
+            "Real authenticated handoff-failure-receipt-redispatch-delivery keeps exact stock and audit history");
+        using(var shipmentPage=await adminClient.GetAsync($"/Admin/Orders/Details/{deliveryOrder.OrderId}"))
+        {
+            var html=await shipmentPage.Content.ReadAsStringAsync();
+            check(shipmentPage.StatusCode==HttpStatusCode.OK && html.Contains("delivery-title") && html.Contains("Synthetic HTTP carrier") && html.Contains("cookie-admin@orkidea.test"),
+                "Real Razor details render delivery state, original carrier snapshot and authenticated audit actor");
+        }
+        using(var deliveryList=await adminClient.GetAsync($"/Admin/Delivery?state=Delivered&search=%23{deliveryOrder.OrderId}"))
+            check(deliveryList.StatusCode==HttpStatusCode.OK && (await deliveryList.Content.ReadAsStringAsync()).Contains("Synthetic HTTP delivery"),
+                "Real delivery list filters saved state and exact order reference");
+        using(var invalidDeliveryList=await adminClient.GetAsync("/Admin/Delivery?state=unknown"))
+            check(invalidDeliveryList.StatusCode==HttpStatusCode.BadRequest,"Unknown delivery-list filter is rejected");
+        using(var deletedDelivery=await adminClient.PostAsync($"/Admin/Orders/Delete/{deliveryOrder.OrderId}",new FormUrlEncodedContent(new Dictionary<string,string>{{"__RequestVerificationToken",deliveryToken}})))
+            check(deletedDelivery.StatusCode==HttpStatusCode.Redirect && await db.OrderDeliveries.AnyAsync(d=>d.OrderId==deliveryOrder.OrderId),
+                "Real order delete action preserves registered shipment and audit trail");
         var logoutToken = await Token(adminClient, "/");
         using (var logout = await adminClient.PostAsync("/Identity/Account/Logout?returnUrl=%2F", new FormUrlEncodedContent(new Dictionary<string, string>
             { ["__RequestVerificationToken"] = logoutToken })))

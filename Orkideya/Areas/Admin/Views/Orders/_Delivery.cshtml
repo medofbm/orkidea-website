@@ -1,0 +1,116 @@
+@using Orkideya.Application.Delivery
+@model Order
+@{
+    var delivery = ViewBag.Delivery as OrderDelivery;
+    var events = ViewBag.DeliveryHistory as List<OrderDeliveryEvent> ?? new();
+    var actors = ViewBag.StatusActors as Dictionary<string, string> ?? new();
+    var ready = Model.Status == "Processing" && Model.StockState is "Filled" or "Untracked";
+}
+<section class="card-admin mb-4 d-print-none" aria-labelledby="delivery-title">
+<h2 id="delivery-title" class="h5">التوصيل والرواجع</h2>
+@if (TempData["DeliveryNotice"] is string notice) { <div class="alert alert-info" role="status">@notice</div> }
+<p><a asp-controller="Delivery" asp-action="Index">قائمة الشحنات والرواجع</a> — محفظة درب السبيل والسحب والتسوية في تطبيق الشركة.</p>
+@if (delivery is null)
+{
+    <p>لم تسجل شحنة لهذا الطلب. لا نستنتج بيانات شحنة قديمة من حالة الطلب وحدها.</p>
+    @if (ready)
+    {
+        <form asp-controller="Delivery" asp-action="Apply" asp-route-id="@Model.OrderId" method="post" class="mb-3">
+            <input type="hidden" name="Action" value="HandOver" /><input type="hidden" name="Mode" value="Company" />
+            <input type="hidden" name="ExpectedRevision" value="@Model.StatusRevision" /><input type="hidden" name="RequestId" value="@Guid.NewGuid()" />
+            <label class="form-label d-block">شركة التوصيل<input name="CarrierName" value="درب السبيل" maxlength="120" required class="form-control" /></label>
+            <label class="form-label d-block">مرجع الشحنة — إن وجد<input name="ShipmentReference" maxlength="100" class="form-control" /></label>
+            @if (Model.StockState == "Untracked") { <label class="d-block mb-2"><input type="checkbox" name="ConfirmLegacyPrepared" value="true" required /> راجعت بنود هذا الطلب القديم وتأكدت من تجهيزه يدوياً؛ لا صرف مخزون آلي.</label> }
+            <button class="btn btn-primary" type="submit">سلّمت الطلب لشركة التوصيل</button>
+        </form>
+        <details><summary>التوصيل الذاتي بدلاً من الشركة</summary>
+            <form asp-controller="Delivery" asp-action="Apply" asp-route-id="@Model.OrderId" method="post" class="mt-2">
+                <input type="hidden" name="Action" value="HandOver" /><input type="hidden" name="Mode" value="Self" />
+                <input type="hidden" name="ExpectedRevision" value="@Model.StatusRevision" /><input type="hidden" name="RequestId" value="@Guid.NewGuid()" />
+                @if (Model.StockState == "Untracked") { <label class="d-block mb-2"><input type="checkbox" name="ConfirmLegacyPrepared" value="true" required /> راجعت بنود الطلب وتأكدت من تجهيزه يدوياً.</label> }
+                <button class="btn btn-outline-primary" type="submit">بدأت التوصيل بنفسي</button>
+            </form>
+        </details>
+    }
+    else { <p>تسجل جهة التوصيل عند تجهيز الطلب وحالته «قيد المعالجة». الطلب المتتبع يحتاج تسجيل التعبئة أولاً؛ لا تعديل تلقائي لبيانات الطلبات القديمة.</p> }
+}
+else
+{
+    <p class="fw-semibold">@DeliveryLabels.State(delivery.State) — @(delivery.Mode == "Self" ? "توصيل ذاتي" : delivery.CarrierName) — @(delivery.ShipmentReference ?? "دون مرجع شحنة")</p>
+    @if (delivery.State == "HandedOver")
+    {
+        <form asp-controller="Delivery" asp-action="Apply" asp-route-id="@Model.OrderId" method="post" class="mb-3">
+            <input type="hidden" name="Action" value="Deliver" /><input type="hidden" name="ExpectedRevision" value="@Model.StatusRevision" /><input type="hidden" name="RequestId" value="@Guid.NewGuid()" />
+            <button class="btn btn-success" type="submit">تأكدت أن العميل استلم الطلب</button>
+        </form>
+        <form asp-controller="Delivery" asp-action="Apply" asp-route-id="@Model.OrderId" method="post">
+            <input type="hidden" name="Action" value="MarkReturning" /><input type="hidden" name="ExpectedRevision" value="@Model.StatusRevision" /><input type="hidden" name="RequestId" value="@Guid.NewGuid()" />
+            <label class="form-label d-block">سبب عدم الاستلام<input name="Reason" maxlength="500" required class="form-control" placeholder="مثل عدم رد العميل أو رفض الاستلام" /></label>
+            <button class="btn btn-outline-warning" type="submit">لم يستلم العميل — بانتظار رجوع الطلب</button>
+        </form>
+    }
+    @if (delivery.State == "Returning")
+    {
+        <p>تبليغ الشركة بالرجوع لا يعني أنك استلمت الطلبية منها. أكّد الاستلام الفعلي عند وصولها لك.</p>
+        <form asp-controller="Delivery" asp-action="Apply" asp-route-id="@Model.OrderId" method="post" class="mb-3">
+            <input type="hidden" name="Action" value="ReceiveReturn" /><input type="hidden" name="ExpectedRevision" value="@Model.StatusRevision" /><input type="hidden" name="RequestId" value="@Guid.NewGuid()" />
+            <label class="d-block mb-2"><input type="checkbox" name="ConfirmReturnReceived" value="true" required /> استلمت الطلبية الراجعة كاملة فعلياً وراجعت محتوياتها.</label>
+            <button class="btn btn-primary" type="submit">تأكيد استلام الراجع</button>
+        </form>
+        <details><summary>العميل رد ويمكن متابعة التوصيل قبل رجوع الطلب</summary>
+            <form asp-controller="Delivery" asp-action="Apply" asp-route-id="@Model.OrderId" method="post" class="mt-2">
+                <input type="hidden" name="Action" value="Resume" /><input type="hidden" name="ExpectedRevision" value="@Model.StatusRevision" /><input type="hidden" name="RequestId" value="@Guid.NewGuid()" />
+                <label class="form-label d-block">سبب متابعة التوصيل<input name="Reason" required maxlength="500" class="form-control" /></label>
+                <button class="btn btn-outline-primary" type="submit">استئناف التوصيل مع نفس الجهة</button>
+            </form>
+        </details>
+    }
+    @if (delivery.State == "Returned")
+    {
+        <p>الطلبية الراجعة عندك للمراجعة. الزيت المعبأ لا يعود للسائب تلقائياً. لا تعاد إضافة الكمية أو صرفها مرة ثانية لمجرد الرجوع.</p>
+        <details><summary>إعادة إرسال نفس الطلبية لنفس العميل بعد مراجعتها</summary>
+            <p>هذا لا يجهز بضاعة جديدة ولا يغير البنود أو أسعارها. استعمال الراجع لطلب عميل آخر يحتاج معالجة منفصلة.</p>
+            <form asp-controller="Delivery" asp-action="Apply" asp-route-id="@Model.OrderId" method="post" class="mt-2">
+                <input type="hidden" name="Action" value="Redispatch" /><input type="hidden" name="ExpectedRevision" value="@Model.StatusRevision" /><input type="hidden" name="RequestId" value="@Guid.NewGuid()" />
+                <label class="form-label d-block">طريقة التوصيل<select name="Mode" class="form-select"><option value="Company">شركة توصيل</option><option value="Self">ذاتي</option></select></label>
+                <label class="form-label d-block">الشركة — عند اختيار شركة<input name="CarrierName" value="@(delivery.CarrierName ?? "درب السبيل")" maxlength="120" class="form-control" /></label>
+                <label class="form-label d-block">مرجع الشحنة الجديد — إن وجد<input name="ShipmentReference" maxlength="100" class="form-control" /></label>
+                <label class="form-label d-block">سبب إعادة الإرسال<input name="Reason" required maxlength="500" class="form-control" /></label>
+                <label class="d-block mb-2"><input type="checkbox" name="ConfirmSamePackageReusable" value="true" required /> راجعت سلامة كل محتويات نفس الطلبية، وهي صالحة لإعادة الإرسال لنفس العميل دون تعبئة جديدة.</label>
+                <button class="btn btn-outline-primary" type="submit">أعدت إرسال نفس الطلبية</button>
+            </form>
+        </details>
+    }
+    <details class="mt-3"><summary>تصحيح خطأ في تسجيل الشحنة — مع حفظ السبب</summary>
+        <form asp-controller="Delivery" asp-action="Apply" asp-route-id="@Model.OrderId" method="post" class="mt-2">
+            <input type="hidden" name="Action" value="CorrectDetails" /><input type="hidden" name="ExpectedRevision" value="@Model.StatusRevision" /><input type="hidden" name="RequestId" value="@Guid.NewGuid()" />
+            <label class="form-label d-block">الطريقة الصحيحة<select name="Mode" class="form-select"><option value="Company" selected="@(delivery.Mode == "Company")">شركة توصيل</option><option value="Self" selected="@(delivery.Mode == "Self")">ذاتي</option></select></label>
+            <label class="form-label d-block">اسم الشركة الصحيح — للشركة فقط<input name="CarrierName" value="@delivery.CarrierName" maxlength="120" class="form-control" /></label>
+            <label class="form-label d-block">مرجع الشحنة الصحيح<input name="ShipmentReference" value="@delivery.ShipmentReference" maxlength="100" class="form-control" /></label>
+            <label class="form-label d-block">سبب التصحيح<input name="Reason" required maxlength="500" class="form-control" /></label>
+            <button class="btn btn-outline-secondary" type="submit">حفظ التصحيح دون حذف السجل</button>
+        </form>
+        @if (delivery.State is "Delivered" or "Returned")
+        {
+            <form asp-controller="Delivery" asp-action="Apply" asp-route-id="@Model.OrderId" method="post" class="mt-3">
+                <input type="hidden" name="Action" value="CorrectState" /><input type="hidden" name="TargetState" value="@(delivery.State == "Delivered" ? "HandedOver" : "Returning")" />
+                <input type="hidden" name="ExpectedRevision" value="@Model.StatusRevision" /><input type="hidden" name="RequestId" value="@Guid.NewGuid()" />
+                <label class="form-label d-block">سبب خطأ تسجيل @(delivery.State == "Delivered" ? "استلام العميل" : "استلام الراجع")<input name="Reason" required maxlength="500" class="form-control" /></label>
+                <button class="btn btn-outline-warning" type="submit">تصحيح تأكيد الاستلام المسجل بالخطأ</button>
+            </form>
+        }
+    </details>
+}
+@if (events.Count > 0)
+{
+    <h3 class="h6 mt-3">آخر 50 إجراء توصيل — السجل الكامل محفوظ</h3>
+    <ul>
+    @foreach (var e in events)
+    {
+        <li>نسخة @e.Revision: @DeliveryLabels.Action(e.Action) — @DeliveryLabels.State(e.PreviousState) ← @DeliveryLabels.State(e.NewState)
+            — @(e.Mode == "Self" ? "ذاتي" : e.CarrierName) — @e.ShipmentReference — @e.Reason
+            — @actors.GetValueOrDefault(e.ActorUserId, "حساب إداري سابق") — @e.ChangedAtUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</li>
+    }
+    </ul>
+}
+</section>

@@ -28,7 +28,7 @@ internal static class RoleAuthorizationRegression
         client.DefaultRequestHeaders.Add("X-Test-Role", "Customer");
         foreach (var path in new[] { "/Admin", "/Admin/Products", "/Admin/Products/Create", "/Admin/ProductVariants",
             "/Admin/Orders", "/Admin/Orders/Details/1", "/Admin/Orders/ExportToExcel", "/Admin/Home/GetSalesChartData?days=7",
-            "/Admin/Categories", "/Admin/Reviews", "/Admin/ContactMessages", "/Admin/Inventory", "/Admin/Inventory/Details/1" })
+            "/Admin/Categories", "/Admin/Reviews", "/Admin/ContactMessages", "/Admin/Inventory", "/Admin/Inventory/Details/1", "/Admin/Delivery" })
         {
             using var response = await client.GetAsync(path);
             check(response.StatusCode == HttpStatusCode.Forbidden, "Non-admin cannot read admin endpoint: " + path);
@@ -36,7 +36,7 @@ internal static class RoleAuthorizationRegression
         var mutations = new[] { "/Admin/Orders/UpdateStatus?id=1&status=processing", "/Admin/Orders/Delete/1",
             "/Admin/Products/Create", "/Admin/Products/Edit/1", "/Admin/ProductVariants/Create",
             "/Admin/Inventory/Open/1", "/Admin/Inventory/Configure/1", "/Admin/Inventory/Adjust/1",
-            "/Admin/Inventory/OrderOperation/1", "/Admin/Inventory/Cancel/1" };
+            "/Admin/Inventory/OrderOperation/1", "/Admin/Inventory/Cancel/1", "/Admin/Delivery/Apply/1" };
         foreach (var path in mutations)
         {
             using var response = await client.PostAsync(path, new FormUrlEncodedContent(new Dictionary<string, string>()));

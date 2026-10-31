@@ -340,6 +340,126 @@ namespace Orkideya.Migrations
                     b.ToTable("Orders");
                 });
 
+            modelBuilder.Entity("Orkideya.Models.OrderDelivery", b =>
+                {
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CarrierName")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("ShipmentReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("OrderId");
+
+                    b.HasIndex("State", "UpdatedAtUtc");
+
+                    b.ToTable("OrderDeliveries", t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderDelivery_State", "[Mode] IN ('Company','Self') AND (([Mode]='Company' AND [CarrierName] IS NOT NULL AND LEN(LTRIM(RTRIM([CarrierName])))>0) OR ([Mode]='Self' AND [CarrierName] IS NULL)) AND ([ShipmentReference] IS NULL OR LEN(LTRIM(RTRIM([ShipmentReference])))>0) AND [State] IN ('HandedOver','Delivered','Returning','Returned') AND [Revision]>0 AND [UpdatedAtUtc]>=[CreatedAtUtc]");
+                        });
+                });
+
+            modelBuilder.Entity("Orkideya.Models.OrderDeliveryEvent", b =>
+                {
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("ActorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CarrierName")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("ChangedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("LegacyPreparationConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("NewState")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PreviousState")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("ReturnReceiptConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("SamePackageReuseConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ShipmentReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("RequestId");
+
+                    b.HasIndex("OrderId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("OrderDeliveryEvents", t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderDeliveryEvent_Data", "[Mode] IN ('Company','Self') AND (([Mode]='Company' AND [CarrierName] IS NOT NULL AND LEN(LTRIM(RTRIM([CarrierName])))>0) OR ([Mode]='Self' AND [CarrierName] IS NULL)) AND ([ShipmentReference] IS NULL OR LEN(LTRIM(RTRIM([ShipmentReference])))>0) AND [Revision]>0 AND LEN(LTRIM(RTRIM([ActorUserId])))>0 AND LEN([RequestHash])=64 AND [RequestId]<>'00000000-0000-0000-0000-000000000000' AND ([LegacyPreparationConfirmed]=0 OR [Action]='HandOver') AND [ReturnReceiptConfirmed]=CASE WHEN [Action]='ReceiveReturn' THEN 1 ELSE 0 END AND [SamePackageReuseConfirmed]=CASE WHEN [Action]='Redispatch' THEN 1 ELSE 0 END AND ([Action] NOT IN ('MarkReturning','Resume','Redispatch','CorrectDetails','CorrectState') OR ([Reason] IS NOT NULL AND LEN(LTRIM(RTRIM([Reason])))>0))");
+
+                            t.HasCheckConstraint("CK_OrderDeliveryEvent_Transition", "([Action]='HandOver' AND [PreviousState] IS NULL AND [NewState]='HandedOver') OR ([PreviousState] IS NOT NULL AND (([Action]='Deliver' AND [PreviousState]='HandedOver' AND [NewState]='Delivered') OR ([Action]='MarkReturning' AND [PreviousState]='HandedOver' AND [NewState]='Returning') OR ([Action]='ReceiveReturn' AND [PreviousState]='Returning' AND [NewState]='Returned') OR ([Action]='Resume' AND [PreviousState]='Returning' AND [NewState]='HandedOver') OR ([Action]='Redispatch' AND [PreviousState]='Returned' AND [NewState]='HandedOver') OR ([Action]='CorrectDetails' AND [PreviousState]=[NewState] AND [NewState] IN ('HandedOver','Delivered','Returning','Returned')) OR ([Action]='CorrectState' AND (([PreviousState]='Delivered' AND [NewState]='HandedOver') OR ([PreviousState]='Returned' AND [NewState]='Returning')))))");
+                        });
+                });
+
             modelBuilder.Entity("Orkideya.Models.OrderItem", b =>
                 {
                     b.Property<int>("OrderItemId")
@@ -712,6 +832,24 @@ namespace Orkideya.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Orkideya.Models.OrderDelivery", b =>
+                {
+                    b.HasOne("Orkideya.Models.Order", null)
+                        .WithOne()
+                        .HasForeignKey("Orkideya.Models.OrderDelivery", "OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Orkideya.Models.OrderDeliveryEvent", b =>
+                {
+                    b.HasOne("Orkideya.Models.OrderDelivery", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

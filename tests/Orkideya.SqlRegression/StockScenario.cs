@@ -205,6 +205,8 @@ internal static class StockScenario
             var blocked=false;
             try { await db.GetService<IMigrator>().MigrateAsync("20261029180000_OrderStatusHistory"); }
             catch(SqlException ex) when(ex.Number==51003){blocked=true;}
+            // Later empty additive migrations may have reverted before the inventory downgrade guard.
+            await db.Database.MigrateAsync();
             check(blocked && await db.StockMovements.AnyAsync() && !(await db.Database.GetPendingMigrationsAsync()).Any(),
                 "Inventory downgrade refuses to discard stock configuration and ledger");
         }

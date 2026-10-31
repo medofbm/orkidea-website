@@ -80,6 +80,7 @@ builder.Services.AddHostedService<Orkideya.Application.Notifications.Notificatio
 builder.Services.AddScoped<Orkideya.Application.Orders.OrderService>();
 builder.Services.AddScoped<Orkideya.Application.Orders.OrderStatusService>();
 builder.Services.AddScoped<Orkideya.Application.Inventory.StockService>();
+builder.Services.AddScoped<Orkideya.Application.Delivery.DeliveryService>();
 
 // Determine cookie security policy based on environment
 var cookieSecurePolicy = builder.Environment.IsDevelopment() 
