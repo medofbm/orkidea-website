@@ -27,10 +27,27 @@ namespace Orkideya.Data
         public DbSet<StockMovement> StockMovements { get; set; }
 
         public DbSet<OrderStatusChange> OrderStatusChanges { get; set; }
+        public DbSet<OrderDelivery> OrderDeliveries { get; set; }
+        public DbSet<OrderDeliveryEvent> OrderDeliveryEvents { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            const string deliveryMetadata = "[Mode] IN ('Company','Self') AND (([Mode]='Company' AND [CarrierName] IS NOT NULL AND LEN(LTRIM(RTRIM([CarrierName])))>0) OR ([Mode]='Self' AND [CarrierName] IS NULL)) AND ([ShipmentReference] IS NULL OR LEN(LTRIM(RTRIM([ShipmentReference])))>0)";
+            builder.Entity<OrderDelivery>().Property(d => d.OrderId).ValueGeneratedNever();
+            builder.Entity<OrderDeliveryEvent>().Property(e => e.RequestId).ValueGeneratedNever();
+            builder.Entity<OrderDelivery>().HasOne<Order>().WithOne().HasForeignKey<OrderDelivery>(d => d.OrderId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<OrderDelivery>().ToTable(t => t.HasCheckConstraint("CK_OrderDelivery_State",
+                deliveryMetadata + " AND [State] IN ('HandedOver','Delivered','Returning','Returned') AND [Revision]>0 AND [UpdatedAtUtc]>=[CreatedAtUtc]"));
+            builder.Entity<OrderDelivery>().HasIndex(d => new { d.State, d.UpdatedAtUtc });
+            builder.Entity<OrderDeliveryEvent>().HasOne<OrderDelivery>().WithMany().HasForeignKey(e => e.OrderId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<OrderDeliveryEvent>().HasIndex(e => new { e.OrderId, e.Revision }).IsUnique();
+            builder.Entity<OrderDeliveryEvent>().ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_OrderDeliveryEvent_Data", deliveryMetadata + " AND [Revision]>0 AND LEN(LTRIM(RTRIM([ActorUserId])))>0 AND LEN([RequestHash])=64 AND [RequestId]<>'00000000-0000-0000-0000-000000000000' AND ([LegacyPreparationConfirmed]=0 OR [Action]='HandOver') AND [ReturnReceiptConfirmed]=CASE WHEN [Action]='ReceiveReturn' THEN 1 ELSE 0 END AND [SamePackageReuseConfirmed]=CASE WHEN [Action]='Redispatch' THEN 1 ELSE 0 END AND ([Action] NOT IN ('MarkReturning','Resume','Redispatch','CorrectDetails','CorrectState') OR ([Reason] IS NOT NULL AND LEN(LTRIM(RTRIM([Reason])))>0))");
+                t.HasCheckConstraint("CK_OrderDeliveryEvent_Transition",
+                    "([Action]='HandOver' AND [PreviousState] IS NULL AND [NewState]='HandedOver') OR ([PreviousState] IS NOT NULL AND (([Action]='Deliver' AND [PreviousState]='HandedOver' AND [NewState]='Delivered') OR ([Action]='MarkReturning' AND [PreviousState]='HandedOver' AND [NewState]='Returning') OR ([Action]='ReceiveReturn' AND [PreviousState]='Returning' AND [NewState]='Returned') OR ([Action]='Resume' AND [PreviousState]='Returning' AND [NewState]='HandedOver') OR ([Action]='Redispatch' AND [PreviousState]='Returned' AND [NewState]='HandedOver') OR ([Action]='CorrectDetails' AND [PreviousState]=[NewState] AND [NewState] IN ('HandedOver','Delivered','Returning','Returned')) OR ([Action]='CorrectState' AND (([PreviousState]='Delivered' AND [NewState]='HandedOver') OR ([PreviousState]='Returned' AND [NewState]='Returning')))))");
+            });
             builder.Entity<Order>().Property(o => o.StockState).HasDefaultValue("Untracked");
             builder.Entity<StockAccount>().HasOne<Product>().WithOne().HasForeignKey<StockAccount>(stock => stock.ProductId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<StockAccount>().ToTable(table => table.HasCheckConstraint("CK_StockAccount_Balances",

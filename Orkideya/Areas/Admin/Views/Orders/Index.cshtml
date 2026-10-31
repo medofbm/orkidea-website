@@ -210,6 +210,12 @@
                             }
                         </td>
                         <td>
+                            @if (ViewBag.DeliveryIds is HashSet<int> deliveryIds && deliveryIds.Contains(order.OrderId))
+                            {
+                                <a class="btn btn-outline-primary btn-sm" asp-action="Details" asp-route-id="@order.OrderId">@statusText — متابعة التوصيل</a>
+                            }
+                            else
+                            {
                             <div class="dropdown">
                                 <button class="status-badge @statusClass dropdown-toggle" 
                                         type="button" 
@@ -233,6 +239,12 @@
                                             قيد المعالجة
                                         </a>
                                     </li>
+                                    @if (order.StockState != "Untracked")
+                                    {
+                                        <li><a class="dropdown-item" asp-action="Details" asp-route-id="@order.OrderId">التعبئة وتسليم الشحنة من التفاصيل</a></li>
+                                    }
+                                    else
+                                    {
                                     <li>
                                         <a class="dropdown-item" href="#" onclick="updateOrderStatus(@order.OrderId, 'shipped', @order.StatusRevision); return false;">
                                             <i class="fas fa-truck text-info me-2"></i>
@@ -245,6 +257,7 @@
                                             مكتمل
                                         </a>
                                     </li>
+                                    }
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         @if (order.StockState != "Untracked")
@@ -261,6 +274,7 @@
                                     </li>
                                 </ul>
                             </div>
+                            }
                         </td>
                         <td>
                             <div class="btn-group" role="group">

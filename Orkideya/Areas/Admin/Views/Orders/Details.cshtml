@@ -281,7 +281,7 @@ else
             <button class="btn btn-primary" type="submit">@(Model.StockState == "Reserved" ? "تمت التعبئة — صرف الكمية" : "تأكيد التوفر وحجز الكمية")</button>
         </form>
     }
-    @if (Model.Status != "Cancelled")
+    @if (Model.Status != "Cancelled" && ViewBag.Delivery is null)
     {
         <form asp-controller="Inventory" asp-action="Cancel" asp-route-id="@Model.OrderId" method="post">
             <input type="hidden" name="expectedRevision" value="@Model.StatusRevision" />
@@ -306,6 +306,8 @@ else
     </ul>
 }
 </section>
+
+<partial name="_Delivery" model="Model" />
 
 <section class="card-admin mb-4" aria-labelledby="status-history-title">
     <h2 id="status-history-title" class="h5">سجل تغييرات حالة الطلب</h2>

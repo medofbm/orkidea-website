@@ -87,7 +87,9 @@ public sealed class InventoryController(ApplicationDbContext db, StockService st
             try
             {
                 var result = await statuses.ChangeAsync(id, "Cancelled", expectedRevision, Actor, HttpContext.RequestAborted, reason);
-                Notice(result switch { StatusChangeResult.Changed => StockResult.Changed, StatusChangeResult.Unchanged => StockResult.Unchanged,
+                if (result == StatusChangeResult.RequiresDeliveryOperation)
+                    TempData["StockNotice"] = "هذا الطلب لديه شحنة؛ سجّل الرجوع أو تصحيح التوصيل من تفاصيله بدلاً من الإلغاء العام.";
+                else Notice(result switch { StatusChangeResult.Changed => StockResult.Changed, StatusChangeResult.Unchanged => StockResult.Unchanged,
                     StatusChangeResult.Conflict => StockResult.Conflict, _ => StockResult.Invalid });
             }
             catch (DbUpdateException) { logger.LogError("Stock cancellation could not be saved"); TempData["StockNotice"] = "تعذر حفظ الإلغاء. راجع الطلب قبل إعادة المحاولة."; }

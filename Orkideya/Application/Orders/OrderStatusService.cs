@@ -6,7 +6,7 @@ using Orkideya.Models;
 
 namespace Orkideya.Application.Orders;
 
-public enum StatusChangeResult { Changed, Unchanged, Missing, Invalid, Conflict, RequiresFilling, RequiresCancellationReason, ClosedStockOrder }
+public enum StatusChangeResult { Changed, Unchanged, Missing, Invalid, Conflict, RequiresFilling, RequiresCancellationReason, ClosedStockOrder, RequiresDeliveryOperation }
 
 public sealed class OrderStatusService(ApplicationDbContext context, TimeProvider clock)
 {
@@ -28,10 +28,14 @@ public sealed class OrderStatusService(ApplicationDbContext context, TimeProvide
         if (!Statuses.Contains(order.Status) || order.StatusRevision == int.MaxValue)
             return StatusChangeResult.Invalid;
 
+        if (await context.OrderDeliveries.AnyAsync(d => d.OrderId == id, cancellationToken))
+            return StatusChangeResult.RequiresDeliveryOperation;
+
         if (order.StockState != "Untracked")
         {
             if (order.Status == "Cancelled" || order.StockState == "Cancelled") return StatusChangeResult.ClosedStockOrder;
             if (canonical is "Shipped" or "Delivered" && order.StockState != "Filled") return StatusChangeResult.RequiresFilling;
+            if (canonical is "Shipped" or "Delivered") return StatusChangeResult.RequiresDeliveryOperation;
             if (canonical == "Cancelled")
             {
                 if (string.IsNullOrWhiteSpace(reason) || reason.Length > 500) return StatusChangeResult.RequiresCancellationReason;

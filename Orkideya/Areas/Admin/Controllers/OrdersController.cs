@@ -40,6 +40,9 @@ namespace Orkideya.Areas.Admin.Controllers
             ViewBag.CurrentPage = result.Page;
             ViewBag.TotalPages = result.Pages;
             ViewBag.PageSize = result.PageSize;
+            var orderIds = result.Orders.Select(o => o.OrderId).ToArray();
+            ViewBag.DeliveryIds = (await _context.OrderDeliveries.AsNoTracking().Where(d => orderIds.Contains(d.OrderId))
+                .Select(d => d.OrderId).ToListAsync()).ToHashSet();
 
             // Calculate status counts
             ViewBag.AllCount = await _context.Orders.CountAsync();
@@ -90,7 +93,11 @@ namespace Orkideya.Areas.Admin.Controllers
             var stockMoves = await _context.StockMovements.AsNoTracking().Where(m => m.OrderId == id)
                 .OrderBy(m => m.CreatedAtUtc).ThenBy(m => m.StockMovementId).ToListAsync();
             ViewBag.StockMovements = stockMoves;
-            var actorIds = history.Select(change => change.ActorUserId).Concat(stockMoves.Select(m => m.ActorUserId)).Distinct().ToArray();
+            ViewBag.Delivery = await _context.OrderDeliveries.AsNoTracking().SingleOrDefaultAsync(d => d.OrderId == id);
+            var deliveryHistory = await _context.OrderDeliveryEvents.AsNoTracking().Where(e => e.OrderId == id)
+                .OrderByDescending(e => e.Revision).Take(50).ToListAsync();
+            ViewBag.DeliveryHistory = deliveryHistory;
+            var actorIds = history.Select(change => change.ActorUserId).Concat(stockMoves.Select(m => m.ActorUserId)).Concat(deliveryHistory.Select(e => e.ActorUserId)).Distinct().ToArray();
             ViewBag.StatusActors = await _context.Users.AsNoTracking().Where(user => actorIds.Contains(user.Id))
                 .ToDictionaryAsync(user => user.Id, user => user.UserName ?? "حساب إداري");
 
@@ -115,6 +122,7 @@ namespace Orkideya.Areas.Admin.Controllers
                     StatusChangeResult.Conflict => Conflict(new { success = false,
                         message = "تغيّر الطلب من صفحة أخرى. حدّث الصفحة قبل إعادة المحاولة." }),
                     StatusChangeResult.Missing => NotFound(new { success = false, message = "الطلب غير موجود" }),
+                    StatusChangeResult.RequiresDeliveryOperation => BadRequest(new { success = false, message = "سجّل جهة التوصيل وتابع الشحنة أو الراجع من تفاصيل الطلب مع حفظ السجل." }),
                     StatusChangeResult.RequiresFilling => BadRequest(new { success = false, message = "سجّل التعبئة وصرف الكمية من تفاصيل الطلب قبل الشحن أو الإكمال." }),
                     StatusChangeResult.RequiresCancellationReason => BadRequest(new { success = false, message = "افتح تفاصيل الطلب لإلغائه مع السبب وتحرير الحجز." }),
                     StatusChangeResult.ClosedStockOrder => BadRequest(new { success = false, message = "هذا الطلب ملغي؛ لا تعاد فتح حركات مخزونه." }),
@@ -139,7 +147,8 @@ namespace Orkideya.Areas.Admin.Controllers
             if (order != null)
             {
                 if (await _context.OrderStatusChanges.AnyAsync(change => change.OrderId == id) ||
-                    await _context.StockMovements.AnyAsync(move => move.OrderId == id))
+                    await _context.StockMovements.AnyAsync(move => move.OrderId == id) ||
+                    await _context.OrderDeliveries.AnyAsync(d => d.OrderId == id))
                 {
                     TempData["OrderError"] = "هذا الطلب لديه سجل تغييرات محفوظ؛ استخدم الإلغاء بدلاً من حذف تاريخه.";
                     return RedirectToAction(nameof(Index));
