@@ -99,6 +99,7 @@
                             {
                                 <button type="button"
                                         class="btn detail-size-btn @(v.ProductVariantId == defaultVariant.ProductVariantId ? "active" : "")"
+                                        aria-pressed="@(v.ProductVariantId == defaultVariant.ProductVariantId ? "true" : "false")"
                                         data-price="@v.Price.ToString("0.00")"
                                         data-variant-id="@v.ProductVariantId"
                                         data-product-id="@Model.ProductId">
@@ -257,8 +258,12 @@
 
             sizeBtns.forEach(btn => {
                 btn.addEventListener('click', function () {
-                    sizeBtns.forEach(b => b.classList.remove('active'));
+                    sizeBtns.forEach(b => {
+                        b.classList.remove('active');
+                        b.setAttribute('aria-pressed', 'false');
+                    });
                     this.classList.add('active');
+                    this.setAttribute('aria-pressed', 'true');
                     const price = parseFloat(this.dataset.price).toFixed(2);
                     priceEl.innerHTML = price + ' <small>د.ل</small>';
                     addToCartBtn.dataset.variantId = this.dataset.variantId;

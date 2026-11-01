@@ -4967,3 +4967,39 @@ main {
     outline: 2px solid var(--primary-purple);
     outline-offset: 3px;
 }
+/* Keep shopping controls usable by touch without squeezing product names. */
+.cart-qty-btn,
+.cart-remove-btn,
+.detail-size-btn,
+.variant-size-btn {
+    min-width: 44px;
+    min-height: 44px;
+}
+@media (max-width: 767px) {
+    .cart-item {
+        display: grid;
+        grid-template-columns: 56px minmax(0, 1fr) 44px;
+        align-items: center;
+    }
+    .cart-item-img-wrap {
+        grid-column: 1;
+        grid-row: 1 / 3;
+    }
+    .cart-item-details {
+        grid-column: 2;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    .cart-item-name {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    .cart-qty-control {
+        grid-column: 2;
+        grid-row: 2;
+    }
+    .cart-item > form {
+        grid-column: 3;
+        grid-row: 1 / 3;
+    }
+}
