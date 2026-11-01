@@ -5,15 +5,16 @@ using Orkideya.Models;
 
 namespace Orkideya.Application.Orders;
 
-public sealed record OrderListFilter(string Status, string Search)
+public sealed record OrderListFilter(string Status, string Search, string Source = "all")
 {
-    public static bool TryCreate(string? status, string? search, out OrderListFilter filter)
+    public static bool TryCreate(string? status, string? search, out OrderListFilter filter, string? source = "all")
     {
         var normalizedStatus = string.IsNullOrWhiteSpace(status) ? "all" : status.Trim().ToLowerInvariant();
         var normalizedSearch = search?.Trim() ?? "";
-        filter = new(normalizedStatus, normalizedSearch);
+        var normalizedSource = string.IsNullOrWhiteSpace(source) ? "all" : source.Trim();
+        filter = new(normalizedStatus, normalizedSearch, normalizedSource);
         return normalizedStatus is "all" or "pending" or "processing" or "shipped" or "delivered" or "cancelled"
-            && normalizedSearch.Length <= 100;
+            && normalizedSearch.Length <= 100 && normalizedSource is "all" or OrderSources.Website or OrderSources.Facebook or OrderSources.Legacy;
     }
 }
 
@@ -25,7 +26,9 @@ public sealed class OrderListQuery(ApplicationDbContext context)
 
     public IQueryable<Order> Matching(OrderListFilter filter)
     {
-        var query = context.Orders.AsNoTracking();
+        var query = context.Orders.AsNoTracking().Include(o => o.Creation).AsQueryable();
+        if (filter.Source == OrderSources.Legacy) query = query.Where(o => o.Creation == null);
+        else if (filter.Source != "all") query = query.Where(o => o.Creation != null && o.Creation.Source == filter.Source);
         if (filter.Status != "all") query = query.Where(o => o.Status.ToLower() == filter.Status);
         if (filter.Search.Length != 0)
         {

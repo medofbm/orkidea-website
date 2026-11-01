@@ -1,0 +1,17 @@
+@using Orkideya.Application.Orders
+@model ManualOrderDraft
+@{ViewData["Title"]="مراجعة طلب فيسبوك";}
+<h1>مراجعة طلب فيسبوك</h1>
+@if(ViewBag.ReviewWarning is string warning){<div class="alert alert-warning" role="alert">@warning</div>}
+<div class="alert alert-info">لم يُحفظ الطلب بعد. الحفظ يسجله «جديد»؛تأكيدك من التفاصيل هو الذي يحجز المخزون.</div>
+<dl class="row"><dt class="col-sm-3">الزبون</dt><dd class="col-sm-9">@Model.Input.CustomerName</dd><dt class="col-sm-3">الهاتف</dt><dd class="col-sm-9"><bdi>@Model.Input.Phone</bdi></dd><dt class="col-sm-3">العنوان</dt><dd class="col-sm-9">@Model.City — @Model.Input.Address</dd><dt class="col-sm-3">مصدر الطلب</dt><dd class="col-sm-9">فيسبوك — إدخال يدوي</dd></dl>
+<div class="table-responsive"><table class="table"><caption>الأسعار المعتمدة في هذه المعاينة بالدينار الليبي</caption><thead><tr><th>المنتج والحجم</th><th>الكمية</th><th>سعر الوحدة</th><th>قيمة المنتجات</th></tr></thead><tbody>
+@foreach(var line in Model.Lines){<tr><td>@line.ProductName — @line.Size</td><td>@line.Quantity</td><td>@line.UnitPrice.ToString("0.00")</td><td>@((line.Quantity*line.UnitPrice).ToString("0.00"))</td></tr>}
+</tbody><tfoot><tr><th colspan="3">قيمة المنتجات</th><td>@Model.ProductsTotal.ToString("0.00")</td></tr><tr><th colspan="3">أجرة التوصيل</th><td>@Model.ShippingCost.ToString("0.00")</td></tr><tr><th colspan="3">إجمالي الزبون شامل التوصيل</th><td>@Model.Total.ToString("0.00")</td></tr></tfoot></table></div>
+<p>الدفع عند الاستلام؛تسجيل الطلب لا يثبت التحصيل أو التسليم. لا تتم تسوية محفظة شركة التوصيل من هنا.</p>
+<form asp-action="Confirm" method="post" class="d-flex gap-2">
+    <input type="hidden" name="requestId" value="@Model.RequestId" />
+    <input type="hidden" name="fingerprint" value="@Model.Fingerprint" />
+    <button type="submit" class="btn btn-primary">حفظ كطلب جديد</button>
+    <a asp-action="Create" asp-route-edit="@Model.RequestId" class="btn btn-outline-secondary">تعديل البيانات</a>
+</form>

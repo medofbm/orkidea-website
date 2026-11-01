@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "إدارة الطلبات";
     var currentStatus = ViewBag.CurrentStatus as string ?? "all";
+    var source = ViewBag.Source as string ?? "all";
     var searchTerm = ViewBag.SearchTerm as string ?? "";
 
     var currentPage = (int)(ViewBag.CurrentPage ?? 1);
@@ -30,6 +31,7 @@
     <div class="alert alert-warning" role="alert">@orderError</div>
 }
 
+<a asp-controller="ManualOrders" asp-action="Create" class="btn btn-primary mb-3">تسجيل طلب من فيسبوك</a>
 <!-- Page Header -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="page-title-section">
@@ -39,9 +41,9 @@
         </h1>
         <p class="page-subtitle">إدارة شاملة لجميع طلبات العملاء</p>
     </div>
-    
+
     <div>
-        <a href="@Url.Action("ExportToExcel", new { status = currentStatus, search = searchTerm })" 
+        <a href="@Url.Action("ExportToExcel", new { status = currentStatus, search = searchTerm, source = source })"
            class="btn btn-success"
            target="_blank"
            title="تصدير جميع الطلبات المطابقة للبحث والحالة، وليس الصفحة الحالية فقط">
@@ -58,48 +60,48 @@
             <!-- Status Filter Tabs -->
             <ul class="nav nav-pills">
                 <li class="nav-item">
-                    <a class="nav-link @(currentStatus == "all" ? "active" : "")" 
-                       href="@Url.Action("Index", new { status = "all", search = searchTerm })">
+                    <a class="nav-link @(currentStatus == "all" ? "active" : "")"
+                       href="@Url.Action("Index", new { status = "all", search = searchTerm, source = source })">
                         <i class="fas fa-list me-1"></i>
                         الكل
                         <span class="badge bg-secondary ms-2">@ViewBag.AllCount</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link @(currentStatus == "pending" ? "active" : "")" 
-                       href="@Url.Action("Index", new { status = "pending", search = searchTerm })">
+                    <a class="nav-link @(currentStatus == "pending" ? "active" : "")"
+                       href="@Url.Action("Index", new { status = "pending", search = searchTerm, source = source })">
                         <i class="fas fa-clock me-1"></i>
                         جديد
                         <span class="badge bg-warning ms-2">@ViewBag.PendingCount</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link @(currentStatus == "processing" ? "active" : "")" 
-                       href="@Url.Action("Index", new { status = "processing", search = searchTerm })">
+                    <a class="nav-link @(currentStatus == "processing" ? "active" : "")"
+                       href="@Url.Action("Index", new { status = "processing", search = searchTerm, source = source })">
                         <i class="fas fa-cog me-1"></i>
                         قيد المعالجة
                         <span class="badge bg-primary ms-2">@ViewBag.ProcessingCount</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link @(currentStatus == "shipped" ? "active" : "")" 
-                       href="@Url.Action("Index", new { status = "shipped", search = searchTerm })">
+                    <a class="nav-link @(currentStatus == "shipped" ? "active" : "")"
+                       href="@Url.Action("Index", new { status = "shipped", search = searchTerm, source = source })">
                         <i class="fas fa-truck me-1"></i>
                         تم الشحن
                         <span class="badge bg-info ms-2">@ViewBag.ShippedCount</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link @(currentStatus == "delivered" ? "active" : "")" 
-                       href="@Url.Action("Index", new { status = "delivered", search = searchTerm })">
+                    <a class="nav-link @(currentStatus == "delivered" ? "active" : "")"
+                       href="@Url.Action("Index", new { status = "delivered", search = searchTerm, source = source })">
                         <i class="fas fa-check-circle me-1"></i>
                         مكتمل
                         <span class="badge bg-success ms-2">@ViewBag.DeliveredCount</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link @(currentStatus == "cancelled" ? "active" : "")" 
-                       href="@Url.Action("Index", new { status = "cancelled", search = searchTerm })">
+                    <a class="nav-link @(currentStatus == "cancelled" ? "active" : "")"
+                       href="@Url.Action("Index", new { status = "cancelled", search = searchTerm, source = source })">
                         <i class="fas fa-ban me-1"></i>
                         ملغي
                         <span class="badge bg-danger ms-2">@ViewBag.CancelledCount</span>
@@ -107,15 +109,17 @@
                 </li>
             </ul>
         </div>
-        
+
         <div class="col-md-4">
             <!-- Search Bar -->
             <form method="get" action="@Url.Action("Index")">
                 <input type="hidden" name="status" value="@currentStatus" />
+                <label for="order-source" class="form-label">مصدر الطلب</label><select id="order-source" name="source" class="form-select mb-2">
+                <option value="all" selected="@(source=="all")">كل المصادر</option><option value="Website" selected="@(source==OrderSources.Website)">الموقع</option><option value="FacebookManual" selected="@(source==OrderSources.Facebook)">فيسبوك — إدخال يدوي</option><option value="LegacyUnknown" selected="@(source==OrderSources.Legacy)">غير محدد — سجلات سابقة</option></select>
                 <div class="input-group">
-                    <input type="text" 
-                           name="search" 
-                           class="form-control" 
+                    <input type="text"
+                           name="search"
+                           class="form-control"
                            maxlength="100"
                            placeholder="رقم الطلب، الاسم، الهاتف، المدينة..."
                            value="@searchTerm"
@@ -153,7 +157,7 @@
                     var statusClass = statusInfo.CssClass;
                     var statusIcon = statusInfo.Icon;
                     var statusText = statusInfo.Text;
-                    
+
                     @functions {
                         public (string CssClass, string Icon, string Text) GetStatusInfo(string status)
                         {
@@ -168,7 +172,7 @@
                             };
                         }
                     }
-                    
+
                     <tr>
                         <td class="fw-bold text-purple">
                             #@order.OrderId
@@ -177,7 +181,7 @@
                             <div class="d-flex flex-column">
                                 <span class="fw-semibold">
                                     <i class="fas fa-user me-2 text-muted"></i>
-                                    @order.CustomerName
+                                    @order.CustomerName <small class="d-block text-muted">@OrderSources.Label(order.Creation?.Source)</small>
                                 </span>
                                 <small class="text-muted">
                                     <i class="fab fa-whatsapp me-1 text-success"></i>
@@ -217,10 +221,10 @@
                             else
                             {
                             <div class="dropdown">
-                                <button class="status-badge @statusClass dropdown-toggle" 
-                                        type="button" 
-                                        id="statusDropdown@(order.OrderId)" 
-                                        data-bs-toggle="dropdown" 
+                                <button class="status-badge @statusClass dropdown-toggle"
+                                        type="button"
+                                        id="statusDropdown@(order.OrderId)"
+                                        data-bs-toggle="dropdown"
                                         aria-expanded="false"
                                         style="border: none; cursor: pointer;">
                                     <i class="fas fa-@statusIcon me-1"></i>
@@ -278,23 +282,23 @@
                         </td>
                         <td>
                             <div class="btn-group" role="group">
-                                <a href="@Url.Action("Details", new { id = order.OrderId })" 
+                                <a href="@Url.Action("Details", new { id = order.OrderId })"
                                    class="btn btn-action view btn-sm"
                                    title="عرض التفاصيل">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                
+
                                 <a href="@BuildWaLink(order.WhatsAppNumber)"
-                                   class="btn btn-sm" 
+                                   class="btn btn-sm"
                                    style="background: rgba(37, 211, 102, 0.1); color: #25d366;"
                                    target="_blank"
                                    rel="noopener noreferrer"
                                    title="مراسلة العميل عبر واتساب">
                                     <i class="fab fa-whatsapp"></i>
                                 </a>
-                                
-                                <button type="button" 
-                                        class="btn btn-action delete btn-sm" 
+
+                                <button type="button"
+                                        class="btn btn-action delete btn-sm"
                                         onclick="deleteOrder(@order.OrderId)"
                                         title="حذف الطلب">
                                     <i class="fas fa-trash"></i>
@@ -358,12 +362,12 @@
                 'سيتم تحديث حالة الطلب إلى حالة جديدة',
                 'هل تريد تحديث حالة الطلب؟'
             );
-            
+
             if (!confirmed) return;
-            
+
             try {
                 const token = document.querySelector('[name="__RequestVerificationToken"]')?.value;
-                
+
                 const url = '@Url.Action("UpdateStatus")?id=' + orderId + '&status=' + status + '&expectedRevision=' + expectedRevision;
                 const response = await fetch(url, {
                     method: 'POST',
@@ -373,7 +377,7 @@
                     },
                     credentials: 'same-origin'
                 });
-                
+
                 const data = await response.json();
                 if (!response.ok || !data.success) {
                     AdminUtils.showToast(data.message || 'تعذر حفظ الحالة', 'error');
@@ -387,16 +391,16 @@
                 AdminUtils.showToast('حدث خطأ في تحديث الحالة', 'error');
             }
         }
-        
+
         // Delete Order
         async function deleteOrder(orderId) {
             const confirmed = await AdminUtils.confirm(
                 'لن تتمكن من التراجع عن هذا الإجراء!',
                 'هل تريد حذف هذا الطلب؟'
             );
-            
+
             if (!confirmed) return;
-            
+
             const form = document.getElementById('deleteForm');
             form.action = '@Url.Action("Delete")/' + orderId;
             form.submit();

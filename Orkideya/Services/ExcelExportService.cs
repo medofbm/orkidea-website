@@ -18,7 +18,7 @@ public sealed class ExcelExportService
                 var headers = new[] {
                     "رقم الطلب", "اسم العميل", "رقم الواتساب", "المدينة", 
                     "العنوان", "تاريخ الطلب", "إجمالي الطلب شامل التوصيل (د.ل)", "أجرة التوصيل (د.ل)",
-                    "حالة الطلب (لا تثبت التحصيل)", "طريقة الدفع", "قيمة المنتجات دون التوصيل (د.ل)"
+                    "حالة الطلب (لا تثبت التحصيل)", "طريقة الدفع", "قيمة المنتجات دون التوصيل (د.ل)", "مصدر الطلب"
                 };
                 
                 for (int i = 0; i < headers.Length; i++)
@@ -52,7 +52,8 @@ public sealed class ExcelExportService
                     worksheet.Cell(row, 11).Value = order.TotalAmount - order.ShippingCost;
                     worksheet.Cell(row, 11).Style.NumberFormat.Format = "0.00";
                     
-                    row++;
+                    worksheet.Cell(row,12).Value = OrderSources.Label(order.Creation?.Source);
+                row++;
                 }
                 
                 // Auto-fit columns

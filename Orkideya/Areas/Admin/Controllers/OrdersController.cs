@@ -29,13 +29,14 @@ namespace Orkideya.Areas.Admin.Controllers
         /// <summary>
         /// Orders Index with filtering
         /// </summary>
-        public async Task<IActionResult> Index(string status = "all", string search = "", int page = 1)
+        public async Task<IActionResult> Index(string status = "all", string search = "", int page = 1, string source = "all")
         {
-            if (!ModelState.IsValid || page < 1 || !OrderListFilter.TryCreate(status, search, out var filter))
+            if (!ModelState.IsValid || page < 1 || !OrderListFilter.TryCreate(status, search, out var filter, source))
                 return BadRequest("بيانات البحث أو رقم الصفحة غير صالح.");
             var result = await new OrderListQuery(_context).PageAsync(filter, page, HttpContext.RequestAborted);
             ViewBag.CurrentStatus = filter.Status;
             ViewBag.SearchTerm = filter.Search;
+            ViewBag.Source = filter.Source;
             ViewBag.TotalOrders = result.Total;
             ViewBag.CurrentPage = result.Page;
             ViewBag.TotalPages = result.Pages;
@@ -44,13 +45,14 @@ namespace Orkideya.Areas.Admin.Controllers
             ViewBag.DeliveryIds = (await _context.OrderDeliveries.AsNoTracking().Where(d => orderIds.Contains(d.OrderId))
                 .Select(d => d.OrderId).ToListAsync()).ToHashSet();
 
-            // Calculate status counts
-            ViewBag.AllCount = await _context.Orders.CountAsync();
-            ViewBag.PendingCount = await _context.Orders.CountAsync(o => o.Status == "Pending");
-            ViewBag.ProcessingCount = await _context.Orders.CountAsync(o => o.Status == "Processing");
-            ViewBag.ShippedCount = await _context.Orders.CountAsync(o => o.Status == "Shipped");
-            ViewBag.DeliveredCount = await _context.Orders.CountAsync(o => o.Status == "Delivered");
-            ViewBag.CancelledCount = await _context.Orders.CountAsync(o => o.Status == "Cancelled");
+            // Counts use the same search and source scope as the table; status tabs remain comparable.
+            var scoped = new OrderListQuery(_context).Matching(filter with { Status="all" });
+            ViewBag.AllCount = await scoped.CountAsync();
+            ViewBag.PendingCount = await scoped.CountAsync(o => o.Status == "Pending");
+            ViewBag.ProcessingCount = await scoped.CountAsync(o => o.Status == "Processing");
+            ViewBag.ShippedCount = await scoped.CountAsync(o => o.Status == "Shipped");
+            ViewBag.DeliveredCount = await scoped.CountAsync(o => o.Status == "Delivered");
+            ViewBag.CancelledCount = await scoped.CountAsync(o => o.Status == "Cancelled");
 
             return View(result.Orders);
         }
@@ -65,7 +67,7 @@ namespace Orkideya.Areas.Admin.Controllers
                 return NotFound();
             }
 
-            var order = await _context.Orders
+            var order = await _context.Orders.Include(o=>o.Creation)
                 .FirstOrDefaultAsync(m => m.OrderId == id);
 
             if (order == null)
@@ -97,7 +99,7 @@ namespace Orkideya.Areas.Admin.Controllers
             var deliveryHistory = await _context.OrderDeliveryEvents.AsNoTracking().Where(e => e.OrderId == id)
                 .OrderByDescending(e => e.Revision).Take(50).ToListAsync();
             ViewBag.DeliveryHistory = deliveryHistory;
-            var actorIds = history.Select(change => change.ActorUserId).Concat(stockMoves.Select(m => m.ActorUserId)).Concat(deliveryHistory.Select(e => e.ActorUserId)).Distinct().ToArray();
+            var actorIds = history.Select(change => change.ActorUserId).Concat(order.Creation?.ActorUserId is {} creator ? new[]{creator} : Array.Empty<string>()).Concat(stockMoves.Select(m => m.ActorUserId)).Concat(deliveryHistory.Select(e => e.ActorUserId)).Distinct().ToArray();
             ViewBag.StatusActors = await _context.Users.AsNoTracking().Where(user => actorIds.Contains(user.Id))
                 .ToDictionaryAsync(user => user.Id, user => user.UserName ?? "حساب إداري");
 
@@ -148,7 +150,8 @@ namespace Orkideya.Areas.Admin.Controllers
             {
                 if (await _context.OrderStatusChanges.AnyAsync(change => change.OrderId == id) ||
                     await _context.StockMovements.AnyAsync(move => move.OrderId == id) ||
-                    await _context.OrderDeliveries.AnyAsync(d => d.OrderId == id))
+                    await _context.OrderDeliveries.AnyAsync(d => d.OrderId == id) ||
+                    await _context.OrderCreations.AnyAsync(c=>c.OrderId==id))
                 {
                     TempData["OrderError"] = "هذا الطلب لديه سجل تغييرات محفوظ؛ استخدم الإلغاء بدلاً من حذف تاريخه.";
                     return RedirectToAction(nameof(Index));
@@ -175,9 +178,9 @@ namespace Orkideya.Areas.Admin.Controllers
         /// <summary>
         /// Export Orders to Excel (.xlsx) using ClosedXML
         /// </summary>
-        public async Task<IActionResult> ExportToExcel(string status = "all", string search = "")
+        public async Task<IActionResult> ExportToExcel(string status = "all", string search = "", string source = "all")
         {
-            if (!ModelState.IsValid || !OrderListFilter.TryCreate(status, search, out var filter))
+            if (!ModelState.IsValid || !OrderListFilter.TryCreate(status, search, out var filter, source))
                 return BadRequest("بيانات البحث غير صالحة.");
             // Export every matching row, not just the current screen page.
             var orders = await new OrderListQuery(_context).Ordered(filter).ToListAsync(HttpContext.RequestAborted);

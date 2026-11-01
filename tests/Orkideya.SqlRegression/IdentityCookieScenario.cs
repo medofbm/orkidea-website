@@ -93,7 +93,7 @@ internal static class IdentityCookieScenario
             response.Headers.Location?.OriginalString.Contains("/Identity/Account/Login", StringComparison.Ordinal) == true;
         bool Denied(HttpResponseMessage response) => response.StatusCode == HttpStatusCode.Forbidden ||
             (response.StatusCode == HttpStatusCode.Redirect && response.Headers.Location?.OriginalString.Contains("/Identity/Account/AccessDenied", StringComparison.Ordinal) == true);
-        foreach (var path in new[] { "/Admin", "/Admin/Orders", "/Admin/Orders/ExportToExcel", "/Admin/Inventory", "/Admin/Inventory/Details/1", "/Admin/Delivery" })
+        foreach (var path in new[] { "/Admin", "/Admin/Orders", "/Admin/Orders/ExportToExcel", "/Admin/Inventory", "/Admin/Inventory/Details/1", "/Admin/Delivery", "/Admin/ManualOrders/Create" })
         {
             using var response = await guest.GetAsync(path);
             check(LoginRequired(response), "Anonymous real-cookie host cannot read admin: " + path);
@@ -102,7 +102,7 @@ internal static class IdentityCookieScenario
         await Login(buyer, customer.Email!);
         using (var manage = await buyer.GetAsync("/Identity/Account/Manage"))
             check(manage.StatusCode == HttpStatusCode.OK, "Customer cookie accesses own account");
-        foreach (var path in new[] { "/Admin", "/Admin/Products", "/Admin/Orders/Details/1", "/Admin/Orders/ExportToExcel", "/Admin/Inventory", "/Admin/Inventory/Details/1", "/Admin/Delivery" })
+        foreach (var path in new[] { "/Admin", "/Admin/Products", "/Admin/Orders/Details/1", "/Admin/Orders/ExportToExcel", "/Admin/Inventory", "/Admin/Inventory/Details/1", "/Admin/Delivery", "/Admin/ManualOrders/Create" })
         {
             using var response = await buyer.GetAsync(path);
             check(Denied(response), "Real customer cookie denied admin access: " + path);
@@ -258,6 +258,62 @@ internal static class IdentityCookieScenario
             check(deletedDelivery.StatusCode==HttpStatusCode.Redirect && await db.OrderDeliveries.AnyAsync(d=>d.OrderId==deliveryOrder.OrderId),
                 "Real order delete action preserves registered shipment and audit trail");
         var logoutToken = await Token(adminClient, "/");
+        // Real cookie + antiforgery + server session journey for manual Facebook entry.
+        using(var unauthorized=await buyer.PostAsync("/Admin/ManualOrders/Create",new FormUrlEncodedContent(new Dictionary<string,string>())))
+            check(Denied(unauthorized),"Customer cookie cannot submit manual Facebook orders");
+        using(var missingCsrf=await adminClient.PostAsync("/Admin/ManualOrders/Create",new FormUrlEncodedContent(new Dictionary<string,string>())))
+            check(missingCsrf.StatusCode==HttpStatusCode.BadRequest,"Admin manual creation requires a real CSRF token");
+        var manualProduct=new Product{Name="Synthetic cookie manual product"};
+        var manualVariant=new ProductVariant{Product=manualProduct,Size="small",Price=3};
+        var manualOther=new ProductVariant{Product=manualProduct,Size="large",Price=5};
+        var manualRate=new ShippingRate{CityName="Synthetic cookie manual city",Price=2};
+        db.AddRange(manualVariant,manualOther,manualRate);await db.SaveChangesAsync();
+        var manualToken=await Token(adminClient,"/Admin/ManualOrders/Create");
+        var manualNonce=Guid.NewGuid();
+        var manualForm=new Dictionary<string,string>{["__RequestVerificationToken"]=manualToken,["command"]="review",
+            ["Input.RequestId"]=manualNonce.ToString(),["Input.CustomerName"]="Synthetic cookie manual customer",
+            ["Input.Phone"]="+218000000000",["Input.Address"]="Synthetic address",["Input.ShippingRateId"]=manualRate.ShippingRateId.ToString(),
+            ["Input.Lines[0].VariantId"]=manualVariant.ProductVariantId.ToString(),["Input.Lines[0].Quantity"]="2",
+            ["Input.Lines[1].VariantId"]=manualOther.ProductVariantId.ToString(),["Input.Lines[1].Quantity"]="1",
+            ["Input.Source"]="Website",["Input.ActorId"]="forged-admin",["Input.Lines[0].UnitPrice"]="0.01"};
+        async Task<string> ManualReview()
+        {
+            using var response=await adminClient.PostAsync("/Admin/ManualOrders/Create",new FormUrlEncodedContent(manualForm));
+            check(response.StatusCode==HttpStatusCode.OK,"Authenticated multiline manual order renders server-priced preview");
+            var html=await response.Content.ReadAsStringAsync();
+            var hash=Regex.Match(html,"name=\"fingerprint\"[^>]*value=\"([^\"]+)\"");
+            check(hash.Success,"Manual review renders a fingerprint bound to its server draft");return hash.Groups[1].Value;
+        }
+        var oldFingerprint=await ManualReview();
+        check(!await db.Orders.AnyAsync(o=>o.CheckoutToken==manualNonce),"HTTP manual preview creates no SQL order");
+        using(var noToken=await adminClient.PostAsync("/Admin/ManualOrders/Confirm",new FormUrlEncodedContent(new Dictionary<string,string>{{"requestId",manualNonce.ToString()},{"fingerprint",oldFingerprint}})))
+            check(noToken.StatusCode==HttpStatusCode.BadRequest,"Manual confirmation also requires CSRF");
+        manualForm["Input.Address"]="Revised synthetic address";var fingerprint=await ManualReview();
+        Dictionary<string,string> Confirmation(string hash)=>new(){["__RequestVerificationToken"]=manualToken,["requestId"]=manualNonce.ToString(),["fingerprint"]=hash};
+        using(var stale=await adminClient.PostAsync("/Admin/ManualOrders/Confirm",new FormUrlEncodedContent(Confirmation(oldFingerprint))))
+            check(stale.StatusCode==HttpStatusCode.Conflict && !await db.Orders.AnyAsync(o=>o.CheckoutToken==manualNonce),"Stale review tab cannot save the newer server draft without explicit review");
+        using(var confirmed=await adminClient.PostAsync("/Admin/ManualOrders/Confirm",new FormUrlEncodedContent(Confirmation(fingerprint))))
+            check(confirmed.StatusCode==HttpStatusCode.Redirect,"Reviewed manual order confirms through real cookie/session/CSRF host");
+        db.ChangeTracker.Clear();
+        var manualStored=await db.Orders.AsNoTracking().Include(o=>o.Creation).Include(o=>o.Items).SingleAsync(o=>o.CheckoutToken==manualNonce);
+        check(manualStored.TotalAmount==13 && manualStored.ShippingCost==2 && manualStored.Items.Count==2 && manualStored.Items.Sum(x=>x.UnitPrice*x.Quantity)==11 &&
+            manualStored.Creation?.Source==OrderSources.Facebook && manualStored.Creation.ActorUserId==adminUser.Id && manualStored.Status=="Pending",
+            "Overposted source, actor and price are ignored; SQL stores authenticated creator and exact catalogue total");
+        using(var replay=await adminClient.PostAsync("/Admin/ManualOrders/Confirm",new FormUrlEncodedContent(Confirmation(fingerprint))))
+            check(replay.StatusCode==HttpStatusCode.Redirect && await db.Orders.CountAsync(o=>o.CheckoutToken==manualNonce)==1,"HTTP double-submit after session draft cleanup returns the original order");
+        using(var details=await adminClient.GetAsync($"/Admin/Orders/Details/{manualStored.OrderId}"))
+            check(details.StatusCode==HttpStatusCode.OK,"Manual order renders existing details with provenance");
+        using(var list=await adminClient.GetAsync($"/Admin/Orders?source=FacebookManual&search=%23{manualStored.OrderId}"))
+            check(list.StatusCode==HttpStatusCode.OK,"HTTP source-filtered manual order list renders");
+        using(var exportManual=await adminClient.GetAsync($"/Admin/Orders/ExportToExcel?source=FacebookManual&search=%23{manualStored.OrderId}"))
+        {
+            using var workbook=new XLWorkbook(new MemoryStream(await exportManual.Content.ReadAsByteArrayAsync()));
+            check(workbook.Worksheet(1).LastRowUsed()!.RowNumber()==2 && workbook.Worksheet(1).Cell(2,12).GetString()==OrderSources.Label(OrderSources.Facebook),
+                "HTTP source filter and XLSX select the same manual order and appended source");
+        }
+        using(var deleteManual=await adminClient.PostAsync($"/Admin/Orders/Delete/{manualStored.OrderId}",new FormUrlEncodedContent(new Dictionary<string,string>{{"__RequestVerificationToken",manualToken}})))
+            check(deleteManual.StatusCode==HttpStatusCode.Redirect && await db.OrderCreations.AnyAsync(c=>c.OrderId==manualStored.OrderId),"Admin deletion preserves the recorded manual provenance");
+
         using (var logout = await adminClient.PostAsync("/Identity/Account/Logout?returnUrl=%2F", new FormUrlEncodedContent(new Dictionary<string, string>
             { ["__RequestVerificationToken"] = logoutToken })))
             check(logout.StatusCode == HttpStatusCode.Redirect, "Real admin logout succeeds with antiforgery");

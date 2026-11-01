@@ -28,7 +28,7 @@ internal static class RoleAuthorizationRegression
         client.DefaultRequestHeaders.Add("X-Test-Role", "Customer");
         foreach (var path in new[] { "/Admin", "/Admin/Products", "/Admin/Products/Create", "/Admin/ProductVariants",
             "/Admin/Orders", "/Admin/Orders/Details/1", "/Admin/Orders/ExportToExcel", "/Admin/Home/GetSalesChartData?days=7",
-            "/Admin/Categories", "/Admin/Reviews", "/Admin/ContactMessages", "/Admin/Inventory", "/Admin/Inventory/Details/1", "/Admin/Delivery" })
+            "/Admin/Categories", "/Admin/Reviews", "/Admin/ContactMessages", "/Admin/Inventory", "/Admin/Inventory/Details/1", "/Admin/Delivery", "/Admin/ManualOrders/Create" })
         {
             using var response = await client.GetAsync(path);
             check(response.StatusCode == HttpStatusCode.Forbidden, "Non-admin cannot read admin endpoint: " + path);

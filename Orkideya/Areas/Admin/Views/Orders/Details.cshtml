@@ -26,6 +26,10 @@
     }
 }
 
+@if(TempData["SuccessMessage"] is string savedMessage){<div class="alert alert-success" role="status">@savedMessage</div>}
+<div class="alert alert-light">مصدر الطلب: <strong>@OrderSources.Label(Model.Creation?.Source)</strong>
+@if(Model.Creation is {} creation){<span> — سجّل في @creation.RecordedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</span>@if(creation.ActorUserId is {} creator){<span> بواسطة @(actorNames.GetValueOrDefault(creator,"حساب إداري سابق"))</span>}}
+</div>
 <!-- Page Header -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="page-title-section">
