@@ -1,3 +1,4 @@
+@model CheckoutReceipt
 @{
     ViewData["Title"] = "تم استلام طلبك!";
 }
@@ -20,21 +21,38 @@
         </div>
 
         <h1 class="confirm-title">شكراً لك! 🌸</h1>
-        <p class="confirm-msg">لقد تم استلام طلبك بنجاح.<br />طلبك بانتظار مراجعة التوفر والتجهيز؛ استلام الطلب لا يعني حجز الكمية بعد.</p>
+        <p class="confirm-msg">تم استلام طلبك وحفظه برقم <strong data-testid="receipt-order-number">#@Model.OrderId</strong>.</p>
+        @if (Model.Status == "Pending")
+        {
+            <p>طلبك بانتظار مراجعة التوفر والتجهيز؛ استلام الطلب لا يعني حجز الكمية بعد.</p>
+        }
+        <p>الحالة الحالية: <strong data-testid="receipt-status">@Model.StatusLabel</strong></p>
+
+        <div class="confirm-card" aria-label="ملخص الطلب المحفوظ">
+            <dl class="mb-0">
+                <div class="confirm-card-row"><dt>رقم الطلب</dt><dd class="mb-0">#@Model.OrderId</dd></div>
+                <div class="confirm-card-row"><dt>عدد القطع</dt><dd class="mb-0" data-testid="receipt-quantity">@Model.Quantity</dd></div>
+                <div class="confirm-card-row"><dt>قيمة المنتجات</dt><dd class="mb-0" data-testid="receipt-products">@Model.ProductsTotal.ToString("0.00") د.ل</dd></div>
+                <div class="confirm-card-row"><dt>أجرة التوصيل</dt><dd class="mb-0" data-testid="receipt-shipping">@Model.ShippingCost.ToString("0.00") د.ل</dd></div>
+                <div class="confirm-card-row"><dt>الإجمالي شامل التوصيل</dt><dd class="mb-0" data-testid="receipt-total"><strong>@Model.TotalAmount.ToString("0.00") د.ل</strong></dd></div>
+                <div class="confirm-card-row"><dt>تاريخ الطلب</dt><dd class="mb-0"><bdi>@Model.CreatedAtUtc.ToString("yyyy/MM/dd HH:mm") UTC</bdi></dd></div>
+            </dl>
+        </div>
+        <p>احتفظ برقم الطلب للتواصل معنا. عرض هذا الملخص مرتبط بجلسة التصفح الحالية؛ الحالة لا تثبت تحصيل المبلغ.</p>
 
         <!-- بطاقة المعلومات -->
         <div class="confirm-card">
             <div class="confirm-card-row">
                 <i class="fas fa-truck-fast" aria-hidden="true"></i>
-                <span>موعد التجهيز والتوصيل يحدد بعد مراجعة الطلب</span>
+                <span>تفاصيل التجهيز والتوصيل حسب مراجعة الطلب وحالته الحالية</span>
             </div>
             <div class="confirm-card-row">
                 <i class="fas fa-wallet" aria-hidden="true"></i>
-                <span>الدفع عند الاستلام</span>
+                <span>@(Model.PaymentMethod ?? "طريقة الدفع تحتاج إلى مراجعة")</span>
             </div>
             <div class="confirm-card-row">
                 <i class="fab fa-whatsapp" aria-hidden="true"></i>
-                <span>الطلب بانتظار تأكيد التوفر</span>
+                <span>@Model.StatusLabel</span>
             </div>
         </div>
 

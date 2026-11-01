@@ -38,11 +38,29 @@ internal static class CheckoutScenario
         var stored = await db.Orders.AsNoTracking().Include(o=>o.Creation).SingleAsync(order => order.CheckoutToken == token);
         check(stored.Creation is { Source: OrderSources.Website, ActorUserId: null } && stored.Creation.RecordedAtUtc> DateTime.UtcNow.AddMinutes(-5), "New website checkout records server origin without inventing an admin creator");
         check(stored.TotalAmount == 60m + rate.Price, "Stored checkout total equals refreshed prices plus shipping");
+        var countBeforeReceipt=await db.Orders.CountAsync();
+        var receipt=(CheckoutReceipt)((ViewResult)await controller.Confirmation()).Model!;
+        check(receipt.OrderId==stored.OrderId && receipt.Quantity==2 && receipt.ProductsTotal==60 && receipt.ShippingCost==rate.Price && receipt.TotalAmount==stored.TotalAmount,
+            "Completed-session receipt reads exact persisted order and item totals");
+        check(await db.Orders.CountAsync()==countBeforeReceipt && session.GetString("CompletedCheckoutToken")==token!.Value.ToString("D"),
+            "Receipt refresh does not write an order or alter completion access");
+        var stranger=new CheckoutController(db,new OrderService(db)){ControllerContext=new ControllerContext{HttpContext=new DefaultHttpContext{Session=new MemorySession()}}};
+        check(await stranger.Confirmation() is RedirectToActionResult {ControllerName:"Home"},"Another browser session cannot open a receipt without its completion grant");
+        var originalCompleted=session.GetString("CompletedCheckoutToken")!;
+        foreach(var invalidCompleted in new[]{"invalid",Guid.Empty.ToString("D"),Guid.NewGuid().ToString("D")})
+        {
+            session.SetString("CompletedCheckoutToken",invalidCompleted);
+            check(await controller.Confirmation() is RedirectToActionResult {ControllerName:"Home"},"Invalid or uncommitted completed-session token never displays false success");
+        }
+        session.SetString("CompletedCheckoutToken",originalCompleted);
+
         check(await controller.PlaceOrder(input) is RedirectToActionResult { ActionName: "Confirmation" }, "Repeated POST confirms the original order after the basket was cleared");
         check(await db.Orders.CountAsync(order => order.CheckoutToken == token) == 1, "Repeated controller submission creates no duplicate");
         session.SetString("Cart", JsonSerializer.Serialize(cart));
         await controller.PlaceOrder(input);
         check(session.GetString("Cart") != null, "Late retry preserves a new basket added after checkout");
+        await controller.Confirmation();
+        check(session.GetString("Cart")!=null,"Viewing the previous receipt preserves the new shopping basket");
         input.ShippingAddress = "Changed synthetic address";
         check(await controller.PlaceOrder(input) is ConflictObjectResult, "Controller rejects changed fields with an already-used retry key");
         input.CheckoutToken = Guid.NewGuid();
