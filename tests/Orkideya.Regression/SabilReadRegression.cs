@@ -14,6 +14,7 @@ internal static class SabilReadRegression
         var options = new SabilReadOptions(); var gateway = new SabilReadClient(http, Options.Create(options));
         var disabled = await gateway.ListServicePackagesAsync();
         check(disabled.State == CarrierReadState.Disabled && handler.Calls == 0, "Carrier read gateway defaults disabled with zero outbound requests");
+        check((await gateway.ListBranchesAsync()).State == CarrierReadState.Disabled && handler.Calls == 0, "Branch catalogue defaults disabled without transport");
         options.ReadEnabled = true;
         check((await gateway.ListServicePackagesAsync()).State == CarrierReadState.Misconfigured && handler.Calls == 0, "Enabled carrier without secrets fails closed before transport");
         options.ApiKey = "synthetic-only-key"; options.AccountId = "synthetic-test-account";
@@ -29,6 +30,28 @@ internal static class SabilReadRegression
         check(handler.LastUri == "https://v2.sabil.ly/api/local/service/rates/public/" && handler.LastMethod == HttpMethod.Get, "Carrier pins HTTPS provider origin and uses documented read-only package route");
         check(handler.LastAuthorization == "apikey synthetic-only-key" && handler.LastVersion == "1.0.0" && handler.LastAccount == "synthetic-test-account", "Carrier authenticates each request using documented headers");
         check(http.DefaultRequestHeaders.Authorization == null && !http.DefaultRequestHeaders.Contains("X-ACCOUNT-ID"), "Carrier secrets do not contaminate shared default headers");
+        var branchCalls = handler.Calls;
+        foreach (var page in new[] { (-1, 100), (0, 0), (0, 2001) })
+            check((await gateway.ListBranchesAsync(page.Item1, page.Item2)).State == CarrierReadState.InvalidRequest && handler.Calls == branchCalls,
+                "Branch page bounds reject invalid input before transport");
+        handler.Reply = () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"status\":true,\"data\":{\"results\":[{\"city\":\"Synthetic city\",\"areas\":[{\"area\":\"Synthetic area\",\"deliveryRate\":15}]}],\"totalCount\":101}}") };
+        var branches = await gateway.ListBranchesAsync(100, 1);
+        check(branches.State == CarrierReadState.Success && branches.Data!.Value.GetProperty("totalCount").GetInt32() == 101 &&
+            branches.Data.Value.GetProperty("results")[0].GetProperty("areas")[0].GetProperty("deliveryRate").GetDecimal() == 15,
+            "Branch page preserves provider area data and total count without interpreting a final shipping fee");
+        check(handler.LastUri == "https://v2.sabil.ly/api/local/branches/public/?offset=100&limit=1&includeTotalCount=true" && handler.LastMethod == HttpMethod.Get,
+            "Branch listing pins documented GET route and explicit pagination");
+        foreach (var body in new[] { "{}", "[]", "{\"results\":{}}", "{\"results\":[null]}", "{\"results\":[{},{}]}",
+            "{\"results\":[],\"totalCount\":-1}", "{\"results\":[],\"totalCount\":\"1\"}", "{\"results\":[{}],\"totalCount\":0}" })
+        {
+            handler.Reply = () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"status\":true,\"data\":" + body + "}") };
+            check((await gateway.ListBranchesAsync(0, 1)).State == CarrierReadState.InvalidResponse,
+                "Malformed or oversized branch page fails closed rather than presenting partial catalogue data");
+        }
+        handler.Reply = () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"status\":true,\"data\":{\"results\":[]}}") };
+        check((await gateway.ListBranchesAsync()).State == CarrierReadState.Success,
+            "Branch page permits documented optional total count without inventing a complete catalogue");
+        handler.Reply = () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"status\":true,\"data\":{\"reference\":\"QA-123\"}}") };
         await gateway.GetShipmentAsync("QA-123"); check(handler.LastUri == "https://v2.sabil.ly/api/local/shipments/?reference=QA-123", "Shipment lookup uses provider reference without caller-controlled URL");
         await gateway.GetTimelineAsync("QA-123"); check(handler.LastUri == "https://v2.sabil.ly/api/local/shipments/timeline/QA-123", "Timeline lookup uses documented read route");
         foreach (var pair in new[]{(401,CarrierReadState.Unauthorized),(402,CarrierReadState.PermissionDenied),(403,CarrierReadState.PermissionDenied),(404,CarrierReadState.NotFound),
@@ -62,7 +85,7 @@ internal static class SabilReadRegression
         var factory = provider.GetRequiredService<IHttpMessageHandlerFactory>(); var registeredHandler = factory.CreateHandler(nameof(ICarrierReadGateway));
         while (registeredHandler is DelegatingHandler delegating) registeredHandler = delegating.InnerHandler!;
         check(registeredHandler is HttpClientHandler { AllowAutoRedirect: false, UseCookies: false }, "Registered carrier transport disables redirects and cookie sharing");
-        check(typeof(ICarrierReadGateway).GetMethods().All(m => m.Name is "get_Provider" or "ListServicePackagesAsync" or "GetShipmentAsync" or "GetTimelineAsync"),
+        check(typeof(ICarrierReadGateway).GetMethods().All(m => m.Name is "get_Provider" or "ListServicePackagesAsync" or "ListBranchesAsync" or "GetShipmentAsync" or "GetTimelineAsync"),
             "First carrier boundary exposes no shipment creation, wallet or mutation operations");
     }
     private sealed class FakeHandler : HttpMessageHandler
