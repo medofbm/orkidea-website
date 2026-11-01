@@ -70,6 +70,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>();
 
 // Application Services
+Orkideya.Infrastructure.Shipping.ShippingRegistration.AddCarrierReadGateway(builder.Services, builder.Configuration);
 builder.Services.AddSingleton<ExcelExportService>();
 builder.Services.AddSingleton<ProductImageStorage>();
 builder.Services.AddScoped<WhatsAppNotificationService>();

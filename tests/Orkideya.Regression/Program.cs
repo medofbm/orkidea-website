@@ -128,3 +128,5 @@ var enabledConfiguration = new ConfigurationBuilder().AddInMemoryCollection(new 
     { ["Notifications:WhatsAppEnabled"] = "true" }).Build();
 await new WhatsAppNotificationService(enabledConfiguration, notificationLogger).SendAsync(order);
 Check(notificationLogger.Count == 1, "Enabled but incomplete notification configuration returns before provider call");
+
+await SabilReadRegression.Run(Check);
