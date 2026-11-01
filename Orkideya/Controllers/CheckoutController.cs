@@ -93,7 +93,8 @@ public class CheckoutController : Controller
             TotalAmount = cart.Sum(item => item.SubTotal) + rate.Price,
             OrderDate = DateTime.UtcNow,
             PaymentMethod = "الدفع عند الاستلام",
-            Status = "Pending"
+            Status = "Pending",
+            Creation = new OrderCreation { Source = OrderSources.Website }
         };
         order.CheckoutToken = input.CheckoutToken;
         order.CheckoutRequestHash = requestHash;

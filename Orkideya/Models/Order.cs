@@ -13,6 +13,7 @@ namespace Orkideya.Models
         public Guid? CheckoutToken { get; set; }
         [MaxLength(64)]
         public string? CheckoutRequestHash { get; set; }
+        public OrderCreation? Creation { get; set; }
         public List<OrderItem> Items { get; set; } = new();
         public List<OrderNotification> Notifications { get; set; } = new();
         public required string CustomerName { get; set; }

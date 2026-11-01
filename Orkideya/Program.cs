@@ -78,6 +78,7 @@ builder.Services.AddScoped<Orkideya.Application.Notifications.NotificationDispat
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<Orkideya.Application.Notifications.NotificationWorker>();
 builder.Services.AddScoped<Orkideya.Application.Orders.OrderService>();
+builder.Services.AddScoped<Orkideya.Application.Orders.ManualOrderService>();
 builder.Services.AddScoped<Orkideya.Application.Orders.OrderStatusService>();
 builder.Services.AddScoped<Orkideya.Application.Inventory.StockService>();
 builder.Services.AddScoped<Orkideya.Application.Delivery.DeliveryService>();

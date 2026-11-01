@@ -27,12 +27,18 @@ namespace Orkideya.Data
         public DbSet<StockMovement> StockMovements { get; set; }
 
         public DbSet<OrderStatusChange> OrderStatusChanges { get; set; }
+        public DbSet<OrderCreation> OrderCreations { get; set; }
         public DbSet<OrderDelivery> OrderDeliveries { get; set; }
         public DbSet<OrderDeliveryEvent> OrderDeliveryEvents { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            builder.Entity<OrderCreation>().Property(c=>c.OrderId).ValueGeneratedNever();
+            builder.Entity<OrderCreation>().HasOne<Order>().WithOne(o=>o.Creation).HasForeignKey<OrderCreation>(c=>c.OrderId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<OrderCreation>().HasIndex(c=>new { c.Source,c.RecordedAtUtc });
+            builder.Entity<OrderCreation>().ToTable(t=>t.HasCheckConstraint("CK_OrderCreation_Source",
+                "([Source]='Website' AND [ActorUserId] IS NULL) OR ([Source]='FacebookManual' AND [ActorUserId] IS NOT NULL AND LEN(LTRIM(RTRIM([ActorUserId])))>0)"));
             const string deliveryMetadata = "[Mode] IN ('Company','Self') AND (([Mode]='Company' AND [CarrierName] IS NOT NULL AND LEN(LTRIM(RTRIM([CarrierName])))>0) OR ([Mode]='Self' AND [CarrierName] IS NULL)) AND ([ShipmentReference] IS NULL OR LEN(LTRIM(RTRIM([ShipmentReference])))>0)";
             builder.Entity<OrderDelivery>().Property(d => d.OrderId).ValueGeneratedNever();
             builder.Entity<OrderDeliveryEvent>().Property(e => e.RequestId).ValueGeneratedNever();

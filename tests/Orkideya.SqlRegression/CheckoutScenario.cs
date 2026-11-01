@@ -35,7 +35,8 @@ internal static class CheckoutScenario
         check(await controller.PlaceOrder(input) is RedirectToActionResult { ActionName: "Confirmation" }, "Checkout confirms a valid order");
         check(session.GetString("Cart") == null, "Successful checkout clears the submitted basket");
         var token = input.CheckoutToken;
-        var stored = await db.Orders.AsNoTracking().SingleAsync(order => order.CheckoutToken == token);
+        var stored = await db.Orders.AsNoTracking().Include(o=>o.Creation).SingleAsync(order => order.CheckoutToken == token);
+        check(stored.Creation is { Source: OrderSources.Website, ActorUserId: null } && stored.Creation.RecordedAtUtc> DateTime.UtcNow.AddMinutes(-5), "New website checkout records server origin without inventing an admin creator");
         check(stored.TotalAmount == 60m + rate.Price, "Stored checkout total equals refreshed prices plus shipping");
         check(await controller.PlaceOrder(input) is RedirectToActionResult { ActionName: "Confirmation" }, "Repeated POST confirms the original order after the basket was cleared");
         check(await db.Orders.CountAsync(order => order.CheckoutToken == token) == 1, "Repeated controller submission creates no duplicate");

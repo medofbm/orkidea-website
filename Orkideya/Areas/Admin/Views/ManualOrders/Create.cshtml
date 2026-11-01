@@ -1,0 +1,28 @@
+@using Orkideya.Application.Orders
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model ManualOrderInput
+@{ ViewData["Title"]="تسجيل طلب من فيسبوك";var variants=ViewBag.Variants as List<SelectListItem> ?? [];var rates=ViewBag.Rates as List<SelectListItem> ?? []; }
+<h1>تسجيل طلب من فيسبوك</h1>
+<p>أدخل الطلب الذي اتفقت عليه مع الزبون. الخطوة التالية معاينة الأسعار والتوصيل؛الحجز بعد تأكيد الطلب من تفاصيله.</p>
+<form asp-action="Create" method="post">
+    <div asp-validation-summary="All" class="alert alert-warning" role="alert"></div>
+    <input type="hidden" name="Input.RequestId" value="@Model.RequestId" />
+    <div class="row g-3 mb-4">
+        <div class="col-md-6"><label for="customer" class="form-label">اسم الزبون الكامل</label><input id="customer" name="Input.CustomerName" value="@Model.CustomerName" required maxlength="100" class="form-control" autocomplete="off" /></div>
+        <div class="col-md-6"><label for="phone" class="form-label">رقم الهاتف</label><input id="phone" name="Input.Phone" value="@Model.Phone" required maxlength="20" class="form-control" type="tel" dir="ltr" autocomplete="off" /></div>
+        <div class="col-md-6"><label for="address" class="form-label">العنوان وتفاصيل الوصول</label><input id="address" name="Input.Address" value="@Model.Address" required maxlength="200" class="form-control" autocomplete="off" /></div>
+        <div class="col-md-6"><label for="city" class="form-label">مدينة التوصيل</label><select id="city" name="Input.ShippingRateId" required class="form-select"><option value="">اختر المدينة</option>@foreach(var rate in rates){<option value="@rate.Value" selected="@(rate.Value==Model.ShippingRateId.ToString())">@rate.Text</option>}</select></div>
+    </div>
+    <fieldset><legend>المنتجات والأحجام</legend>
+    @for(var i=0;i<Model.Lines.Count;i++)
+    {
+        <div class="row g-2 align-items-end mb-3">
+            <div class="col-md-8"><label for="variant-@i" class="form-label">المنتج والحجم — البند @(i+1)</label><select id="variant-@i" name="Input.Lines[@i].VariantId" required class="form-select"><option value="">اختر الحجم</option>@foreach(var variant in variants){<option value="@variant.Value" selected="@(variant.Value==Model.Lines[i].VariantId.ToString())">@variant.Text</option>}</select></div>
+            <div class="col-7 col-md-2"><label for="quantity-@i" class="form-label">الكمية</label><input id="quantity-@i" name="Input.Lines[@i].Quantity" value="@Model.Lines[i].Quantity" type="number" min="1" max="99" required class="form-control" /></div>
+            <div class="col-5 col-md-2"><button type="submit" name="command" value="remove:@i" formnovalidate class="btn btn-outline-danger" disabled="@(Model.Lines.Count==1)" aria-label="حذف البند @(i+1)">حذف البند</button></div>
+        </div>
+    }
+    <button type="submit" name="command" value="add" formnovalidate class="btn btn-outline-secondary" disabled="@(Model.Lines.Count>=30)">إضافة منتج أو حجم</button>
+    </fieldset>
+    <div class="mt-4 d-flex gap-2"><button type="submit" name="command" value="review" class="btn btn-primary">معاينة الطلب والأسعار</button><a asp-controller="Orders" asp-action="Index" class="btn btn-outline-secondary">الرجوع للطلبات</a></div>
+</form>

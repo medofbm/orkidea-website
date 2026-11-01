@@ -218,6 +218,7 @@ internal static class DeliveryScenario
                 "Delivery operations never attempt a provider notification");
             var blocked=false;
             try{await db.GetService<IMigrator>().MigrateAsync("20261031155358_BulkStockReservations");}catch(SqlException ex)when(ex.Number==51004){blocked=true;}
+            await db.Database.MigrateAsync(); // Reapply later empty additive migrations after the delivery guard refused downgrade.
             check(blocked && await db.OrderDeliveryEvents.AnyAsync() && !(await db.Database.GetPendingMigrationsAsync()).Any(),
                 "Delivery downgrade refuses to erase shipment state or immutable event history");
         }

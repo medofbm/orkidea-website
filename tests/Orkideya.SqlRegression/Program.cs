@@ -136,12 +136,13 @@ try
         Check((await new OrderService(db).PlaceAsync(Make(failedToken))).IsNew, "A failed request can retry safely after recovery");
     }
     await OrderStatusScenario.Run(Open, Check);
-    await using (var db = Open()) await CheckoutScenario.Run(db, Check);
     await OutboxScenario.Run(options, Check);
     await DashboardScenario.Run(Open, Check);
     await OrderListScenario.Run(Open, Check);
     await StockScenario.Run(Open, Check);
     await DeliveryScenario.Run(Open, Check);
+    await using (var db = Open()) await CheckoutScenario.Run(db, Check);
+    await ManualOrderScenario.Run(Open,Check);
     await IdentityCookieScenario.Run(server.ConnectionString, Check);
     Console.WriteLine("SQL SERVER VERIFICATION COMPLETE: dedicated generated test database only.");
 }
