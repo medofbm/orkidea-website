@@ -4,7 +4,7 @@ namespace Orkideya.Application.Shipping;
 
 public enum CarrierReadState
 {
-    Success, Disabled, Misconfigured, InvalidReference, Unauthorized,
+    Success, Disabled, Misconfigured, InvalidReference, InvalidRequest, Unauthorized,
     PermissionDenied, NotFound, RateLimited, Rejected, Unavailable, InvalidResponse
 }
 
@@ -20,6 +20,7 @@ public sealed class CarrierReadResult(CarrierReadState state, JsonElement? data 
 public interface ICarrierReadGateway
 {
     string Provider { get; }
+    Task<CarrierReadResult> ListBranchesAsync(int offset = 0, int limit = 100, CancellationToken cancellationToken = default);
     Task<CarrierReadResult> ListServicePackagesAsync(CancellationToken cancellationToken = default);
     Task<CarrierReadResult> GetShipmentAsync(string reference, CancellationToken cancellationToken = default);
     Task<CarrierReadResult> GetTimelineAsync(string reference, CancellationToken cancellationToken = default);

@@ -12,6 +12,24 @@ public sealed class SabilReadClient(HttpClient http, IOptions<SabilReadOptions> 
     private const int MaximumBodyBytes = 1024 * 1024;
     private static readonly Uri Origin = new("https://v2.sabil.ly");
 
+    // One explicit page, never a claim that the complete destination catalogue was fetched.
+    public async Task<CarrierReadResult> ListBranchesAsync(int offset = 0, int limit = 100, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (offset < 0 || limit is < 1 or > 2000) return new(CarrierReadState.InvalidRequest);
+        var path = FormattableString.Invariant($"/api/local/branches/public/?offset={offset}&limit={limit}&includeTotalCount=true");
+        var result = await ReadAsync(path, cancellationToken);
+        if (result.State != CarrierReadState.Success) return result;
+        var data = result.Data!.Value;
+        if (data.ValueKind != JsonValueKind.Object || !data.TryGetProperty("results", out var rows) ||
+            rows.ValueKind != JsonValueKind.Array || rows.GetArrayLength() > limit ||
+            rows.EnumerateArray().Any(row => row.ValueKind != JsonValueKind.Object))
+            return new(CarrierReadState.InvalidResponse);
+        if (data.TryGetProperty("totalCount", out var total) &&
+            (total.ValueKind != JsonValueKind.Number || !total.TryGetInt32(out var count) || count < rows.GetArrayLength()))
+            return new(CarrierReadState.InvalidResponse);
+        return result;
+    }
     public Task<CarrierReadResult> ListServicePackagesAsync(CancellationToken cancellationToken = default) =>
         ReadAsync("/api/local/service/rates/public/", cancellationToken);
 
