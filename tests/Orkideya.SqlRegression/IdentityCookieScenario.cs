@@ -340,6 +340,7 @@ internal static class IdentityCookieScenario
             check(html.Contains("for=\"shippingRateIdInput\"",StringComparison.Ordinal) &&
                 html.Contains("id=\"shippingRateIdInput\"",StringComparison.Ordinal),
                 "Checkout delivery city label targets the rendered selection control");
+            check(checkoutPage.Headers.CacheControl?.NoStore==true,"Checkout input page prohibits browser/proxy caching");
             receiptCheckoutKey=match.Groups[1].Value;
         }
         var ordersBeforeInvalidReceipt=await db.Orders.CountAsync();
@@ -349,6 +350,7 @@ internal static class IdentityCookieScenario
           ["Input.ShippingRateId"]=manualRate.ShippingRateId.ToString() })))
         {
             var invalidHtml=await invalidReceipt.Content.ReadAsStringAsync();
+            check(invalidReceipt.Headers.CacheControl?.NoStore==true,"Validation response containing customer inputs prohibits caching");
             check(invalidReceipt.StatusCode==HttpStatusCode.OK && invalidHtml.Contains("validation-summary-errors",StringComparison.Ordinal),
                 "Invalid checkout returns an actionable error summary instead of a success receipt");
             check(Regex.IsMatch(invalidHtml,"<input[^>]*aria-describedby=\"error-WhatsAppNumber\"[^>]*aria-invalid=\"true\""),

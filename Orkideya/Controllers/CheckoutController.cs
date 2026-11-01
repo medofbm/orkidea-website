@@ -9,6 +9,7 @@ using System.Text.Json;
 
 namespace Orkideya.Controllers;
 
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class CheckoutController : Controller
 {
     private readonly ApplicationDbContext _context;
