@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = Model.Name;
     var variants = Model.ProductVariants.OrderBy(v => v.Price).ToList();
-    var defaultVariant = variants.First();
+    var defaultVariant = variants.FirstOrDefault();
     var orderCount = (int)(ViewBag.OrderCount ?? 0);
     var relatedProducts = ViewBag.RelatedProducts as List<Orkideya.Models.Product> ?? new List<Orkideya.Models.Product>();
 }
@@ -80,6 +80,8 @@
                     }
                 </div>
 
+                @if (defaultVariant != null)
+                {
                 @* Price *@
                 <div class="mb-4">
                     <span class="product-detail-price" id="detailPrice">
@@ -126,6 +128,13 @@
                         <i class="fas fa-arrow-right me-2"></i>تسوق أكثر
                     </a>
                 </div>
+
+                }
+                else
+                {
+                    <p class="alert alert-info" role="status" data-testid="product-options-unavailable">خيارات هذا المنتج غير جاهزة للطلب حالياً. يمكنك متابعة تصفح المنتجات الأخرى.</p>
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">تصفح المنتجات</a>
+                }
 
                 @* Description *@
                 @if (!string.IsNullOrWhiteSpace(Model.Description))
@@ -256,6 +265,7 @@
             const addToCartBtn = document.getElementById('detailAddToCart');
             const priceEl = document.getElementById('detailPrice');
 
+            if (!addToCartBtn || !priceEl) return;
             sizeBtns.forEach(btn => {
                 btn.addEventListener('click', function () {
                     sizeBtns.forEach(b => {

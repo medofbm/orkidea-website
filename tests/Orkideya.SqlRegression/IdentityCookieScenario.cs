@@ -314,6 +314,16 @@ internal static class IdentityCookieScenario
         using(var deleteManual=await adminClient.PostAsync($"/Admin/Orders/Delete/{manualStored.OrderId}",new FormUrlEncodedContent(new Dictionary<string,string>{{"__RequestVerificationToken",manualToken}})))
             check(deleteManual.StatusCode==HttpStatusCode.Redirect && await db.OrderCreations.AnyAsync(c=>c.OrderId==manualStored.OrderId),"Admin deletion preserves the recorded manual provenance");
 
+        var noOptionsProduct=new Product{Name="Synthetic product with no options"};
+        db.Products.Add(noOptionsProduct);await db.SaveChangesAsync();
+        using(var noOptionsPage=await guest.GetAsync($"/Home/ProductDetail/{noOptionsProduct.ProductId}"))
+        {
+            var html=await noOptionsPage.Content.ReadAsStringAsync();
+            check(noOptionsPage.StatusCode==HttpStatusCode.OK && html.Contains("data-testid=\"product-options-unavailable\"",StringComparison.Ordinal),
+                "Product without sizes renders an explicit unavailable state instead of a server error");
+            check(!html.Contains("id=\"detailAddToCart\"",StringComparison.Ordinal) && !html.Contains("id=\"detailPrice\"",StringComparison.Ordinal),
+                "Product without sizes cannot display a fictitious price or add-to-cart control");
+        }
         // Anonymous customer checkout with a private, session-bound persisted summary.
         using(var noReceipt=await guest.GetAsync("/Checkout/Confirmation?orderId=1"))
             check(noReceipt.StatusCode==HttpStatusCode.Redirect,"Direct success URL without completed checkout cannot display false receipt");
