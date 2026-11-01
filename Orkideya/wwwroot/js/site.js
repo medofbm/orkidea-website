@@ -302,6 +302,10 @@ function updateCartBadge(count) {
     const cartBadge = Utils.qs('#cartBadge');
     if (cartBadge) {
         cartBadge.textContent = count;
+        const cartLink = cartBadge.closest('a');
+        if (cartLink) {
+            cartLink.setAttribute('aria-label', `سلة التسوق (${count} منتج)`);
+        }
         if (count > 0) {
             cartBadge.classList.remove('cart-badge--hidden');
         } else {

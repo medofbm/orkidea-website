@@ -4945,3 +4945,7 @@ main {
         max-height: 220px;
     }
 }
+/* Keep valid MVC summaries available for later errors without an empty alert. */
+.validation-summary-valid {
+    display: none;
+}

@@ -327,6 +327,9 @@ internal static class IdentityCookieScenario
             var html=await checkoutPage.Content.ReadAsStringAsync();
             var match=Regex.Match(html,"name=\"Input.CheckoutToken\"[^>]*value=\"([^\"]+)\"");
             check(checkoutPage.StatusCode==HttpStatusCode.OK && match.Success,"Anonymous checkout renders its own session-bound submission key");
+            check(html.Contains("for=\"shippingRateIdInput\"",StringComparison.Ordinal) &&
+                html.Contains("id=\"shippingRateIdInput\"",StringComparison.Ordinal),
+                "Checkout delivery city label targets the rendered selection control");
             receiptCheckoutKey=match.Groups[1].Value;
         }
         using(var submittedReceipt=await guest.PostAsync("/Checkout/PlaceOrder",new FormUrlEncodedContent(new Dictionary<string,string>
