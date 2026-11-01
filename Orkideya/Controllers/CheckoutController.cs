@@ -119,7 +119,21 @@ public class CheckoutController : Controller
         return RedirectToAction(nameof(Confirmation));
     }
 
-    public IActionResult Confirmation() => View();
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> Confirmation()
+    {
+        Response.Headers["X-Robots-Tag"] = "noindex, nofollow, noarchive";
+        // Only the latest completed checkout in this server session grants receipt access.
+        // Never accept an order ID, checkout token or phone number from a URL/form here.
+        if (!Guid.TryParse(HttpContext.Session.GetString("CompletedCheckoutToken"), out var token) || token == Guid.Empty)
+            return RedirectToAction("Index", "Home");
+        var receipt = await _context.Orders.AsNoTracking().Where(order => order.CheckoutToken == token)
+            .Select(order => new CheckoutReceipt(order.OrderId, order.OrderDate, order.Items.Sum(item => item.Quantity),
+                order.Items.Sum(item => item.Quantity * item.UnitPrice), order.ShippingCost, order.TotalAmount,
+                order.Status, order.PaymentMethod)).SingleOrDefaultAsync(HttpContext.RequestAborted);
+        if (receipt == null) return RedirectToAction("Index", "Home");
+        return View(receipt);
+    }
 
     private void MarkCheckoutComplete(Guid token)
     {

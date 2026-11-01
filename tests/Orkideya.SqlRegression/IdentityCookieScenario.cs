@@ -314,6 +314,51 @@ internal static class IdentityCookieScenario
         using(var deleteManual=await adminClient.PostAsync($"/Admin/Orders/Delete/{manualStored.OrderId}",new FormUrlEncodedContent(new Dictionary<string,string>{{"__RequestVerificationToken",manualToken}})))
             check(deleteManual.StatusCode==HttpStatusCode.Redirect && await db.OrderCreations.AnyAsync(c=>c.OrderId==manualStored.OrderId),"Admin deletion preserves the recorded manual provenance");
 
+        // Anonymous customer checkout with a private, session-bound persisted summary.
+        using(var noReceipt=await guest.GetAsync("/Checkout/Confirmation?orderId=1"))
+            check(noReceipt.StatusCode==HttpStatusCode.Redirect,"Direct success URL without completed checkout cannot display false receipt");
+        var receiptCsrf=await Token(guest,"/Identity/Account/Login");
+        using(var addReceiptCart=await guest.PostAsync("/Cart/AddToCartAjax",new FormUrlEncodedContent(new Dictionary<string,string>
+        { ["__RequestVerificationToken"]=receiptCsrf,["variantId"]=manualVariant.ProductVariantId.ToString(),["quantity"]="2" })))
+            check(addReceiptCart.StatusCode==HttpStatusCode.OK,"Anonymous receipt journey adds a real catalogue variant to its session cart");
+        string receiptCheckoutKey;
+        using(var checkoutPage=await guest.GetAsync("/Checkout"))
+        {
+            var html=await checkoutPage.Content.ReadAsStringAsync();
+            var match=Regex.Match(html,"name=\"Input.CheckoutToken\"[^>]*value=\"([^\"]+)\"");
+            check(checkoutPage.StatusCode==HttpStatusCode.OK && match.Success,"Anonymous checkout renders its own session-bound submission key");
+            receiptCheckoutKey=match.Groups[1].Value;
+        }
+        using(var submittedReceipt=await guest.PostAsync("/Checkout/PlaceOrder",new FormUrlEncodedContent(new Dictionary<string,string>
+        { ["__RequestVerificationToken"]=receiptCsrf,["Input.CheckoutToken"]=receiptCheckoutKey,["Input.FirstName"]="SyntheticReceipt",
+          ["Input.LastName"]="Customer",["Input.WhatsAppNumber"]="+218000000000",["Input.ShippingAddress"]="SYNTHETIC_PRIVATE_RECEIPT_ADDRESS",
+          ["Input.ShippingRateId"]=manualRate.ShippingRateId.ToString() })))
+            check(submittedReceipt.StatusCode==HttpStatusCode.Redirect && submittedReceipt.Headers.Location?.OriginalString.Contains("Confirmation",StringComparison.Ordinal)==true,
+                "Guest order completes without requiring account creation");
+        var storedReceipt=await db.Orders.AsNoTracking().SingleAsync(o=>o.CheckoutToken==Guid.Parse(receiptCheckoutKey));
+        var receiptOrderCount=await db.Orders.CountAsync();var receiptNotificationCount=await db.OrderNotifications.CountAsync();
+        // A later catalogue edit must not rewrite the confirmed customer's receipt.
+        await db.ProductVariants.Where(v=>v.ProductVariantId==manualVariant.ProductVariantId).ExecuteUpdateAsync(x=>x.SetProperty(v=>v.Price,999m));
+        for(var repeat=0;repeat<2;repeat++)
+        {
+            using var receiptPage=await guest.GetAsync($"/Checkout/Confirmation?orderId={manualStored.OrderId}");
+            var html=await receiptPage.Content.ReadAsStringAsync();
+            check(receiptPage.StatusCode==HttpStatusCode.OK && Regex.IsMatch(html,$"data-testid=\"receipt-order-number\">#{storedReceipt.OrderId}</strong>"),
+                "Receipt uses the session's stored order and ignores another order ID in the URL");
+            check(html.Contains("6.00",StringComparison.Ordinal) && html.Contains("2.00",StringComparison.Ordinal) && html.Contains("8.00",StringComparison.Ordinal),
+                "Receipt totals use persisted unit prices rather than the edited catalogue");
+            check(!html.Contains("SYNTHETIC_PRIVATE_RECEIPT_ADDRESS",StringComparison.Ordinal) && !html.Contains("+218000000000",StringComparison.Ordinal) &&
+                !html.Contains(receiptCheckoutKey,StringComparison.Ordinal),"Receipt omits customer address,phone and checkout capability");
+            check(receiptPage.Headers.CacheControl?.NoStore==true && receiptPage.Headers.TryGetValues("X-Robots-Tag",out var receiptRobots) && receiptRobots.Any(h=>h.Contains("noindex",StringComparison.Ordinal)),
+                "Private receipt is not cacheable or indexable");
+        }
+        using(var isolatedReceiptBrowser=Client())
+        using(var deniedReceipt=await isolatedReceiptBrowser.GetAsync($"/Checkout/Confirmation?orderId={storedReceipt.OrderId}&CheckoutToken={receiptCheckoutKey}"))
+            check(deniedReceipt.StatusCode==HttpStatusCode.Redirect,"Another cookie session cannot obtain receipt using its number or checkout token in URL");
+        check(await db.Orders.CountAsync()==receiptOrderCount && await db.OrderNotifications.CountAsync()==receiptNotificationCount,
+            "Receipt refresh and forged lookup URLs create no orders or notification intents");
+        await db.ProductVariants.Where(v=>v.ProductVariantId==manualVariant.ProductVariantId).ExecuteUpdateAsync(x=>x.SetProperty(v=>v.Price,3m));
+
         using (var logout = await adminClient.PostAsync("/Identity/Account/Logout?returnUrl=%2F", new FormUrlEncodedContent(new Dictionary<string, string>
             { ["__RequestVerificationToken"] = logoutToken })))
             check(logout.StatusCode == HttpStatusCode.Redirect, "Real admin logout succeeds with antiforgery");
