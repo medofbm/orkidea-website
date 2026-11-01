@@ -16,3 +16,13 @@ test('unselected city does not imply zero shipping',()=>{assert.equal(fixture('1
 test('missing checkout markup is harmless',()=>{assert.doesNotThrow(()=>initCheckoutSummary({getElementById:()=>null}));});
 
 test('clearing city removes the previously calculated total',()=>{const f=fixture('10','15');f.elements.shippingRateIdInput.value='';f.change();assert.equal(f.elements.orderTotal.textContent,'اختر المدينة');});
+
+test('server validation errors receive focus while valid forms do not',()=>{
+ const {initCheckoutErrors}=require('../Orkideya/wwwroot/js/checkout.js');
+ let focused=0;
+ const summary={classList:{contains:name=>name==='validation-summary-errors'},focus:()=>focused++};
+ initCheckoutErrors({getElementById:()=>summary});assert.equal(focused,1);
+ summary.classList.contains=()=>false;
+ initCheckoutErrors({getElementById:()=>summary});assert.equal(focused,1);
+ assert.doesNotThrow(()=>initCheckoutErrors({getElementById:()=>null}));
+});

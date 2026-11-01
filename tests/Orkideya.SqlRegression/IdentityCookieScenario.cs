@@ -332,6 +332,21 @@ internal static class IdentityCookieScenario
                 "Checkout delivery city label targets the rendered selection control");
             receiptCheckoutKey=match.Groups[1].Value;
         }
+        var ordersBeforeInvalidReceipt=await db.Orders.CountAsync();
+        using(var invalidReceipt=await guest.PostAsync("/Checkout/PlaceOrder",new FormUrlEncodedContent(new Dictionary<string,string>
+        { ["__RequestVerificationToken"]=receiptCsrf,["Input.CheckoutToken"]=receiptCheckoutKey,["Input.FirstName"]="RetainedName",
+          ["Input.LastName"]="Customer",["Input.WhatsAppNumber"]="bad-phone",["Input.ShippingAddress"]="Synthetic retained address",
+          ["Input.ShippingRateId"]=manualRate.ShippingRateId.ToString() })))
+        {
+            var invalidHtml=await invalidReceipt.Content.ReadAsStringAsync();
+            check(invalidReceipt.StatusCode==HttpStatusCode.OK && invalidHtml.Contains("validation-summary-errors",StringComparison.Ordinal),
+                "Invalid checkout returns an actionable error summary instead of a success receipt");
+            check(Regex.IsMatch(invalidHtml,"<input[^>]*aria-describedby=\"error-WhatsAppNumber\"[^>]*aria-invalid=\"true\""),
+                "Invalid phone field exposes its error association and invalid state");
+            check(invalidHtml.Contains("value=\"RetainedName\"",StringComparison.Ordinal) && invalidHtml.Contains("Synthetic retained address",StringComparison.Ordinal),
+                "Invalid checkout retains valid customer input for correction");
+        }
+        check(await db.Orders.CountAsync()==ordersBeforeInvalidReceipt,"Invalid checkout creates no order before correction");
         using(var submittedReceipt=await guest.PostAsync("/Checkout/PlaceOrder",new FormUrlEncodedContent(new Dictionary<string,string>
         { ["__RequestVerificationToken"]=receiptCsrf,["Input.CheckoutToken"]=receiptCheckoutKey,["Input.FirstName"]="SyntheticReceipt",
           ["Input.LastName"]="Customer",["Input.WhatsAppNumber"]="+218000000000",["Input.ShippingAddress"]="SYNTHETIC_PRIVATE_RECEIPT_ADDRESS",
