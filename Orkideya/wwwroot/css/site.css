@@ -4949,3 +4949,21 @@ main {
 .validation-summary-valid {
     display: none;
 }
+
+/* Checkout controls must remain readable and usable on touch screens. */
+.checkout-container .form-control,
+.checkout-container .form-select {
+    font-size: 1rem;
+    min-height: 44px;
+}
+.checkout-container .summary-item-details {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.checkout-container .summary-item-img {
+    flex-shrink: 0;
+}
+#checkoutErrors:focus {
+    outline: 2px solid var(--primary-purple);
+    outline-offset: 3px;
+}

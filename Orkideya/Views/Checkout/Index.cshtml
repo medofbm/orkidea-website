@@ -2,49 +2,50 @@
 @using System.Globalization
 @{
     ViewData["Title"] = "إتمام الطلب";
+    string FieldInvalid(string field) => ViewData.ModelState.TryGetValue($"Input.{field}", out var state) && state.Errors.Count > 0 ? "true" : "false";
     var selectedRate = Model.ShippingRates.FirstOrDefault(rate => rate.ShippingRateId == Model.Input.ShippingRateId);
 }
-<div class="checkout-container">
+<div class="checkout-container container py-4">
     <h1>إتمام الطلب</h1>
     <div class="row g-4">
         <div class="col-lg-7">
             <p class="alert alert-info" role="note">طلبك يخضع لتأكيد التوفر. لا تُحجز الكمية قبل مراجعتنا وتأكيد الطلب.</p>
             <form asp-action="PlaceOrder" method="post" id="checkoutForm">
                 <input asp-for="Input.CheckoutToken" type="hidden" />
-                <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+                <div asp-validation-summary="All" class="alert alert-danger" role="alert" id="checkoutErrors" tabindex="-1"></div>
                 <div class="mb-3">
                     <label asp-for="Input.WhatsAppNumber" class="form-label">رقم الواتساب</label>
-                    <input asp-for="Input.WhatsAppNumber" type="tel" class="form-control" autocomplete="tel" maxlength="20" required />
-                    <span asp-validation-for="Input.WhatsAppNumber" class="text-danger"></span>
+                    <input asp-for="Input.WhatsAppNumber" type="tel" inputmode="tel" dir="ltr" aria-describedby="error-WhatsAppNumber" aria-invalid="@FieldInvalid("WhatsAppNumber")" class="form-control" autocomplete="tel" maxlength="20" required />
+                    <span asp-validation-for="Input.WhatsAppNumber" class="text-danger" id="error-WhatsAppNumber"></span>
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label asp-for="Input.FirstName" class="form-label">الاسم الأول</label>
-                        <input asp-for="Input.FirstName" class="form-control" autocomplete="given-name" maxlength="50" required />
-                        <span asp-validation-for="Input.FirstName" class="text-danger"></span>
+                        <input asp-for="Input.FirstName" aria-describedby="error-FirstName" aria-invalid="@FieldInvalid("FirstName")" class="form-control" autocomplete="given-name" maxlength="50" required />
+                        <span asp-validation-for="Input.FirstName" class="text-danger" id="error-FirstName"></span>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label asp-for="Input.LastName" class="form-label">اسم العائلة</label>
-                        <input asp-for="Input.LastName" class="form-control" autocomplete="family-name" maxlength="50" required />
-                        <span asp-validation-for="Input.LastName" class="text-danger"></span>
+                        <input asp-for="Input.LastName" aria-describedby="error-LastName" aria-invalid="@FieldInvalid("LastName")" class="form-control" autocomplete="family-name" maxlength="50" required />
+                        <span asp-validation-for="Input.LastName" class="text-danger" id="error-LastName"></span>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label asp-for="Input.ShippingAddress" class="form-label">العنوان بالتفصيل</label>
-                    <textarea asp-for="Input.ShippingAddress" class="form-control" autocomplete="street-address" maxlength="200" rows="3" required></textarea>
-                    <span asp-validation-for="Input.ShippingAddress" class="text-danger"></span>
+                    <textarea asp-for="Input.ShippingAddress" aria-describedby="error-ShippingAddress" aria-invalid="@FieldInvalid("ShippingAddress")" class="form-control" autocomplete="street-address" maxlength="200" rows="3" required></textarea>
+                    <span asp-validation-for="Input.ShippingAddress" class="text-danger" id="error-ShippingAddress"></span>
                 </div>
                 <div class="mb-3">
                     <label for="shippingRateIdInput" class="form-label">مدينة التوصيل</label>
-                    <select asp-for="Input.ShippingRateId" class="form-select" id="shippingRateIdInput" required>
+                    <select asp-for="Input.ShippingRateId" class="form-select" id="shippingRateIdInput" aria-describedby="error-ShippingRateId shippingCityHelp" aria-invalid="@FieldInvalid("ShippingRateId")" required>
                         <option value="">اختر مدينة التوصيل</option>
                         @foreach (var rate in Model.ShippingRates)
                         {
                             <option value="@rate.ShippingRateId" data-price="@rate.Price.ToString(CultureInfo.InvariantCulture)">@rate.CityName — @rate.Price.ToString("0.00") د.ل</option>
                         }
                     </select>
-                    <span asp-validation-for="Input.ShippingRateId" class="text-danger"></span>
-                    <p class="form-text">الطلب متاح للمدن المدرجة فقط، وبتكلفة التوصيل الموضحة.</p>
+                    <span asp-validation-for="Input.ShippingRateId" class="text-danger" id="error-ShippingRateId"></span>
+                    <p class="form-text" id="shippingCityHelp">الطلب متاح للمدن المدرجة فقط، وبتكلفة التوصيل الموضحة.</p>
                 </div>
                 <button type="submit" class="btn btn-success btn-lg w-100">تأكيد الطلب والدفع عند الاستلام</button>
             </form>

@@ -22,5 +22,14 @@ function initCheckoutSummary(document) {
     cities.addEventListener('change', update);
     update();
 }
-if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded', () => initCheckoutSummary(document));
-if (typeof module !== 'undefined' && module.exports) module.exports = { initCheckoutSummary };
+function initCheckoutErrors(document) {
+    const summary = document.getElementById('checkoutErrors');
+    if (summary && summary.classList.contains('validation-summary-errors')) {
+        summary.focus();
+    }
+}
+if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded', () => {
+    initCheckoutSummary(document);
+    initCheckoutErrors(document);
+});
+if (typeof module !== 'undefined' && module.exports) module.exports = { initCheckoutSummary, initCheckoutErrors };
