@@ -9,11 +9,12 @@ function fixture(variantId, response, fail=false) {
  const button={dataset:{variantId,quantity:'2'},innerHTML:'Add',disabled:false,closest:()=>null,
  addEventListener:(event,callback)=>handler=callback};
  const classes=new Set();
- const badge={textContent:'0',classList:{add:x=>classes.add(x),remove:x=>classes.delete(x)}};
+ const link={label:'سلة التسوق (0 منتج)',setAttribute:(name,value)=>{if(name==='aria-label')link.label=value;}};
+ const badge={closest:()=>link,textContent:'0',classList:{add:x=>classes.add(x),remove:x=>classes.delete(x)}};
  const document={addEventListener:()=>{},querySelectorAll:()=>[button],querySelector:s=>s==='#cartBadge'?badge:{value:'csrf-test'}};
  const context=vm.createContext({document,console:{log(){},error(){}},setTimeout:callback=>callback(),clearTimeout(){},fetch:async(url,options)=>{requests.push({url,options});if(fail)throw Error('offline');return {ok:true,json:async()=>response};}});
  vm.runInContext(source,context);vm.runInContext('initAddToCart()',context);
- return {button,badge,classes,requests,click:()=>handler.call(button,{preventDefault(){}}),context};
+ return {button,badge,link,classes,requests,click:()=>handler.call(button,{preventDefault(){}}),context};
 }
 test('missing variant restores button and sends no request',async()=>{const f=fixture('');await f.click();assert.equal(f.button.innerHTML,'Add');assert.equal(f.button.disabled,false);assert.equal(f.requests.length,0);});
 test('successful add sends POST with CSRF and updates badge',async()=>{const f=fixture('7',{success:true,count:3});await f.click();assert.equal(f.requests[0].options.method,'POST');assert.equal(f.requests[0].options.headers.RequestVerificationToken,'csrf-test');assert.equal(f.badge.textContent,3);assert.equal(f.button.disabled,false);assert.equal(f.button.innerHTML,'Add');});
@@ -36,3 +37,5 @@ test('quantity upper boundary is accepted',async()=>{
  const f=fixture('7',{success:true,count:99});f.button.dataset.quantity='99';await f.click();
  assert.equal(f.requests.length,1);assert.match(f.requests[0].url,/quantity=99$/);
 });
+
+test('successful add keeps accessible cart count in sync',async()=>{const f=fixture('7',{success:true,count:3});await f.click();assert.equal(f.link.label,'سلة التسوق (3 منتج)');vm.runInContext('updateCartBadge(0)',f.context);assert.equal(f.link.label,'سلة التسوق (0 منتج)');});

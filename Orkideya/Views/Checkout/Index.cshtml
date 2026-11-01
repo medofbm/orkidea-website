@@ -35,7 +35,7 @@
                     <span asp-validation-for="Input.ShippingAddress" class="text-danger"></span>
                 </div>
                 <div class="mb-3">
-                    <label asp-for="Input.ShippingRateId" class="form-label">مدينة التوصيل</label>
+                    <label for="shippingRateIdInput" class="form-label">مدينة التوصيل</label>
                     <select asp-for="Input.ShippingRateId" class="form-select" id="shippingRateIdInput" required>
                         <option value="">اختر مدينة التوصيل</option>
                         @foreach (var rate in Model.ShippingRates)
