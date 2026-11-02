@@ -130,3 +130,4 @@ await new WhatsAppNotificationService(enabledConfiguration, notificationLogger).
 Check(notificationLogger.Count == 1, "Enabled but incomplete notification configuration returns before provider call");
 
 await SabilReadRegression.Run(Check);
+SabilCatalogueRegression.Run(Check);
