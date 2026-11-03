@@ -45,7 +45,7 @@ public sealed class CheckoutQuoteContext(IDataProtectionProvider protection, Tim
             value.HandoffMode, value.Destination, Lines = value.Lines.OrderBy(l => l.VariantId).ToArray() })));
     private static bool Text(string? value, int max) => value is { Length: > 0 } && value.Length <= max &&
         !string.IsNullOrWhiteSpace(value) && !value.Any(char.IsControl);
-    private static bool Valid(QuoteBinding? value) => value is not null && value.CheckoutToken != Guid.Empty &&
+    internal static bool Valid(QuoteBinding? value) => value is not null && value.CheckoutToken != Guid.Empty &&
         value.ServiceId is { Length: 24 } && value.ServiceId.All(char.IsAsciiHexDigit) && Text(value.OriginRevision,128) &&
         value.HandoffMode is "OfficeDropoff" or "CarrierCollection" && value.Destination is { } d &&
         Text(d.BranchId,128) && Text(d.City,200) && Text(d.Area,200) && value.Lines is { Count: > 0 and <= 100 } &&
