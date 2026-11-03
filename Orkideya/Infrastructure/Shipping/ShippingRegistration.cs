@@ -13,6 +13,10 @@ public static class ShippingRegistration
         services.AddHttpClient<ICarrierQuoteGateway, SabilQuoteClient>(http => http.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })
             .RemoveAllLoggers();
+        services.Configure<SabilCheckoutOptions>(configuration.GetSection(SabilCheckoutOptions.Section));
+        services.AddScoped<CheckoutQuoteContext>();
+        services.AddScoped<SabilCheckoutQuotes>();
+        Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.TryAddSingleton(services, TimeProvider.System);
         return services;
     }
 }
