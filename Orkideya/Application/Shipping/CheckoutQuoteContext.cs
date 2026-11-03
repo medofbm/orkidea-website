@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
@@ -51,7 +52,12 @@ public sealed class CheckoutQuoteContext(IDataProtectionProvider protection, Tim
     }
     private static string Fingerprint(QuoteBinding value) => Convert.ToHexString(SHA256.HashData(
         JsonSerializer.SerializeToUtf8Bytes(new { value.CheckoutToken, value.ServiceId, value.OriginRevision,
-            value.HandoffMode, value.Destination, Lines = value.Lines.OrderBy(l => l.VariantId).ToArray() })));
+            value.HandoffMode, value.Destination,
+            Lines = value.Lines.OrderBy(line => line.VariantId).Select(line => new
+            {
+                line.VariantId, line.Quantity,
+                UnitPrice = line.UnitPrice.ToString("0.00", CultureInfo.InvariantCulture)
+            }).ToArray() })));
     private static bool Text(string? value, int max) => value is { Length: > 0 } && value.Length <= max &&
         !string.IsNullOrWhiteSpace(value) && !value.Any(char.IsControl);
     internal static bool Valid(QuoteBinding? value) => value is not null && value.CheckoutToken != Guid.Empty &&
