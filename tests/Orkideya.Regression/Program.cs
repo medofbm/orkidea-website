@@ -133,4 +133,5 @@ await SabilReadRegression.Run(Check);
 SabilCatalogueRegression.Run(Check);
 SabilQuoteRegression.Run(Check);
 SabilShippingFeeRegression.Run(Check);
+CheckoutQuoteContextRegression.Run(Check);
 await SabilQuoteClientRegression.Run(Check);
