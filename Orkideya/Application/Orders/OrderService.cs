@@ -23,7 +23,7 @@ public sealed class OrderService(ApplicationDbContext context)
 
     public async Task<Order?> FindAsync(Guid token, string requestHash, CancellationToken cancellationToken = default)
     {
-        var existing = await context.Orders.AsNoTracking().Include(o => o.Creation)
+        var existing = await context.Orders.AsNoTracking().Include(o => o.Creation).Include(o => o.ShippingQuote)
             .SingleOrDefaultAsync(order => order.CheckoutToken == token, cancellationToken);
         if (existing != null && existing.CheckoutRequestHash != requestHash) throw new CheckoutConflictException();
         return existing;
@@ -53,6 +53,21 @@ public sealed class OrderService(ApplicationDbContext context)
         order.StockState = order.Items.All(item => item.StockAccountId is not null) ? "AwaitingConfirmation" : "Untracked";
         var existing = await FindAsync(order.CheckoutToken.Value, order.CheckoutRequestHash, cancellationToken);
         if (existing != null) return new(existing, false);
+        if (order.ShippingQuote is { } quote)
+        {
+            var accepted = DateTimeOffset.UtcNow;
+            static bool Text(string? value,int max) => !string.IsNullOrWhiteSpace(value) && value.Length<=max && !value.Any(char.IsControl);
+            if (quote.Provider!="Sabil" || quote.Currency!="lyd" || quote.ServiceId is not { Length:24 } ||
+                !quote.ServiceId.All(char.IsAsciiHexDigit) || !Text(quote.BranchId,128) || !Text(quote.City,200) || !Text(quote.Area,200) ||
+                !Text(quote.OriginRevision,128) || quote.HandoffMode is not ("OfficeDropoff" or "CarrierCollection") ||
+                quote.City!=order.City || quote.ShippingFee!=order.ShippingCost || quote.ShippingFee<0 ||
+                decimal.Round(quote.ShippingFee,2)!=quote.ShippingFee || quote.QuotedAtUtc.Offset!=TimeSpan.Zero ||
+                quote.ExpiresAtUtc.Offset!=TimeSpan.Zero || quote.QuotedAtUtc>accepted || quote.ExpiresAtUtc<=accepted ||
+                quote.ExpiresAtUtc-quote.QuotedAtUtc>TimeSpan.FromMinutes(5) ||
+                quote.OrderId!=0 && quote.OrderId!=order.OrderId)
+                throw new ArgumentException("Invalid carrier shipping snapshot.",nameof(order));
+            quote.AcceptedAtUtc=accepted;
+        }
         if (order.Notifications.Count != 0) throw new ArgumentException("New order notifications are managed by the order service.", nameof(order));
         var createdAt = DateTime.UtcNow;
         if (order.Creation is not null) order.Creation.RecordedAtUtc = createdAt;
@@ -70,6 +85,7 @@ public sealed class OrderService(ApplicationDbContext context)
             foreach (var item in order.Items.ToArray()) context.Entry(item).State = EntityState.Detached;
             foreach (var notification in order.Notifications.ToArray()) context.Entry(notification).State = EntityState.Detached;
             if (order.Creation is not null) context.Entry(order.Creation).State = EntityState.Detached;
+            if (order.ShippingQuote is not null) context.Entry(order.ShippingQuote).State = EntityState.Detached;
             context.Entry(order).State = EntityState.Detached;
             existing = await FindAsync(order.CheckoutToken.Value, order.CheckoutRequestHash, cancellationToken);
             if (existing == null) throw;

@@ -27,6 +27,7 @@ namespace Orkideya.Data
         public DbSet<StockMovement> StockMovements { get; set; }
 
         public DbSet<OrderStatusChange> OrderStatusChanges { get; set; }
+        public DbSet<OrderShippingQuote> OrderShippingQuotes { get; set; }
         public DbSet<OrderCreation> OrderCreations { get; set; }
         public DbSet<OrderDelivery> OrderDeliveries { get; set; }
         public DbSet<OrderDeliveryEvent> OrderDeliveryEvents { get; set; }
@@ -34,6 +35,11 @@ namespace Orkideya.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            builder.Entity<OrderShippingQuote>().Property(q=>q.OrderId).ValueGeneratedNever();
+            builder.Entity<OrderShippingQuote>().HasOne<Order>().WithOne(o=>o.ShippingQuote)
+                .HasForeignKey<OrderShippingQuote>(q=>q.OrderId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<OrderShippingQuote>().ToTable(t=>t.HasCheckConstraint("CK_OrderShippingQuote_Facts",
+                "[Provider]='Sabil' AND [Currency]='lyd' AND [ShippingFee]>=0 AND LEN([ServiceId])=24 AND [ServiceId] NOT LIKE '%[^0-9a-fA-F]%' AND LEN(LTRIM(RTRIM([BranchId])))>0 AND LEN(LTRIM(RTRIM([City])))>0 AND LEN(LTRIM(RTRIM([Area])))>0 AND LEN(LTRIM(RTRIM([OriginRevision])))>0 AND [HandoffMode] IN ('OfficeDropoff','CarrierCollection') AND [AcceptedAtUtc]>=[QuotedAtUtc] AND [AcceptedAtUtc]<[ExpiresAtUtc] AND DATEDIFF_BIG(millisecond,[QuotedAtUtc],[ExpiresAtUtc]) BETWEEN 1 AND 300000 AND DATEPART(TZOFFSET,[QuotedAtUtc])=0 AND DATEPART(TZOFFSET,[ExpiresAtUtc])=0 AND DATEPART(TZOFFSET,[AcceptedAtUtc])=0"));
             builder.Entity<OrderCreation>().Property(c=>c.OrderId).ValueGeneratedNever();
             builder.Entity<OrderCreation>().HasOne<Order>().WithOne(o=>o.Creation).HasForeignKey<OrderCreation>(c=>c.OrderId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<OrderCreation>().HasIndex(c=>new { c.Source,c.RecordedAtUtc });
