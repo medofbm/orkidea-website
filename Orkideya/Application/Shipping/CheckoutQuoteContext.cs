@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
@@ -9,6 +10,8 @@ public sealed record QuoteDestination(string BranchId, string City, string Area)
 // OriginRevision is a server-owned configuration revision, never a customer-supplied address.
 public sealed record QuoteBinding(Guid CheckoutToken, string ServiceId, string OriginRevision,
     string HandoffMode, QuoteDestination Destination, IReadOnlyList<QuoteCartLine> Lines);
+
+public sealed record VerifiedQuote(decimal Fee, DateTimeOffset IssuedAt, DateTimeOffset ExpiresAt);
 
 public sealed class CheckoutQuoteContext(IDataProtectionProvider protection, TimeProvider clock)
 {
@@ -25,7 +28,14 @@ public sealed class CheckoutQuoteContext(IDataProtectionProvider protection, Tim
     }
     public bool TryRead(string? token, QuoteBinding current, out decimal? fee)
     {
-        fee = null;
+        var valid = TryReadDetails(token, current, out var details);
+        fee = details?.Fee;
+        return valid;
+    }
+
+    public bool TryReadDetails(string? token, QuoteBinding current, out VerifiedQuote? details)
+    {
+        details = null;
         if (token is not { Length: > 0 and <= 16384 } || !Valid(current)) return false;
         try
         {
@@ -34,7 +44,7 @@ public sealed class CheckoutQuoteContext(IDataProtectionProvider protection, Tim
             if (ticket is null || ticket.IssuedAt > now || now >= ticket.ExpiresAt ||
                 ticket.ExpiresAt - ticket.IssuedAt != Lifetime || ticket.Fingerprint != Fingerprint(current) ||
                 ticket.Fee is < 0 or > 999999999 || decimal.Round(ticket.Fee, 2) != ticket.Fee) return false;
-            fee = ticket.Fee;
+            details = new(ticket.Fee, ticket.IssuedAt, ticket.ExpiresAt);
             return true;
         }
         catch (Exception e) when (e is CryptographicException or JsonException or FormatException or ArgumentException)
@@ -42,7 +52,12 @@ public sealed class CheckoutQuoteContext(IDataProtectionProvider protection, Tim
     }
     private static string Fingerprint(QuoteBinding value) => Convert.ToHexString(SHA256.HashData(
         JsonSerializer.SerializeToUtf8Bytes(new { value.CheckoutToken, value.ServiceId, value.OriginRevision,
-            value.HandoffMode, value.Destination, Lines = value.Lines.OrderBy(l => l.VariantId).ToArray() })));
+            value.HandoffMode, value.Destination,
+            Lines = value.Lines.OrderBy(line => line.VariantId).Select(line => new
+            {
+                line.VariantId, line.Quantity,
+                UnitPrice = line.UnitPrice.ToString("0.00", CultureInfo.InvariantCulture)
+            }).ToArray() })));
     private static bool Text(string? value, int max) => value is { Length: > 0 } && value.Length <= max &&
         !string.IsNullOrWhiteSpace(value) && !value.Any(char.IsControl);
     internal static bool Valid(QuoteBinding? value) => value is not null && value.CheckoutToken != Guid.Empty &&

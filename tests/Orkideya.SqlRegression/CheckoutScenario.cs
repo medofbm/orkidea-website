@@ -1,3 +1,7 @@
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Options;
+using Orkideya.Application.Shipping;
+using Orkideya.Infrastructure.Shipping;
 using Orkideya.Application.Inventory;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -83,6 +87,47 @@ internal static class CheckoutScenario
             "Checkout snapshots configured consumption and unit but does not reserve or consume");
         check(await controller.PlaceOrder(trackedInput) is RedirectToActionResult {ActionName:"Confirmation"} &&
             !await db.StockMovements.AnyAsync(m=>m.OrderId==tracked.OrderId),"Checkout retry does not create stock movements");
+        var destination = new QuoteDestination("test-branch", "Test city", "Test area");
+        var quoteContext = new CheckoutQuoteContext(new EphemeralDataProtectionProvider(), TimeProvider.System);
+        var carrierOptions = new SabilReadOptions
+        {
+            ReadEnabled = true, QuoteEnabled = true, QuoteServiceId = new string('a', 24)
+        };
+        var checkoutOptions = new SabilCheckoutOptions
+        {
+            Enabled = true, OriginRevision = "test-origin", HandoffMode = "OfficeDropoff",
+            HomeDestinations = new() { ["test-area"] = destination }
+        };
+        var carrier = new SabilCheckoutQuotes(null!, null!, quoteContext,
+            Options.Create(carrierOptions), Options.Create(checkoutOptions));
+        var carrierController = new CheckoutController(db, new OrderService(db), carrier)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { Session = session } }
+        };
+        session.SetString("Cart", JsonSerializer.Serialize(cart));
+        var carrierModel = (CheckoutViewModel)((ViewResult)await carrierController.Index()).Model!;
+        var carrierInput = Customer(carrierModel);
+        carrierInput.ShippingRateId = 0;
+        carrierInput.CarrierDestination = "test-area";
+        var carrierToken = carrierInput.CheckoutToken!.Value;
+        var binding = new QuoteBinding(carrierToken, carrierOptions.QuoteServiceId, checkoutOptions.OriginRevision,
+            checkoutOptions.HandoffMode, destination, [new QuoteCartLine(variant.ProductVariantId, 2, variant.Price)]);
+        carrierInput.QuoteToken = "invalid";
+        check(await carrierController.PlaceOrder(carrierInput) is ViewResult &&
+            !await db.Orders.AnyAsync(o => o.CheckoutToken == carrierToken), "Carrier checkout rejects an invalid quote without saving an order");
+        carrierController.ModelState.Clear();
+        carrierInput.QuoteToken = quoteContext.Create(binding, 15m);
+        check(await carrierController.PlaceOrder(carrierInput) is RedirectToActionResult { ActionName: "Confirmation" },
+            "Carrier checkout saves an order with a matching protected quote");
+        var carrierOrder = await db.Orders.AsNoTracking().Include(o => o.ShippingQuote).SingleAsync(o => o.CheckoutToken == carrierToken);
+        check(carrierOrder.ShippingQuote is { ShippingFee: 15m, Area: "Test area" } &&
+            carrierOrder.TotalAmount == 75m && carrierOrder.ShippingCost == 15m,
+            "Carrier checkout persists the reviewed fee and destination with the total");
+        carrierInput.QuoteToken = null;
+        check(await carrierController.PlaceOrder(carrierInput) is RedirectToActionResult { ActionName: "Confirmation" } &&
+            await db.Orders.CountAsync(o => o.CheckoutToken == carrierToken) == 1,
+            "Carrier checkout retry returns the original order without a fresh quote");
+
         var missingProduct=new Product{Name="Synthetic missing stock size"};
         var missingVariant=new ProductVariant{Product=missingProduct,Size="Unknown size",Price=10};
         db.ProductVariants.Add(missingVariant); await db.SaveChangesAsync();

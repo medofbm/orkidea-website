@@ -11,6 +11,7 @@ namespace Orkideya.Application.Orders;
 
 public sealed record PlacedOrder(Order Order, bool IsNew);
 public sealed class CheckoutConflictException : Exception { }
+public sealed class ShippingQuoteExpiredException : ArgumentException { }
 
 public sealed class OrderService(ApplicationDbContext context)
 {
@@ -18,7 +19,7 @@ public sealed class OrderService(ApplicationDbContext context)
         Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new[]
         {
             input.FirstName.Trim(), input.LastName.Trim(), input.WhatsAppNumber.Trim(),
-            input.ShippingAddress.Trim(), input.ShippingRateId.ToString(CultureInfo.InvariantCulture)
+            input.ShippingAddress.Trim(), input.CarrierDestination is { Length: > 0 } destination ? "Sabil:" + destination : input.ShippingRateId.ToString(CultureInfo.InvariantCulture)
         }))));
 
     public async Task<Order?> FindAsync(Guid token, string requestHash, CancellationToken cancellationToken = default)
@@ -56,6 +57,7 @@ public sealed class OrderService(ApplicationDbContext context)
         if (order.ShippingQuote is { } quote)
         {
             var accepted = DateTimeOffset.UtcNow;
+            if (quote.ExpiresAtUtc <= accepted) throw new ShippingQuoteExpiredException();
             static bool Text(string? value,int max) => !string.IsNullOrWhiteSpace(value) && value.Length<=max && !value.Any(char.IsControl);
             if (quote.Provider!="Sabil" || quote.Currency!="lyd" || quote.ServiceId is not { Length:24 } ||
                 !quote.ServiceId.All(char.IsAsciiHexDigit) || !Text(quote.BranchId,128) || !Text(quote.City,200) || !Text(quote.Area,200) ||

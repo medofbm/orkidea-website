@@ -12,6 +12,8 @@ internal static class CheckoutQuoteContextRegression
         check(context.TryRead(token,binding,out var fee)&&fee==15,"Protected quote restores only the accepted shipping fee");
         check(context.TryRead(token,binding with{Lines=binding.Lines.Reverse().ToArray()},out fee)&&fee==15,
             "Reordering identical server cart lines does not invalidate a quote");
+        check(context.TryRead(token, binding with { Lines = [new(1, 2, 25.00m), new(2, 1, 10.00m)] }, out fee) && fee == 15,
+            "SQL decimal scale does not invalidate a numerically identical cart price");
         foreach(var changed in new[]{binding with{CheckoutToken=Guid.NewGuid()},binding with{ServiceId=new string('b',24)},
             binding with{OriginRevision="origin-v2"},binding with{HandoffMode="CarrierCollection"},
             binding with{Destination=binding.Destination with{BranchId="branch-b"}},

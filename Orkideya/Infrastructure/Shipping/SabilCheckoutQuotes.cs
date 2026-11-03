@@ -7,6 +7,7 @@ public sealed class SabilCheckoutOptions
 {
     public const string Section = "Carriers:Sabil:Checkout";
     public bool Enabled { get; set; }
+    public Dictionary<string, QuoteDestination> HomeDestinations { get; set; } = new(StringComparer.Ordinal);
     public string OriginRevision { get; set; } = "";
     public string HandoffMode { get; set; } = "";
 }
@@ -17,6 +18,8 @@ public sealed record PreparedCheckoutQuote(CheckoutQuoteState State, string? Tok
 public sealed class SabilCheckoutQuotes(ICarrierReadGateway catalogue, ICarrierQuoteGateway quotes,
     CheckoutQuoteContext protection, IOptions<SabilReadOptions> carrier, IOptions<SabilCheckoutOptions> checkout)
 {
+    public bool CheckoutEnabled => checkout.Value.Enabled;
+    public IReadOnlyDictionary<string, QuoteDestination> HomeDestinations => checkout.Value.HomeDestinations;
     private bool Enabled => checkout.Value.Enabled && carrier.Value.ReadEnabled && carrier.Value.QuoteEnabled;
     private QuoteBinding Binding(Guid token, QuoteDestination destination, IReadOnlyList<QuoteCartLine> lines) =>
         new(token, carrier.Value.QuoteServiceId, checkout.Value.OriginRevision, checkout.Value.HandoffMode, destination, lines);
@@ -47,6 +50,19 @@ public sealed class SabilCheckoutQuotes(ICarrierReadGateway catalogue, ICarrierQ
         if (!Enabled || current != binding) return new(CheckoutQuoteState.InvalidContext);
         return new(CheckoutQuoteState.Success,protection.Create(binding,fee!.Value),fee);
     }
+    public Orkideya.Models.OrderShippingQuote? ReadSnapshot(string? token, Guid checkoutToken, QuoteDestination destination, IReadOnlyList<QuoteCartLine> serverLines)
+    {
+        var binding = Binding(checkoutToken, destination, serverLines);
+        if (!Enabled || !protection.TryReadDetails(token, binding, out var quote) || quote is null) return null;
+        return new()
+        {
+            Provider = "Sabil", ServiceId = binding.ServiceId, BranchId = destination.BranchId,
+            City = destination.City, Area = destination.Area, OriginRevision = binding.OriginRevision,
+            HandoffMode = binding.HandoffMode, Currency = "lyd", ShippingFee = quote.Fee,
+            QuotedAtUtc = quote.IssuedAt, ExpiresAtUtc = quote.ExpiresAt
+        };
+    }
+
     public bool TryValidate(string? token, Guid checkoutToken, QuoteDestination destination,
         IReadOnlyList<QuoteCartLine> serverLines,out decimal? fee)
     {

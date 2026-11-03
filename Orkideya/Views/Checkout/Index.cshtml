@@ -3,7 +3,10 @@
 @{
     ViewData["Title"] = "إتمام الطلب";
     string FieldInvalid(string field) => ViewData.ModelState.TryGetValue($"Input.{field}", out var state) && state.Errors.Count > 0 ? "true" : "false";
+    var carrier = Model.HomeDestinations is not null;
     var selectedRate = Model.ShippingRates.FirstOrDefault(rate => rate.ShippingRateId == Model.Input.ShippingRateId);
+    var displayedFee = carrier ? Model.QuotedFee : selectedRate?.Price;
+    var shippingPrompt = carrier ? "احسب التوصيل" : "اختر المدينة";
 }
 <div class="checkout-container container py-4">
     <h1>إتمام الطلب</h1>
@@ -35,19 +38,37 @@
                     <textarea asp-for="Input.ShippingAddress" aria-describedby="error-ShippingAddress" aria-invalid="@FieldInvalid("ShippingAddress")" class="form-control" autocomplete="street-address" maxlength="200" rows="3" required></textarea>
                     <span asp-validation-for="Input.ShippingAddress" class="text-danger" id="error-ShippingAddress"></span>
                 </div>
-                <div class="mb-3">
-                    <label for="shippingRateIdInput" class="form-label">مدينة التوصيل</label>
-                    <select asp-for="Input.ShippingRateId" class="form-select" id="shippingRateIdInput" aria-describedby="error-ShippingRateId shippingCityHelp" aria-invalid="@FieldInvalid("ShippingRateId")" required>
-                        <option value="">اختر مدينة التوصيل</option>
-                        @foreach (var rate in Model.ShippingRates)
-                        {
-                            <option value="@rate.ShippingRateId" data-price="@rate.Price.ToString(CultureInfo.InvariantCulture)">@rate.CityName — @rate.Price.ToString("0.00") د.ل</option>
-                        }
-                    </select>
-                    <span asp-validation-for="Input.ShippingRateId" class="text-danger" id="error-ShippingRateId"></span>
-                    <p class="form-text" id="shippingCityHelp">الطلب متاح للمدن المدرجة فقط، وبتكلفة التوصيل الموضحة.</p>
-                </div>
-                <button type="submit" class="btn btn-success btn-lg w-100">تأكيد الطلب والدفع عند الاستلام</button>
+                @if (Model.HomeDestinations is { } destinations)
+                {
+                    <div class="mb-3">
+                        <label asp-for="Input.CarrierDestination" class="form-label">المدينة والمنطقة</label>
+                        <select asp-for="Input.CarrierDestination" class="form-select" required>
+                            <option value="">اختر منطقة التوصيل</option>
+                            @foreach (var destination in destinations)
+                            {
+                                <option value="@destination.Key">@destination.Value.City — @destination.Value.Area</option>
+                            }
+                        </select>
+                        <input asp-for="Input.QuoteToken" type="hidden" />
+                        <button type="submit" asp-action="PreviewShipping" formnovalidate class="btn btn-outline-primary mt-2">احسب التوصيل</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="mb-3">
+                        <label for="shippingRateIdInput" class="form-label">مدينة التوصيل</label>
+                        <select asp-for="Input.ShippingRateId" class="form-select" id="shippingRateIdInput" aria-describedby="error-ShippingRateId shippingCityHelp" aria-invalid="@FieldInvalid("ShippingRateId")" required>
+                            <option value="">اختر مدينة التوصيل</option>
+                            @foreach (var rate in Model.ShippingRates)
+                            {
+                                <option value="@rate.ShippingRateId" data-price="@rate.Price.ToString(CultureInfo.InvariantCulture)">@rate.CityName — @rate.Price.ToString("0.00") د.ل</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Input.ShippingRateId" class="text-danger" id="error-ShippingRateId"></span>
+                        <p class="form-text" id="shippingCityHelp">الطلب متاح للمدن المدرجة فقط، وبتكلفة التوصيل الموضحة.</p>
+                    </div>
+                }
+                <button id="confirmCheckout" disabled="@(Model.HomeDestinations is not null && Model.QuotedFee is null)" type="submit" class="btn btn-success btn-lg w-100">تأكيد الطلب والدفع عند الاستلام</button>
             </form>
         </div>
         <div class="col-lg-5">
@@ -63,9 +84,12 @@
                 }
                 <hr />
                 <p>إجمالي المنتجات: @Model.CartTotal.ToString("0.00") د.ل</p>
-                <p>التوصيل: <span id="shippingTotal">@(selectedRate == null ? "اختر المدينة" : selectedRate.Price.ToString("0.00") + " د.ل")</span></p>
-                <p class="summary-total" aria-live="polite">الإجمالي مع التوصيل: <span id="orderTotal">@(selectedRate == null ? "اختر المدينة" : (Model.CartTotal + selectedRate.Price).ToString("0.00") + " د.ل")</span></p>
-                <noscript>اختر المدينة وراجع تكلفة التوصيل الموضحة بجانبها؛ تُضاف هذه التكلفة إلى إجمالي المنتجات.</noscript>
+                <p>التوصيل: <span id="shippingTotal">@(displayedFee is { } fee ? fee.ToString("0.00") + " د.ل" : shippingPrompt)</span></p>
+                <p class="summary-total" aria-live="polite">الإجمالي مع التوصيل: <span id="orderTotal">@(displayedFee is { } quoted ? (Model.CartTotal + quoted).ToString("0.00") + " د.ل" : shippingPrompt)</span></p>
+                @if (!carrier)
+                {
+                    <noscript>اختر المدينة وراجع تكلفة التوصيل الموضحة بجانبها؛ تُضاف هذه التكلفة إلى إجمالي المنتجات.</noscript>
+                }
             </div>
         </div>
     </div>
