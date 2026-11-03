@@ -10,6 +10,9 @@ public static class ShippingRegistration
         services.AddHttpClient<ICarrierReadGateway, SabilReadClient>(http => http.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })
             .RemoveAllLoggers(); // Tracking references and authentication must not enter factory request logs.
+        services.AddHttpClient<ICarrierQuoteGateway, SabilQuoteClient>(http => http.Timeout = Timeout.InfiniteTimeSpan)
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })
+            .RemoveAllLoggers();
         return services;
     }
 }
