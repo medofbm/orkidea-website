@@ -31,5 +31,11 @@ function initCheckoutErrors(document) {
 if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded', () => {
     initCheckoutSummary(document);
     initCheckoutErrors(document);
+    document.getElementById("Input_CarrierDestination")?.addEventListener("change", () => {
+        document.getElementById("Input_QuoteToken").value = "";
+        document.getElementById("confirmCheckout").disabled = true;
+        document.getElementById("shippingTotal").textContent = "احسب التوصيل";
+        document.getElementById("orderTotal").textContent = "احسب التوصيل";
+    });
 });
 if (typeof module !== 'undefined' && module.exports) module.exports = { initCheckoutSummary, initCheckoutErrors };

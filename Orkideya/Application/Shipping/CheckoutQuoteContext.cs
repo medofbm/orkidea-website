@@ -10,6 +10,8 @@ public sealed record QuoteDestination(string BranchId, string City, string Area)
 public sealed record QuoteBinding(Guid CheckoutToken, string ServiceId, string OriginRevision,
     string HandoffMode, QuoteDestination Destination, IReadOnlyList<QuoteCartLine> Lines);
 
+public sealed record VerifiedQuote(decimal Fee, DateTimeOffset IssuedAt, DateTimeOffset ExpiresAt);
+
 public sealed class CheckoutQuoteContext(IDataProtectionProvider protection, TimeProvider clock)
 {
     private readonly IDataProtector protector = protection.CreateProtector("Orkidea.CheckoutQuote.v1");
@@ -25,7 +27,14 @@ public sealed class CheckoutQuoteContext(IDataProtectionProvider protection, Tim
     }
     public bool TryRead(string? token, QuoteBinding current, out decimal? fee)
     {
-        fee = null;
+        var valid = TryReadDetails(token, current, out var details);
+        fee = details?.Fee;
+        return valid;
+    }
+
+    public bool TryReadDetails(string? token, QuoteBinding current, out VerifiedQuote? details)
+    {
+        details = null;
         if (token is not { Length: > 0 and <= 16384 } || !Valid(current)) return false;
         try
         {
@@ -34,7 +43,7 @@ public sealed class CheckoutQuoteContext(IDataProtectionProvider protection, Tim
             if (ticket is null || ticket.IssuedAt > now || now >= ticket.ExpiresAt ||
                 ticket.ExpiresAt - ticket.IssuedAt != Lifetime || ticket.Fingerprint != Fingerprint(current) ||
                 ticket.Fee is < 0 or > 999999999 || decimal.Round(ticket.Fee, 2) != ticket.Fee) return false;
-            fee = ticket.Fee;
+            details = new(ticket.Fee, ticket.IssuedAt, ticket.ExpiresAt);
             return true;
         }
         catch (Exception e) when (e is CryptographicException or JsonException or FormatException or ArgumentException)

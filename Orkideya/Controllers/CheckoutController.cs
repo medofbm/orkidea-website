@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Application.Cart;
+using Orkideya.Application.Shipping;
+using Orkideya.Infrastructure.Shipping;
+using Microsoft.AspNetCore.RateLimiting;
 using Orkideya.Application.Orders;
 using Orkideya.Data;
 using Orkideya.Models;
@@ -14,10 +17,12 @@ public class CheckoutController : Controller
 {
     private readonly ApplicationDbContext _context;
     private readonly OrderService _orders;
-    public CheckoutController(ApplicationDbContext context, OrderService orders)
+    private readonly SabilCheckoutQuotes? _quotes;
+    public CheckoutController(ApplicationDbContext context, OrderService orders, SabilCheckoutQuotes? quotes = null)
     {
         _context = context;
         _orders = orders;
+        _quotes = quotes;
     }
 
     public async Task<IActionResult> Index()
@@ -34,6 +39,35 @@ public class CheckoutController : Controller
             HttpContext.Session.SetString("CheckoutToken", checkoutToken.ToString("D"));
         }
         return View(await BuildViewModel(cart, new CheckoutInput { CheckoutToken = checkoutToken }));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("shipping-preview")]
+    public async Task<IActionResult> PreviewShipping([Bind(Prefix = "Input")] CheckoutInput input)
+    {
+        if (_quotes?.CheckoutEnabled != true) return NotFound();
+        if (input.CheckoutToken is not { } token || token == Guid.Empty ||
+            HttpContext.Session.GetString("CheckoutToken") != token.ToString("D") ||
+            HttpContext.Session.GetString("CompletedCheckoutToken") == token.ToString("D")) return BadRequest();
+
+        var cart = GetCart();
+        if (!IsValidCart(cart) || !RefreshPrices(cart, await LoadVariants(cart), out _)) return InvalidCart();
+        HttpContext.Session.SetString("Cart", JsonSerializer.Serialize(cart));
+        ModelState.Clear();
+        input.QuoteToken = null;
+        decimal? fee = null;
+        if (input.CarrierDestination is { Length: > 0 and <= 128 } key &&
+            _quotes.HomeDestinations.TryGetValue(key, out var destination))
+        {
+            var quote = await _quotes.PrepareAsync(token, destination, QuoteLines(cart), HttpContext.RequestAborted);
+            input.QuoteToken = quote.Token;
+            fee = quote.ShippingFee;
+        }
+        if (fee is null) ModelState.AddModelError("", "تعذر حساب التوصيل. اختر منطقة متاحة وحاول مرة أخرى.");
+        var model = await BuildViewModel(cart, input);
+        model.QuotedFee = fee;
+        return View("Index", model);
     }
 
     [HttpPost]
@@ -67,10 +101,28 @@ public class CheckoutController : Controller
         if (priceChanged)
             ModelState.AddModelError("", "تغير سعر أحد المنتجات. راجع الإجمالي الجديد ثم أكد الطلب مرة أخرى.");
 
-        var rate = await _context.ShippingRates.AsNoTracking()
-            .SingleOrDefaultAsync(rate => rate.ShippingRateId == input.ShippingRateId);
-        if (rate == null || rate.Price < 0 || string.IsNullOrWhiteSpace(rate.CityName))
-            ModelState.AddModelError("Input.ShippingRateId", "مدينة التوصيل غير متاحة. اختر مدينة من القائمة.");
+        OrderShippingQuote? snapshot = null;
+        ShippingRate? rate = null;
+        if (_quotes?.CheckoutEnabled == true || !string.IsNullOrEmpty(input.CarrierDestination))
+        {
+            if (ModelState.IsValid && _quotes?.CheckoutEnabled == true &&
+                input.CarrierDestination is { Length: > 0 and <= 128 } key &&
+                _quotes.HomeDestinations.TryGetValue(key, out var destination))
+                snapshot = _quotes.ReadSnapshot(input.QuoteToken, input.CheckoutToken.Value, destination, QuoteLines(cart));
+            if (snapshot is null)
+            {
+                input.QuoteToken = null;
+                ModelState.Remove("Input.QuoteToken");
+                ModelState.AddModelError("", "راجع تكلفة التوصيل واحسبها من جديد قبل التأكيد.");
+            }
+        }
+        else
+        {
+            rate = await _context.ShippingRates.AsNoTracking()
+                .SingleOrDefaultAsync(rate => rate.ShippingRateId == input.ShippingRateId);
+            if (rate == null || rate.Price < 0 || string.IsNullOrWhiteSpace(rate.CityName))
+                ModelState.AddModelError("Input.ShippingRateId", "مدينة التوصيل غير متاحة. اختر مدينة من القائمة.");
+        }
         if (!ModelState.IsValid)
             return View("Index", await BuildViewModel(cart, input));
 
@@ -89,9 +141,10 @@ public class CheckoutController : Controller
             CustomerName = $"{input.FirstName.Trim()} {input.LastName.Trim()}",
             WhatsAppNumber = input.WhatsAppNumber.Trim(),
             ShippingAddress = input.ShippingAddress.Trim(),
-            City = rate!.CityName,
-            ShippingCost = rate.Price,
-            TotalAmount = cart.Sum(item => item.SubTotal) + rate.Price,
+            City = snapshot?.City ?? rate!.CityName,
+            ShippingQuote = snapshot,
+            ShippingCost = snapshot?.ShippingFee ?? rate!.Price,
+            TotalAmount = cart.Sum(item => item.SubTotal) + (snapshot?.ShippingFee ?? rate!.Price),
             OrderDate = DateTime.UtcNow,
             PaymentMethod = "الدفع عند الاستلام",
             Status = "Pending",
@@ -111,6 +164,13 @@ public class CheckoutController : Controller
             }).ToList();
         try { await _orders.PlaceAsync(order, HttpContext.RequestAborted); }
         catch (CheckoutConflictException) { return Conflict("تم استعمال هذا التأكيد لطلب مختلف. افتح صفحة إتمام الطلب من جديد."); }
+        catch (ShippingQuoteExpiredException)
+        {
+            input.QuoteToken = null;
+            ModelState.Remove("Input.QuoteToken");
+            ModelState.AddModelError("", "انتهت صلاحية السعر. احسب التوصيل من جديد.");
+            return View("Index", await BuildViewModel(cart, input));
+        }
         catch (DbUpdateException)
         {
             ModelState.AddModelError("", "تعذر حفظ الطلب. لم يتم تأكيده؛ راجع البيانات وحاول مرة أخرى.");
@@ -150,10 +210,14 @@ public class CheckoutController : Controller
         CartItems = cart,
         Input = input,
         CartTotal = cart.Sum(item => item.SubTotal),
-        ShippingRates = await _context.ShippingRates.AsNoTracking()
+        HomeDestinations = _quotes?.CheckoutEnabled == true ? _quotes.HomeDestinations : null,
+        ShippingRates = _quotes?.CheckoutEnabled == true ? [] : await _context.ShippingRates.AsNoTracking()
             .Where(rate => rate.Price >= 0 && rate.CityName != "")
             .OrderBy(rate => rate.CityName).ToListAsync()
     };
+
+    private static QuoteCartLine[] QuoteLines(List<CartItem> cart) =>
+        cart.Select(item => new QuoteCartLine(item.ProductVariantId, item.Quantity, item.Price)).ToArray();
 
     private Task<Dictionary<int, ProductVariant>> LoadVariants(List<CartItem> cart)
     {

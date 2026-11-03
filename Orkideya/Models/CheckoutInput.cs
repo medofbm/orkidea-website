@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 namespace Orkideya.Models;
 
-public sealed class CheckoutInput
+public sealed class CheckoutInput : IValidatableObject
 {
     [Required(ErrorMessage = "انتهت صلاحية تأكيد الطلب. افتح صفحة إتمام الطلب من جديد.")]
     public Guid? CheckoutToken { get; set; }
@@ -22,6 +22,14 @@ public sealed class CheckoutInput
     [StringLength(200, ErrorMessage = "العنوان طويل جداً")]
     public string ShippingAddress { get; set; } = "";
 
-    [Range(1, int.MaxValue, ErrorMessage = "الرجاء اختيار مدينة توصيل متاحة")]
+    [StringLength(128)] public string? CarrierDestination { get; set; }
+    [StringLength(16384)] public string? QuoteToken { get; set; }
+
     public int ShippingRateId { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (ShippingRateId < 0 || (string.IsNullOrEmpty(CarrierDestination) && ShippingRateId == 0))
+            yield return new ValidationResult("الرجاء اختيار مدينة توصيل متاحة", [nameof(ShippingRateId)]);
+    }
 }

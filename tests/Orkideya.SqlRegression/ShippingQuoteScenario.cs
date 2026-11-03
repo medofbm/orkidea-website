@@ -17,7 +17,7 @@ internal static class ShippingQuoteScenario
                 Items=[new(){ProductId=1,Quantity=1,UnitPrice=25,VariantSize="Synthetic"}],
                 ShippingQuote=new(){Provider="Sabil",ServiceId=new string('a',24),BranchId="synthetic-branch",City="Synthetic city",Area="Synthetic area",OriginRevision="v1",HandoffMode="OfficeDropoff",Currency="lyd",ShippingFee=15,QuotedAtUtc=now,ExpiresAtUtc=now.AddMinutes(5)}};
         }
-        await using(var db=open())check(!await db.OrderShippingQuotes.AnyAsync(),"Snapshot migration creates no fabricated carrier provenance for existing orders");
+        await using(var db=open())check(!await db.Orders.AnyAsync(o => o.CheckoutToken == null && o.ShippingQuote != null),"Snapshot migration creates no fabricated carrier provenance for existing orders");
         var token=Guid.NewGuid();int id;
         await using(var db=open())
         {
