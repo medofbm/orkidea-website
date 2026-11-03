@@ -579,6 +579,71 @@ namespace Orkideya.Migrations
                     b.ToTable("OrderNotifications");
                 });
 
+            modelBuilder.Entity("Orkideya.Models.OrderShippingQuote", b =>
+                {
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("AcceptedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Area")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("HandoffMode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("OriginRevision")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTimeOffset>("QuotedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ServiceId")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("nvarchar(24)");
+
+                    b.Property<decimal>("ShippingFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("OrderId");
+
+                    b.ToTable("OrderShippingQuotes", t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderShippingQuote_Facts", "[Provider]='Sabil' AND [Currency]='lyd' AND [ShippingFee]>=0 AND LEN([ServiceId])=24 AND [ServiceId] NOT LIKE '%[^0-9a-fA-F]%' AND LEN(LTRIM(RTRIM([BranchId])))>0 AND LEN(LTRIM(RTRIM([City])))>0 AND LEN(LTRIM(RTRIM([Area])))>0 AND LEN(LTRIM(RTRIM([OriginRevision])))>0 AND [HandoffMode] IN ('OfficeDropoff','CarrierCollection') AND [AcceptedAtUtc]>=[QuotedAtUtc] AND [AcceptedAtUtc]<[ExpiresAtUtc] AND DATEDIFF_BIG(millisecond,[QuotedAtUtc],[ExpiresAtUtc]) BETWEEN 1 AND 300000 AND DATEPART(TZOFFSET,[QuotedAtUtc])=0 AND DATEPART(TZOFFSET,[ExpiresAtUtc])=0 AND DATEPART(TZOFFSET,[AcceptedAtUtc])=0");
+                        });
+                });
+
             modelBuilder.Entity("Orkideya.Models.OrderStatusChange", b =>
                 {
                     b.Property<int>("OrderStatusChangeId")
@@ -914,6 +979,15 @@ namespace Orkideya.Migrations
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("Orkideya.Models.OrderShippingQuote", b =>
+                {
+                    b.HasOne("Orkideya.Models.Order", null)
+                        .WithOne("ShippingQuote")
+                        .HasForeignKey("Orkideya.Models.OrderShippingQuote", "OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Orkideya.Models.OrderStatusChange", b =>
                 {
                     b.HasOne("Orkideya.Models.Order", null)
@@ -973,6 +1047,8 @@ namespace Orkideya.Migrations
                     b.Navigation("Items");
 
                     b.Navigation("Notifications");
+
+                    b.Navigation("ShippingQuote");
                 });
 
             modelBuilder.Entity("Orkideya.Models.Product", b =>

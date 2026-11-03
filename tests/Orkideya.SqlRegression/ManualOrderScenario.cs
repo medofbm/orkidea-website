@@ -97,7 +97,10 @@ internal static class ManualOrderScenario
             await db.Database.ExecuteSqlRawAsync("ALTER TABLE OrderCreations DROP CONSTRAINT CK_SyntheticOriginFailure");
             check(!await db.OrderCreations.AnyAsync(c=>!db.Orders.Any(o=>o.OrderId==c.OrderId)),"No orphan creation provenance survives failure");
             var blocked=false;try{await db.GetService<IMigrator>().MigrateAsync("20261031215916_OrderDeliveryTracking");}catch(SqlException ex)when(ex.Number==51005){blocked=true;}
-            check(blocked && !(await db.Database.GetPendingMigrationsAsync()).Any(),"Downgrade refuses to erase recorded creation provenance");
+            // A later empty additive table may have reverted before the provenance guard stopped the downgrade.
+            await db.Database.MigrateAsync();
+            check(blocked && await db.OrderCreations.AnyAsync() && !(await db.Database.GetPendingMigrationsAsync()).Any(),
+                "Downgrade refuses to erase recorded creation provenance");
         }
         check((await Save(failure)).State==ManualSaveState.Created,"A rolled-back manual save can safely recover with the same key");
     }
