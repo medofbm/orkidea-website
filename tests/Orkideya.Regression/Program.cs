@@ -132,3 +132,4 @@ Check(notificationLogger.Count == 1, "Enabled but incomplete notification config
 await SabilReadRegression.Run(Check);
 SabilCatalogueRegression.Run(Check);
 SabilQuoteRegression.Run(Check);
+await SabilQuoteClientRegression.Run(Check);
