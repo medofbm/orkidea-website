@@ -141,8 +141,9 @@ try
     await OrderListScenario.Run(Open, Check);
     await StockScenario.Run(Open, Check);
     await DeliveryScenario.Run(Open, Check);
-    await using (var db = Open()) await CheckoutScenario.Run(db, Check);
+    // Verify the older downgrade guard before checkout creates protected shipping snapshots.
     await ManualOrderScenario.Run(Open,Check);
+    await using (var db = Open()) await CheckoutScenario.Run(db, Check);
     await ShippingQuoteScenario.Run(Open,Check);
     await IdentityCookieScenario.Run(server.ConnectionString, Check);
     Console.WriteLine("SQL SERVER VERIFICATION COMPLETE: dedicated generated test database only.");
