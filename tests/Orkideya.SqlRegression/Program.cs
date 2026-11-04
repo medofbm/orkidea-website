@@ -52,6 +52,7 @@ try
     await using (var db = Open())
     {
         await db.GetService<IMigrator>().MigrateAsync("20260304060822_AddShippingRegionAndDuration");
+        await db.Database.ExecuteSqlRawAsync("INSERT INTO Products (Name, ImageUrl) VALUES (N'Gallery legacy fixture', N'/images/legacy-cover.png')");
         await db.Database.ExecuteSqlRawAsync("INSERT INTO Orders (CustomerName, WhatsAppNumber, ShippingAddress, City, ShippingCost, TotalAmount, OrderDate, PaymentMethod, Status) VALUES (N'Synthetic legacy', N'+218000000000', N'Test only', N'Tripoli', 10, 42.5, '2026-01-01', N'cash', N'Pending'), (N'Synthetic legacy two', N'+218000000000', N'Test only', N'Tripoli', 10, 42.5, '2026-01-01', N'cash', N'Pending')");
         await db.Database.ExecuteSqlRawAsync("INSERT INTO OrderItems (OrderId, ProductId, Quantity, UnitPrice, VariantSize) SELECT MIN(OrderId), 1, 1, 32.5, N'legacy' FROM Orders");
         await db.Database.ExecuteSqlRawAsync("INSERT INTO OrderItems (OrderId, ProductId, Quantity, UnitPrice, VariantSize) VALUES (2147483647, 1, 1, 1, N'ORPHAN_TEST')");
@@ -71,6 +72,20 @@ try
             await db.Orders.AllAsync(o=>o.StockState=="Untracked") && await db.OrderItems.AllAsync(i=>i.StockAccountId==null && i.StockUnitsPerItem==null && i.StockUnit==null),
             "Stock migration preserves legacy uncertainty without invented balances or snapshots");
         Check(!db.Database.HasPendingModelChanges(), "Committed migration snapshot matches the EF model");
+        var legacyProduct = await db.Products.SingleAsync(product => product.Name == "Gallery legacy fixture");
+        Check(legacyProduct.ImageUrl == "/images/legacy-cover.png" && legacyProduct.GalleryImages.Count == 0,
+            "Gallery migration preserves the existing cover and starts with an empty gallery");
+        legacyProduct.GalleryJson = System.Text.Json.JsonSerializer.Serialize(
+            new[] { "/images/products/front.png", "/images/products/back.png" });
+        await db.SaveChangesAsync();
+        await db.Entry(legacyProduct).ReloadAsync();
+        Check(legacyProduct.GalleryImages.SequenceEqual(new[] { "/images/products/front.png", "/images/products/back.png" }),
+            "Gallery photos persist in display order");
+        legacyProduct.GalleryJson = null;
+        await db.SaveChangesAsync();
+        await db.Entry(legacyProduct).ReloadAsync();
+        Check(legacyProduct.GalleryImages.Count == 0 && legacyProduct.ImageUrl == "/images/legacy-cover.png",
+            "Removing gallery photos retains the original cover");
         await db.Database.MigrateAsync();
         Check(await db.Orders.CountAsync() == 2, "Repeating migrations preserves existing orders");
         db.ShippingRates.Add(new ShippingRate { CityName = "طرابلس", Price = 17.25m });

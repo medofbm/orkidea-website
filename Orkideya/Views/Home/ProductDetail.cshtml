@@ -1,5 +1,6 @@
 @model Orkideya.Models.Product
 @{
+    var photos = new[] { Model.ImageUrl }.Concat(Model.GalleryImages).Where(url => !string.IsNullOrWhiteSpace(url)).ToArray();
     ViewData["Title"] = Model.Name;
     var variants = Model.ProductVariants.OrderBy(v => v.Price).ToList();
     var defaultVariant = variants.FirstOrDefault();
@@ -37,8 +38,8 @@
             <div class="col-lg-5">
                 <div class="product-detail-img-wrapper position-relative">
                     <div class="product-detail-img-glow"></div>
-                    <img src="@Model.ImageUrl"
-                         alt="@Model.Name"
+                    <img src="@(photos.FirstOrDefault() ?? Model.ImageUrl)"
+                         alt="@Model.Name" id="productGalleryImage"
                          class="img-fluid rounded-4 w-100 product-detail-img"
                          style="max-height:480px;box-shadow:0 20px 60px rgba(106,27,154,0.18);"
                          onerror="this.src=''" />
@@ -50,6 +51,18 @@
                         </span>
                     }
                 </div>
+                @if (photos.Length > 1)
+                {
+                    <div class="d-flex flex-wrap gap-2 mt-3" aria-label="صور المنتج">
+                        @for (var index = 0; index < photos.Length; index++)
+                        {
+                            <a href="@photos[index]" data-product-photo class="border rounded p-1"
+                               aria-label="عرض صورة @(index + 1) من @photos.Length">
+                                <img src="@photos[index]" alt="" width="56" height="56" loading="lazy" class="object-fit-contain" />
+                            </a>
+                        }
+                    </div>
+                }
             </div>
 
             @* Product info *@
@@ -255,6 +268,7 @@
         @@media (max-width: 991.98px) {
             .product-detail-img { height: clamp(180px, 58vw, 300px); object-fit: contain; }
         }
+        [data-product-photo][aria-current="true"] { outline: 2px solid #6a1b9a; outline-offset: 2px; }
         .fw-600 { font-weight: 600; }
         .fw-700 { font-weight: 700; }
         .fw-800 { font-weight: 800; }
@@ -262,6 +276,7 @@
 }
 
 @section Scripts {
+    <script src="~/js/product-gallery.js" asp-append-version="true"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const sizeBtns = document.querySelectorAll('.detail-size-btn');
