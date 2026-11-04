@@ -31,7 +31,7 @@
         </nav>
 
         @* Main product section *@
-        <div class="row g-5 align-items-start">
+        <div class="row g-3 g-lg-5 align-items-start">
 
             @* Product image *@
             <div class="col-lg-5">
@@ -40,7 +40,7 @@
                     <img src="@Model.ImageUrl"
                          alt="@Model.Name"
                          class="img-fluid rounded-4 w-100 product-detail-img"
-                         style="max-height:480px;object-fit:cover;box-shadow:0 20px 60px rgba(106,27,154,0.18);"
+                         style="max-height:480px;box-shadow:0 20px 60px rgba(106,27,154,0.18);"
                          onerror="this.src=''" />
                     @if (orderCount > 5)
                     {
@@ -251,7 +251,10 @@
             filter: blur(30px);
             z-index: 0;
         }
-        .product-detail-img { position: relative; z-index: 1; }
+        .product-detail-img { position: relative; z-index: 1; object-fit: cover; }
+        @@media (max-width: 991.98px) {
+            .product-detail-img { height: clamp(180px, 58vw, 300px); object-fit: contain; }
+        }
         .fw-600 { font-weight: 600; }
         .fw-700 { font-weight: 700; }
         .fw-800 { font-weight: 800; }
