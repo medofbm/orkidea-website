@@ -1,0 +1,22 @@
+<fieldset class="my-3">
+    <legend class="h6">صور إضافية للمنتج</legend>
+    @if (ViewBag.GalleryImages is IReadOnlyList<string> images)
+    {
+        <div class="d-flex flex-wrap gap-3 mb-2">
+            @foreach (var url in images)
+            {
+                <label>
+                    <img src="@url" alt="صورة إضافية" width="72" height="72" class="object-fit-contain" />
+                    <input type="checkbox" name="removeGallery" value="@url" /> إزالة عند الحفظ
+                </label>
+            }
+        </div>
+    }
+    <label for="galleryFiles" class="form-label">اختر الصور</label>
+    <input id="galleryFiles" name="galleryFiles" type="file" multiple accept="image/png,image/jpeg"
+           class="form-control" aria-describedby="galleryHelp" />
+    <p id="galleryHelp" class="form-text">حتى 5 صور إضافية بصيغة PNG أو JPEG. إجمالي حجم الصور المرفوعة لا يتجاوز 5 ميجابايت.</p>
+    <ul id="galleryPreview" class="list-unstyled d-flex flex-wrap gap-3 mb-0"></ul>
+    <p id="galleryPreviewStatus" class="form-text" role="status"></p>
+</fieldset>
+<script src="~/js/admin-product-gallery.js" asp-append-version="true" defer></script>

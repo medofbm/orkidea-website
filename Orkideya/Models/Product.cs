@@ -16,6 +16,13 @@ namespace Orkideya.Models
         public string? Description { get; set; }
         public string? ImageUrl { get; set; }
 
+        public string? GalleryJson { get; set; }
+
+        [NotMapped]
+        public IReadOnlyList<string> GalleryImages => GalleryJson is null
+            ? []
+            : System.Text.Json.JsonSerializer.Deserialize<string[]>(GalleryJson) ?? [];
+
         [Display(Name = "Category")]
         public int? CategoryId { get; set; }
         [ForeignKey("CategoryId")]

@@ -35,7 +35,14 @@ checks['checkout does not offer unpriced other city']='city-item-other' not in c
 products=read('Areas/Admin/Controllers/ProductsController.cs')
 images=read('Services/ProductImageStorage.cs')
 checks['products use dedicated request model']='Create(ProductInput input' in products and 'Edit(int id, ProductInput input' in products
-checks['product validation precedes upload']='ModelState.IsValid && await TrySaveImageAsync(input, imageFile)' in products
+gallery_upload = products.split('private async Task<List<string>?> SaveGalleryAsync(', 1)[-1].split('[HttpPost]', 1)[0]
+checks['product validation precedes upload']=(
+    products.count('await ValidateInputAsync(input);') == 2
+    and products.count('var gallery = await SaveGalleryAsync(input,') == 2
+    and 0 <= gallery_upload.find('if (!ModelState.IsValid) return null;')
+        < gallery_upload.find('ProductImageStorage.ReadValidatedAsync(')
+        < gallery_upload.find('_images.SaveAsync(')
+        < gallery_upload.find('_images.SaveValidatedAsync('))
 checks['product controller does not suppress category errors']='ModelState.Remove' not in products[:products.index('public async Task<IActionResult> AddVariant')]
 checks['image upload has declared and streamed byte limits']='file.Length > MaxBytes' in images and 'output.Length + count > MaxBytes' in images
 checks['image storage generates filename']='Guid.NewGuid().ToString("N") + image.Extension' in images

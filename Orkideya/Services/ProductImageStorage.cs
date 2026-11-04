@@ -53,7 +53,12 @@ public sealed class ProductImageStorage
 
     public async Task<string> SaveAsync(IFormFile file, CancellationToken cancellationToken = default)
     {
-        var image = await ReadValidatedAsync(file, cancellationToken);
+        return await SaveValidatedAsync(await ReadValidatedAsync(file, cancellationToken), cancellationToken);
+    }
+
+    internal async Task<string> SaveValidatedAsync(
+        (byte[] Bytes, string Extension) image, CancellationToken cancellationToken)
+    {
         Directory.CreateDirectory(_directory);
         // The untrusted original filename is never part of a filesystem path.
         var name = Guid.NewGuid().ToString("N") + image.Extension;
