@@ -105,10 +105,7 @@ public class CheckoutController : Controller
         ShippingRate? rate = null;
         if (_quotes?.CheckoutEnabled == true || !string.IsNullOrEmpty(input.CarrierDestination))
         {
-            if (ModelState.IsValid && _quotes?.CheckoutEnabled == true &&
-                input.CarrierDestination is { Length: > 0 and <= 128 } key &&
-                _quotes.HomeDestinations.TryGetValue(key, out var destination))
-                snapshot = _quotes.ReadSnapshot(input.QuoteToken, input.CheckoutToken.Value, destination, QuoteLines(cart));
+            snapshot = ReadCurrentQuote(input, cart);
             if (snapshot is null)
             {
                 input.QuoteToken = null;
@@ -210,11 +207,22 @@ public class CheckoutController : Controller
         CartItems = cart,
         Input = input,
         CartTotal = cart.Sum(item => item.SubTotal),
+        QuotedFee = ReadCurrentQuote(input, cart)?.ShippingFee,
         HomeDestinations = _quotes?.CheckoutEnabled == true ? _quotes.HomeDestinations : null,
         ShippingRates = _quotes?.CheckoutEnabled == true ? [] : await _context.ShippingRates.AsNoTracking()
             .Where(rate => rate.Price >= 0 && rate.CityName != "")
             .OrderBy(rate => rate.CityName).ToListAsync()
     };
+
+    private OrderShippingQuote? ReadCurrentQuote(CheckoutInput input, List<CartItem> cart)
+    {
+        if (_quotes?.CheckoutEnabled != true || input.CheckoutToken is not { } token ||
+            input.CarrierDestination is not { Length: > 0 and <= 128 } key ||
+            !_quotes.HomeDestinations.TryGetValue(key, out var destination))
+            return null;
+
+        return _quotes.ReadSnapshot(input.QuoteToken, token, destination, QuoteLines(cart));
+    }
 
     private static QuoteCartLine[] QuoteLines(List<CartItem> cart) =>
         cart.Select(item => new QuoteCartLine(item.ProductVariantId, item.Quantity, item.Price)).ToArray();
