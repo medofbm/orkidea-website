@@ -117,6 +117,12 @@ internal static class CheckoutScenario
             !await db.Orders.AnyAsync(o => o.CheckoutToken == carrierToken), "Carrier checkout rejects an invalid quote without saving an order");
         carrierController.ModelState.Clear();
         carrierInput.QuoteToken = quoteContext.Create(binding, 15m);
+        carrierController.ModelState.AddModelError("Input.FirstName", "Required");
+        var corrected = (ViewResult)await carrierController.PlaceOrder(carrierInput);
+        check(corrected.Model is CheckoutViewModel { QuotedFee: 15m } &&
+            !await db.Orders.AnyAsync(o => o.CheckoutToken == carrierToken),
+            "Customer field errors preserve the valid shipping quote without saving an order");
+        carrierController.ModelState.Clear();
         check(await carrierController.PlaceOrder(carrierInput) is RedirectToActionResult { ActionName: "Confirmation" },
             "Carrier checkout saves an order with a matching protected quote");
         var carrierOrder = await db.Orders.AsNoTracking().Include(o => o.ShippingQuote).SingleAsync(o => o.CheckoutToken == carrierToken);
