@@ -6,6 +6,7 @@ const { data: product, error, refresh } = await useFetch<CatalogueProduct>(
 )
 const selectedImage = ref(0)
 const selectedVariant = ref(0)
+const currentVariant = computed(() => product.value?.variants[selectedVariant.value])
 useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: () => product.value?.description ?? '' })
 </script>
 
@@ -30,8 +31,8 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
     <section>
       <p v-if="product.category" class="text-purple-700">{{ product.category }}</p>
       <h1 class="mt-2 text-3xl font-bold">{{ product.name }}</h1>
-      <p v-if="product.variants[selectedVariant]" class="my-5 text-2xl font-semibold text-purple-900">
-        {{ product.variants[selectedVariant].price }} د.ل
+      <p v-if="currentVariant" class="my-5 text-2xl font-semibold text-purple-900">
+        {{ currentVariant.price }} د.ل
       </p>
       <fieldset v-if="product.variants.length" class="mb-6">
         <legend class="mb-2 font-semibold">اختاري الحجم</legend>
