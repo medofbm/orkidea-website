@@ -71,6 +71,18 @@ try
         Check(!await db.StockAccounts.AnyAsync() && !await db.StockMovements.AnyAsync() &&
             await db.Orders.AllAsync(o=>o.StockState=="Untracked") && await db.OrderItems.AllAsync(i=>i.StockAccountId==null && i.StockUnitsPerItem==null && i.StockUnit==null),
             "Stock migration preserves legacy uncertainty without invented balances or snapshots");
+        var catalogue = new Orkideya.Controllers.CatalogueController(db);
+        var productResponse = await catalogue.Product(legacyProduct.ProductId, default) as Microsoft.AspNetCore.Mvc.OkObjectResult;
+        Check(productResponse is not null, "Catalogue product API returns an existing legacy product");
+        var payload = System.Text.Json.JsonSerializer.SerializeToElement(productResponse!.Value);
+        Check(payload.GetProperty("images")[0].GetString() == "/images/legacy-cover.png",
+            "Catalogue API includes the legacy cover");
+        Check(!payload.TryGetProperty("GalleryJson", out _) && !payload.TryGetProperty("StockAccounts", out _),
+            "Catalogue API exposes only its public contract");
+        Check(await catalogue.Products(0) is Microsoft.AspNetCore.Mvc.BadRequestObjectResult,
+            "Catalogue API rejects invalid pagination");
+        Check(await catalogue.Product(int.MaxValue, default) is Microsoft.AspNetCore.Mvc.NotFoundObjectResult,
+            "Catalogue API returns not found for a missing product");
         Check(!db.Database.HasPendingModelChanges(), "Committed migration snapshot matches the EF model");
         var legacyProduct = await db.Products.SingleAsync(product => product.Name == "Gallery legacy fixture");
         Check(legacyProduct.ImageUrl == "/images/legacy-cover.png" && legacyProduct.GalleryImages.Count == 0,
