@@ -129,3 +129,31 @@ jobs:
       - name: Remove only this run's preview web container
         if: always()
         run: docker rm --force "orkidea-preview-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" || true
+
+  publish-image:
+    needs: preview-image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: orkidea-preview-image-${{ github.sha }}
+      - name: Load the image that passed the preview checks
+        run: gunzip --stdout orkidea-preview-image.tar.gz | docker load
+      - name: Publish the verified image with its commit reference
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:sha-${GITHUB_SHA}"
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          docker tag "orkidea-preview:${GITHUB_SHA}" "$image"
+          docker push "$image"
+          digest="$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')"
+          test -n "$digest"
+          printf 'Verified image: `%s`\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
