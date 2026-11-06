@@ -7,6 +7,10 @@ const { data: product, error, refresh } = await useFetch<CatalogueProduct>(
 )
 const selectedImage = ref(0)
 const selectedVariant = ref(0)
+watch(() => product.value?.id, () => {
+  selectedImage.value = 0
+  selectedVariant.value = 0
+})
 const currentVariant = computed(() => product.value?.variants[selectedVariant.value])
 useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: () => product.value?.description ?? '' })
 </script>
