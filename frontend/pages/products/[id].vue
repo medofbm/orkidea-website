@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CatalogueProduct } from '~/types/catalogue'
 const route = useRoute()
+const { busy, message, mutate } = useCart()
 const { data: product, error, refresh } = await useFetch<CatalogueProduct>(
   () => useRuntimeConfig().public.apiBase + '/products/' + route.params.id
 )
@@ -43,6 +44,11 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
           </label>
         </div>
       </fieldset>
+      <button v-if="currentVariant" type="button" :disabled="busy"
+        class="mb-3 min-h-12 w-full rounded-xl bg-purple-800 px-5 py-3 font-semibold text-white disabled:opacity-50"
+        @click="mutate('POST', currentVariant.id)">أضيفي للسلة</button>
+      <p role="status" class="mb-4">{{ message }}</p>
+      <NuxtLink to="/cart" class="mb-5 inline-block min-h-11 text-purple-900 underline">عرض السلة</NuxtLink>
       <p class="whitespace-pre-line leading-8">{{ product.description }}</p>
       <NuxtLink to="/" class="mt-6 inline-block min-h-11 text-purple-900 underline">متابعة التسوق</NuxtLink>
     </section>

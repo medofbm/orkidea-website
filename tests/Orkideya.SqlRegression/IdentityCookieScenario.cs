@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkideya.Controllers;
 using Orkideya.Data;
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 
@@ -97,6 +99,34 @@ internal static class IdentityCookieScenario
         {
             using var response = await guest.GetAsync(path);
             check(LoginRequired(response), "Anonymous real-cookie host cannot read admin: " + path);
+        }
+        using (var apiBuyer = Client())
+        {
+            using var session = await apiBuyer.GetAsync("/api/v1/session");
+            var tokenPayload = await session.Content.ReadFromJsonAsync<JsonElement>();
+            var apiToken = tokenPayload.GetProperty("requestToken").GetString();
+            check(session.Headers.CacheControl?.NoStore == true, "API token response disables caching");
+            var variantId = await db.ProductVariants.Where(v => v.Price > 0).Select(v => v.ProductVariantId).FirstAsync();
+            using var unsafeAdd = await apiBuyer.PostAsJsonAsync("/api/v1/cart/items", new { variantId, quantity = 1 });
+            check(unsafeAdd.StatusCode == HttpStatusCode.BadRequest, "Cart API rejects a write without antiforgery");
+            apiBuyer.DefaultRequestHeaders.Add("RequestVerificationToken", apiToken);
+            using var add = await apiBuyer.PostAsJsonAsync("/api/v1/cart/items", new { variantId, quantity = 2 });
+            var added = await add.Content.ReadFromJsonAsync<JsonElement>();
+            check(add.StatusCode == HttpStatusCode.OK && added.GetProperty("success").GetBoolean(),
+                "Cart API adds an existing variant with real session and antiforgery cookies");
+            using var state = await apiBuyer.GetAsync("/api/v1/cart");
+            var cartPayload = await state.Content.ReadFromJsonAsync<JsonElement>();
+            check(cartPayload.GetProperty("count").GetInt32() == 2 && state.Headers.CacheControl?.NoStore == true,
+                "Cart API reads the same private session cart");
+            using var invalid = await apiBuyer.PatchAsJsonAsync("/api/v1/cart/items/" + variantId, new { variantId, quantity = 100 });
+            check(invalid.StatusCode == HttpStatusCode.BadRequest, "Cart API enforces the quantity limit");
+            using var update = await apiBuyer.PatchAsJsonAsync("/api/v1/cart/items/" + variantId, new { variantId, quantity = 3 });
+            check(update.StatusCode == HttpStatusCode.OK, "Cart API updates the selected quantity");
+            using var delete = await apiBuyer.DeleteAsync("/api/v1/cart/items/" + variantId);
+            using var empty = await apiBuyer.GetAsync("/api/v1/cart");
+            var emptyPayload = await empty.Content.ReadFromJsonAsync<JsonElement>();
+            check(delete.StatusCode == HttpStatusCode.OK && emptyPayload.GetProperty("count").GetInt32() == 0,
+                "Cart API removes the selected variant");
         }
         using var buyer = Client();
         await Login(buyer, customer.Email!);
