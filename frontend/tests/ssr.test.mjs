@@ -12,6 +12,16 @@ test('built storefront renders catalogue data and the product gallery on the ser
   }
   const backend = createServer((req, res) => {
     res.setHeader('Content-Type', 'application/json')
+    if (req.url === '/api/v1/session') {
+      res.setHeader('Set-Cookie', 'qa-session=synthetic; HttpOnly; Path=/; SameSite=Strict')
+      return res.end(JSON.stringify({ requestToken: 'synthetic-token' }))
+    }
+    if (req.url === '/api/v1/cart/items' && req.method === 'POST') {
+      const valid = req.headers.requestverificationtoken === 'synthetic-token' &&
+        req.headers.cookie === 'qa-session=synthetic'
+      res.statusCode = valid ? 200 : 400
+      return res.end(JSON.stringify({ success: valid }))
+    }
     if (req.url === '/api/v1/catalogue/products/1') return res.end(JSON.stringify(product))
     if (req.url?.startsWith('/api/v1/catalogue/products?')) {
       return res.end(JSON.stringify({ items: [product], page: 1, pageSize: 24, total: 1 }))
@@ -45,6 +55,18 @@ test('built storefront renders catalogue data and the product gallery on the ser
     assert.ok(detail.includes('100 مل'), 'variant is rendered')
     const missing = await fetch(origin + '/api/v1/catalogue/products/999')
     assert.equal(missing.status, 404)
+    const session = await fetch(origin + '/api/session')
+    assert.ok(session.headers.get('set-cookie')?.includes('qa-session=synthetic'),
+      'session proxy forwards the HttpOnly cookie')
+    assert.ok(session.headers.get('cache-control')?.includes('no-store'))
+    const cartWrite = await fetch(origin + '/api/cart/items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', RequestVerificationToken: 'synthetic-token',
+        Cookie: 'qa-session=synthetic' },
+      body: JSON.stringify({ variantId: 1, quantity: 1 })
+    })
+    assert.equal(cartWrite.status, 200, 'cart proxy forwards the session and antiforgery header')
+    assert.ok((await cartWrite.json()).success)
     const write = await fetch(origin + '/api/v1/catalogue/products', { method: 'POST' })
     assert.equal(write.status, 404, 'catalogue proxy accepts reads only')
   } finally {
