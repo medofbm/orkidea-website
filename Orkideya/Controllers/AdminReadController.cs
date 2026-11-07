@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Orkideya.Application.Delivery;
 using Orkideya.Application.Orders;
 using Orkideya.Data;
 using Orkideya.Models;
@@ -39,6 +40,24 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
             return BadRequest(new { message = "بيانات البحث أو رقم الصفحة غير صالح." });
         var result = await new OrderListQuery(context).PageAsync(filter, page, cancellationToken);
         return Ok(new { items = result.Orders.Select(Summary), result.Page, result.Pages, result.Total, result.PageSize });
+    }
+
+    [HttpGet("delivery")]
+    public async Task<IActionResult> Delivery(CancellationToken cancellationToken,
+        string state = "active", string search = "", int page = 1)
+    {
+        var result = await new DeliveryListQuery(context).PageAsync(state, search, page, cancellationToken);
+        if (result is null) return BadRequest(new { message = "حالة التوصيل أو البحث أو رقم الصفحة غير صالح." });
+
+        return Ok(new
+        {
+            items = result.Rows.Select(row => new
+            {
+                row.OrderId, row.CustomerName, row.City, row.Mode, row.CarrierName, row.ShipmentReference,
+                row.State, UpdatedAtUtc = DateTime.SpecifyKind(row.UpdatedAtUtc, DateTimeKind.Utc)
+            }),
+            result.Page, result.Pages, result.Total
+        });
     }
 
     [HttpGet("orders/{id:int}")]

@@ -32,6 +32,13 @@ export interface AdminDelivery {
   shipmentReference: string | null
 }
 
+export interface AdminDeliveriesPage {
+  items: (AdminDelivery & { orderId: number; customerName: string; city: string; updatedAtUtc: string })[]
+  page: number
+  pages: number
+  total: number
+}
+
 export interface AdminDeliveryEvent extends Omit<AdminDelivery, 'state'> {
   revision: number
   action: string

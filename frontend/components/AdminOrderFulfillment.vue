@@ -14,12 +14,6 @@ const stockLabels: Record<string, string> = {
   Filled: 'تمت التعبئة وصرف الكمية',
   Cancelled: 'ملغي بلا حجز'
 }
-const deliveryLabels: Record<string, string> = {
-  HandedOver: 'مع جهة التوصيل',
-  Delivered: 'استلمه العميل',
-  Returning: 'بانتظار الراجع',
-  Returned: 'تم استلام الراجع'
-}
 const actions = {
   HandOver: 'تسجيل تسليم الطلب للتوصيل',
   Deliver: 'تأكيد استلام العميل',
@@ -110,7 +104,7 @@ function submitDelivery() {
   <section aria-labelledby="order-delivery-title" class="mt-6 rounded-xl bg-white p-4">
     <h2 id="order-delivery-title" class="mb-3 text-xl font-bold">التوصيل والرواجع</h2>
     <p v-if="order.delivery">
-      {{ deliveryLabels[order.delivery.state] ?? 'حالة توصيل غير معروفة' }}
+      {{ adminDeliveryState(order.delivery.state) }}
       · {{ order.delivery.mode === 'Self' ? 'توصيل ذاتي' : order.delivery.carrierName }}
       <bdi v-if="order.delivery.shipmentReference"> · {{ order.delivery.shipmentReference }}</bdi>
     </p>
@@ -163,7 +157,7 @@ function submitDelivery() {
       <summary class="min-h-11 cursor-pointer py-2 font-semibold">سجل التوصيل (آخر {{ order.deliveryHistory.length }} إجراء)</summary>
       <ol class="divide-y divide-slate-200">
         <li v-for="entry in order.deliveryHistory" :key="entry.revision" class="py-3">
-          <p>{{ actions[entry.action as DeliveryAction] ?? entry.action }} · {{ deliveryLabels[entry.newState] ?? entry.newState }}</p>
+          <p>{{ actions[entry.action as DeliveryAction] ?? entry.action }} · {{ adminDeliveryState(entry.newState) }}</p>
           <p>
             {{ entry.mode === 'Self' ? 'توصيل ذاتي' : entry.carrierName }}
             <bdi v-if="entry.shipmentReference"> · {{ entry.shipmentReference }}</bdi>

@@ -9,6 +9,7 @@ useSeoMeta({ robots: 'noindex, nofollow, noarchive' })
       <nav class="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-4" aria-label="قائمة الإدارة">
         <NuxtLink to="/admin" class="me-4 text-xl font-bold text-purple-900">إدارة أوركيديا</NuxtLink>
         <NuxtLink to="/admin/orders" class="rounded-lg px-3 py-2">الطلبات</NuxtLink>
+        <NuxtLink to="/admin/delivery" class="rounded-lg px-3 py-2">التوصيل والرواجع</NuxtLink>
         <NuxtLink to="/account" class="rounded-lg px-3 py-2">الحساب</NuxtLink>
         <NuxtLink to="/" class="rounded-lg px-3 py-2">المتجر</NuxtLink>
       </nav>

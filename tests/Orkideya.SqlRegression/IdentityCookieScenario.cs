@@ -385,6 +385,17 @@ internal static class IdentityCookieScenario
         check(await db.OrderDeliveryEvents.CountAsync(e=>e.OrderId==deliveryOrder.OrderId)==1 &&
             await db.OrderDeliveryEvents.AnyAsync(e=>e.OrderId==deliveryOrder.OrderId && e.ActorUserId==adminUser.Id),
             "Real HTTP handoff replay stores one event with authenticated actor rather than posted actor");
+        using (var openResponse = await adminClient.GetAsync("/api/v1/admin/delivery?search=HTTP-QA-SHIP"))
+        {
+            var openShipments = await openResponse.Content.ReadFromJsonAsync<JsonElement>();
+            var openShipment = openShipments.GetProperty("items")[0];
+            check(openResponse.StatusCode == HttpStatusCode.OK && openResponse.Headers.CacheControl?.NoStore == true &&
+                openShipments.GetProperty("total").GetInt32() == 1 &&
+                openShipment.GetProperty("orderId").GetInt32() == deliveryOrder.OrderId &&
+                openShipment.GetProperty("state").GetString() == "HandedOver" &&
+                !openShipment.TryGetProperty("shippingAddress", out _) && !openShipment.TryGetProperty("whatsAppNumber", out _),
+                "Delivery queue defaults to open shipments and searches reference without exposing contact fields");
+        }
         var staleDelivery=DeliveryForm("MarkReturning",2);staleDelivery["Reason"]="Synthetic stale page";await PostDelivery(staleDelivery);
         check(await db.OrderDeliveryEvents.CountAsync(e=>e.OrderId==deliveryOrder.OrderId)==1,
             "Stale real delivery form cannot change a newer shipment");
@@ -402,6 +413,16 @@ internal static class IdentityCookieScenario
         }) == HttpStatusCode.OK, "Delivery JSON registers physical receipt of a returned package");
         var resend=DeliveryForm("Redispatch",5);resend["Mode"]="Self";resend["ConfirmSamePackageReusable"]="true";resend["Reason"]="Synthetic reviewed same package";await PostDelivery(resend);
         await PostDelivery(DeliveryForm("Deliver",6));
+        var deliveredQueue = await adminClient.GetFromJsonAsync<JsonElement>(
+            $"/api/v1/admin/delivery?state=Delivered&search=%23{deliveryOrder.OrderId}&page=999");
+        var activeQueue = await adminClient.GetFromJsonAsync<JsonElement>(
+            $"/api/v1/admin/delivery?state=active&search=%23{deliveryOrder.OrderId}");
+        check(deliveredQueue.GetProperty("total").GetInt32() == 1 && deliveredQueue.GetProperty("page").GetInt32() == 1 &&
+            deliveredQueue.GetProperty("items")[0].GetProperty("state").GetString() == "Delivered" &&
+            activeQueue.GetProperty("total").GetInt32() == 0,
+            "Delivery queue filters state, matches order number and clamps a page beyond the last result");
+        using (var invalidQueue = await adminClient.GetAsync("/api/v1/admin/delivery?state=invalid&page=0"))
+            check(invalidQueue.StatusCode == HttpStatusCode.BadRequest, "Delivery queue rejects invalid filters");
         var deliveredDetail = await adminClient.GetFromJsonAsync<JsonElement>(fulfillmentPath);
         var shipment = deliveredDetail.GetProperty("delivery");
         var shipmentHistory = deliveredDetail.GetProperty("deliveryHistory");
@@ -607,7 +628,7 @@ internal static class IdentityCookieScenario
             check(denied.StatusCode == HttpStatusCode.NotFound, "Another session cannot read the JSON receipt");
         }
 
-        foreach (var path in new[] { "/api/v1/admin/dashboard", "/api/v1/admin/orders", "/api/v1/admin/orders/" + manualStored.OrderId })
+        foreach (var path in new[] { "/api/v1/admin/dashboard", "/api/v1/admin/delivery", "/api/v1/admin/orders", "/api/v1/admin/orders/" + manualStored.OrderId })
         {
             using var anonymousAdmin = Client();
             using var deniedAnonymous = await anonymousAdmin.GetAsync(path);

@@ -38,6 +38,12 @@ test('built storefront renders catalogue data and the product gallery on the ser
       })
       return
     }
+    if (req.url?.startsWith('/api/v1/admin/delivery?') && req.method === 'GET') {
+      const query = new URL(req.url, 'http://127.0.0.1').searchParams
+      const authorized = req.headers.cookie === 'qa-session=synthetic'
+      res.statusCode = authorized ? 200 : 401
+      return res.end(JSON.stringify({ state: query.get('state'), search: query.get('search') }))
+    }
     if (req.url === '/api/v1/catalogue/products/1') return res.end(JSON.stringify(product))
     if (req.url?.startsWith('/api/v1/catalogue/products?')) {
       return res.end(JSON.stringify({ items: [product], page: 1, pageSize: 24, total: 1 }))
@@ -95,6 +101,16 @@ test('built storefront renders catalogue data and the product gallery on the ser
       assert.equal(adminWrite.status, 409, path + ' forwards authenticated payload and preserves conflicts')
       assert.ok(adminWrite.headers.get('cache-control')?.includes('no-store'))
     }
+    const queuePath = '/api/admin/delivery?state=Returned&search=%231'
+    const queuePage = await (await fetch(origin + '/admin/delivery')).text()
+    assert.ok(queuePage.includes('التوصيل والرواجع'))
+    const deniedQueue = await fetch(origin + queuePath)
+    assert.equal(deniedQueue.status, 401)
+    const queue = await fetch(origin + queuePath, { headers: { Cookie: 'qa-session=synthetic' } })
+    assert.equal(queue.status, 200)
+    assert.ok(queue.headers.get('cache-control')?.includes('no-store'))
+    assert.deepEqual(await queue.json(), { state: 'Returned', search: '#1' })
+    assert.equal((await fetch(origin + '/api/admin/delivery', { method: 'POST' })).status, 404)
     const unsupportedAdminWrite = await fetch(origin + '/api/admin/orders/1', { method: 'POST' })
     assert.equal(unsupportedAdminWrite.status, 404)
     const write = await fetch(origin + '/api/v1/catalogue/products', { method: 'POST' })
