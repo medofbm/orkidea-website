@@ -1,6 +1,8 @@
 export default defineEventHandler(event => {
   const path = getRouterParam(event, 'path') ?? ''
-  if (event.method !== 'GET' || !new RegExp('^(dashboard|orders(?:/[1-9][0-9]*)?)$').test(path)) {
+  const read = event.method === 'GET' && new RegExp('^(dashboard|orders(?:/[1-9][0-9]*)?)$').test(path)
+  const write = event.method === 'POST' && new RegExp('^orders/[1-9][0-9]*/status$').test(path)
+  if (!read && !write) {
     throw createError({ statusCode: 404 })
   }
   setResponseHeader(event, 'Cache-Control', 'no-store')

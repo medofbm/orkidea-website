@@ -22,6 +22,19 @@ test('built storefront renders catalogue data and the product gallery on the ser
       res.statusCode = valid ? 200 : 400
       return res.end(JSON.stringify({ success: valid }))
     }
+    if (req.url === '/api/v1/admin/orders/1/status' && req.method === 'POST') {
+      const chunks = []
+      req.on('data', chunk => chunks.push(chunk))
+      req.on('end', () => {
+        const input = JSON.parse(Buffer.concat(chunks).toString())
+        const valid = input.status === 'Processing' && input.expectedRevision === 0 &&
+          req.headers.requestverificationtoken === 'synthetic-token' &&
+          req.headers.cookie === 'qa-session=synthetic'
+        res.statusCode = valid ? 409 : 400
+        res.end(JSON.stringify({ success: false }))
+      })
+      return
+    }
     if (req.url === '/api/v1/catalogue/products/1') return res.end(JSON.stringify(product))
     if (req.url?.startsWith('/api/v1/catalogue/products?')) {
       return res.end(JSON.stringify({ items: [product], page: 1, pageSize: 24, total: 1 }))
@@ -67,6 +80,16 @@ test('built storefront renders catalogue data and the product gallery on the ser
     })
     assert.equal(cartWrite.status, 200, 'cart proxy forwards the session and antiforgery header')
     assert.ok((await cartWrite.json()).success)
+    const statusWrite = await fetch(origin + '/api/admin/orders/1/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', RequestVerificationToken: 'synthetic-token',
+        Cookie: 'qa-session=synthetic' },
+      body: JSON.stringify({ status: 'Processing', expectedRevision: 0 })
+    })
+    assert.equal(statusWrite.status, 409, 'admin proxy forwards the authenticated payload and preserves conflicts')
+    assert.ok(statusWrite.headers.get('cache-control')?.includes('no-store'))
+    const unsupportedAdminWrite = await fetch(origin + '/api/admin/orders/1', { method: 'POST' })
+    assert.equal(unsupportedAdminWrite.status, 404)
     const write = await fetch(origin + '/api/v1/catalogue/products', { method: 'POST' })
     assert.equal(write.status, 404, 'catalogue proxy accepts reads only')
   } finally {

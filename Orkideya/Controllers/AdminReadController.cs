@@ -60,9 +60,29 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
                 productName = product == null ? null : product.Name
             }).ToListAsync(cancellationToken);
 
+        var hasDelivery = await context.OrderDeliveries.AsNoTracking()
+            .AnyAsync(delivery => delivery.OrderId == id, cancellationToken);
+        var history = await (
+            from change in context.OrderStatusChanges.AsNoTracking()
+            where change.OrderId == id
+            join actor in context.Users.AsNoTracking() on change.ActorUserId equals actor.Id into actors
+            from actor in actors.DefaultIfEmpty()
+            orderby change.Revision descending
+            select new
+            {
+                change.Revision, change.PreviousStatus, change.NewStatus, change.Reason, change.ChangedAtUtc,
+                actorName = actor == null ? null : actor.UserName
+            }).Take(50).ToListAsync(cancellationToken);
+
         return Ok(new
         {
             order = Summary(order), order.WhatsAppNumber, order.ShippingAddress, order.PaymentMethod,
+            order.StatusRevision, order.StockState, hasDelivery,
+            history = history.Select(change => new
+            {
+                change.Revision, change.PreviousStatus, change.NewStatus, change.Reason, change.actorName,
+                ChangedAtUtc = DateTime.SpecifyKind(change.ChangedAtUtc, DateTimeKind.Utc)
+            }),
             productsTotal = Money(order.TotalAmount - order.ShippingCost),
             items = items.Select(item => new
             {

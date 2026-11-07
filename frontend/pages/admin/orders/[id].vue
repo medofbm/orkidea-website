@@ -1,17 +1,88 @@
 <script setup lang="ts">
 import type { AdminOrderDetails } from '~/types/admin'
-definePageMeta({ layout: 'admin' })
+
+definePageMeta({ layout: 'admin', key: route => route.path })
 useSeoMeta({ title: 'تفاصيل الطلب' })
+
 const route = useRoute()
-const { data, error, status } = useFetch<AdminOrderDetails>(() => '/api/admin/orders/' + route.params.id, {
+const orderUrl = '/api/admin/orders/' + route.params.id
+const { data, error, status, refresh } = useFetch<AdminOrderDetails>(orderUrl, {
   server: false, cache: 'no-store'
 })
+const statuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
+const selectedStatus = ref('')
+const reason = ref('')
+const saving = ref(false)
+const needsRefresh = ref(false)
+const notice = ref('')
+const failure = ref('')
+const tracked = computed(() => data.value?.stockState !== 'Untracked')
+const editable = computed(() => {
+  const order = data.value
+  return !!order && statuses.includes(order.order.status) && !order.hasDelivery &&
+    !(tracked.value && (order.stockState === 'Cancelled' || order.order.status === 'Cancelled'))
+})
+const allowedStatuses = computed(() => statuses.filter(value =>
+  !tracked.value || (value !== 'Shipped' && value !== 'Delivered') || value === data.value?.order.status))
+
+watch(data, order => {
+  if (!order) return
+  selectedStatus.value = order.order.status
+  reason.value = ''
+}, { immediate: true })
+
+async function refreshOrder() {
+  await refresh()
+  needsRefresh.value = !!error.value
+}
+
+async function updateStatus() {
+  const order = data.value
+  if (!order || !editable.value || saving.value || needsRefresh.value ||
+      selectedStatus.value === order.order.status) return
+
+  saving.value = true
+  failure.value = ''
+  notice.value = ''
+  try {
+    const session = await $fetch<{ requestToken: string }>('/api/session')
+    const response = await $fetch.raw<{ success?: boolean, message?: string }>(orderUrl + '/status', {
+      method: 'POST',
+      headers: { RequestVerificationToken: session.requestToken },
+      body: {
+        status: selectedStatus.value,
+        expectedRevision: order.statusRevision,
+        reason: selectedStatus.value === 'Cancelled' ? reason.value.trim() || null : null
+      },
+      retry: 0,
+      ignoreResponseError: true
+    })
+    if (!response.ok || response._data?.success !== true) {
+      needsRefresh.value = response.status === 409 || response.status >= 500
+      failure.value = response._data?.message ?? 'تعذّر تحديث الحالة.'
+      return
+    }
+    notice.value = 'تم حفظ الحالة.'
+    await refreshOrder()
+  } catch {
+    needsRefresh.value = true
+    failure.value = 'تعذّر التحقق من نتيجة الحفظ. حدّث تفاصيل الطلب قبل إعادة المحاولة.'
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <template>
   <section aria-labelledby="order-title" class="mx-auto max-w-3xl">
     <NuxtLink to="/admin/orders" class="mb-3 inline-block min-h-11 text-purple-900 underline">رجوع للطلبات</NuxtLink>
     <h1 id="order-title" class="mb-6 text-3xl font-bold">تفاصيل الطلب <span v-if="data">#{{ data.order.id }}</span></h1>
+    <p v-if="notice" class="mb-3 text-emerald-800" role="status">{{ notice }}</p>
+    <p v-if="failure" class="mb-3 text-red-800" role="alert">{{ failure }}</p>
+    <button v-if="needsRefresh" type="button" :disabled="status === 'pending'" @click="refreshOrder"
+      class="mb-4 min-h-11 rounded-lg border border-purple-900 px-4 text-purple-900">
+      تحديث تفاصيل الطلب
+    </button>
     <p v-if="status === 'idle' || status === 'pending'" role="status">جاري تحميل التفاصيل…</p>
     <AdminReadError v-else-if="error" :status-code="error.statusCode" />
     <template v-else-if="data">
@@ -37,6 +108,49 @@ const { data, error, status } = useFetch<AdminOrderDetails>(() => '/api/admin/or
         <div class="flex justify-between"><dt>التوصيل</dt><dd>{{ data.order.shippingFee }} د.ل</dd></div>
         <div class="flex justify-between font-bold"><dt>الإجمالي</dt><dd>{{ data.order.total }} د.ل</dd></div>
       </dl>
+      <section aria-labelledby="order-status-title" class="mt-6 rounded-xl bg-white p-4">
+        <h2 id="order-status-title" class="mb-3 text-xl font-bold">تحديث الحالة</h2>
+        <p v-if="data.hasDelivery">تحديث الحالة يتم من إجراءات التوصيل بعد تسجيل الشحنة.</p>
+        <p v-else-if="!editable">الحالة الحالية لا تسمح بالتعديل من هنا.</p>
+        <form v-else @submit.prevent="updateStatus">
+          <p v-if="tracked" class="mb-3 text-sm text-slate-700">
+            الحجز والتعبئة والشحن لها إجراءاتها الخاصة في إدارة الطلب.
+          </p>
+          <fieldset :disabled="saving || needsRefresh" class="space-y-3">
+            <label class="block">
+              <span class="block font-semibold">الحالة الجديدة</span>
+              <select v-model="selectedStatus" class="min-h-11 w-full rounded-lg border border-slate-400 p-2 sm:w-auto">
+                <option v-for="value in allowedStatuses" :key="value" :value="value">{{ adminOrderStatus(value) }}</option>
+              </select>
+            </label>
+            <label v-if="selectedStatus === 'Cancelled' && selectedStatus !== data.order.status" class="block">
+              <span class="block font-semibold">سبب الإلغاء {{ tracked ? '(مطلوب)' : '(اختياري)' }}</span>
+              <textarea v-model="reason" :required="tracked" maxlength="500" rows="3"
+                class="w-full rounded-lg border border-slate-400 p-2" />
+            </label>
+            <button type="submit" :disabled="selectedStatus === data.order.status || (tracked && selectedStatus === 'Cancelled' && !reason.trim())"
+              class="min-h-11 rounded-lg bg-purple-900 px-4 font-semibold text-white disabled:opacity-60">
+              {{ saving ? 'جاري الحفظ…' : 'حفظ الحالة' }}
+            </button>
+          </fieldset>
+        </form>
+      </section>
+
+      <section aria-labelledby="order-history-title" class="mt-6 rounded-xl bg-white p-4">
+        <h2 id="order-history-title" class="mb-3 text-xl font-bold">سجل الحالة</h2>
+        <p v-if="!data.history.length">لا توجد تغييرات حالة مسجلة لهذا الطلب.</p>
+        <ol v-else class="divide-y divide-slate-200">
+          <li v-for="change in data.history" :key="change.revision" class="py-3">
+            <p>من {{ adminOrderStatus(change.previousStatus) }} إلى {{ adminOrderStatus(change.newStatus) }}</p>
+            <p class="text-sm text-slate-700">
+              <bdi>{{ change.actorName ?? 'مدير المتجر' }}</bdi> ·
+              <time :datetime="change.changedAtUtc" dir="ltr">{{ change.changedAtUtc.replace('T', ' ').slice(0, 16) }} UTC</time>
+            </p>
+            <p v-if="change.reason" class="whitespace-pre-line break-words">{{ change.reason }}</p>
+          </li>
+        </ol>
+        <p v-if="data.history.length === 50" class="mt-2 text-sm text-slate-700">يعرض السجل آخر 50 تغييراً.</p>
+      </section>
     </template>
   </section>
 </template>

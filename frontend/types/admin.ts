@@ -27,6 +27,11 @@ export interface AdminOrdersPage {
 
 export interface AdminOrderDetails {
   order: AdminOrderSummary
+  statusRevision: number
+  stockState: string
+  hasDelivery: boolean
+  history: { revision: number; previousStatus: string; newStatus: string;
+    reason: string | null; changedAtUtc: string; actorName: string | null }[]
   whatsAppNumber: string
   shippingAddress: string
   paymentMethod: string | null

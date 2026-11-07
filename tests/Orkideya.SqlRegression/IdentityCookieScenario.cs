@@ -600,6 +600,44 @@ internal static class IdentityCookieScenario
                 "Admin detail API exposes the selected order and its items to the administrator");
         }
 
+        var updatePath = "/api/v1/admin/orders/" + manualStored.OrderId + "/status";
+        var update = new { status = "Processing", expectedRevision = manualStored.StatusRevision };
+        using (var denied = await buyer.PostAsJsonAsync(updatePath, update))
+            check(Denied(denied), "Customer role cannot update orders through the Vue API");
+        using (var missingToken = await adminClient.PostAsJsonAsync(updatePath, update))
+            check(missingToken.StatusCode == HttpStatusCode.BadRequest, "Admin status update requires antiforgery");
+
+        var adminSession = await adminClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+        var adminRequestToken = adminSession.GetProperty("requestToken").GetString()!;
+        async Task<HttpResponseMessage> SendUpdate<T>(T payload)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, updatePath) { Content = JsonContent.Create(payload) };
+            request.Headers.Add("RequestVerificationToken", adminRequestToken);
+            return await adminClient.SendAsync(request);
+        }
+
+        using (var invalid = await SendUpdate(new { status = "Processing" }))
+            check(invalid.StatusCode == HttpStatusCode.BadRequest, "Admin status update rejects missing revision");
+        using (var saved = await SendUpdate(update))
+        {
+            var result = await saved.Content.ReadFromJsonAsync<JsonElement>();
+            check(saved.StatusCode == HttpStatusCode.OK && result.GetProperty("success").GetBoolean(),
+                "Admin status API applies the current revision");
+        }
+        using (var stale = await SendUpdate(update))
+            check(stale.StatusCode == HttpStatusCode.Conflict, "Admin status API rejects stale writes");
+        using (var updated = await adminClient.GetAsync("/api/v1/admin/orders/" + manualStored.OrderId))
+        {
+            var detail = await updated.Content.ReadFromJsonAsync<JsonElement>();
+            var history = detail.GetProperty("history");
+            check(detail.GetProperty("order").GetProperty("status").GetString() == "Processing" &&
+                detail.GetProperty("statusRevision").GetInt32() == manualStored.StatusRevision + 1 &&
+                history.GetArrayLength() == 1 && history[0].GetProperty("previousStatus").GetString() == "Pending" &&
+                history[0].GetProperty("newStatus").GetString() == "Processing" &&
+                history[0].GetProperty("actorName").GetString() == adminUser.UserName,
+                "Admin status and audit history are persisted exactly once with the authenticated actor");
+        }
+
         using (var logout = await adminClient.PostAsync("/Identity/Account/Logout?returnUrl=%2F", new FormUrlEncodedContent(new Dictionary<string, string>
             { ["__RequestVerificationToken"] = logoutToken })))
             check(logout.StatusCode == HttpStatusCode.Redirect, "Real admin logout succeeds with antiforgery");
