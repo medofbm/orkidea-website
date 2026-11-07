@@ -178,6 +178,54 @@ internal static class IdentityCookieScenario
                 !signedIn.GetProperty("isAdmin").GetBoolean(), "Recovery code completes the Identity challenge with customer permissions");
         }
 
+        using (var profileClient = Client())
+        {
+            const string email = "vue-profile-customer@orkidea.test";
+            using var anonymousWrite = await profileClient.PostAsJsonAsync("/api/v1/account/phone",
+                new { phoneNumber = "+218000000001" });
+            check(anonymousWrite.StatusCode == HttpStatusCode.Unauthorized,
+                "Anonymous API callers cannot update a profile");
+            async Task RefreshProfileToken()
+            {
+                profileClient.DefaultRequestHeaders.Remove("RequestVerificationToken");
+                var session = await profileClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+                profileClient.DefaultRequestHeaders.Add("RequestVerificationToken", session.GetProperty("requestToken").GetString());
+            }
+            await RefreshProfileToken();
+            using var mismatch = await profileClient.PostAsJsonAsync("/api/v1/account/register",
+                new { email, password, confirmation = password + "x" });
+            check(mismatch.StatusCode == HttpStatusCode.BadRequest && await users.FindByEmailAsync(email) is null,
+                "Registration with mismatched passwords creates no account");
+            using var registered = await profileClient.PostAsJsonAsync("/api/v1/account/register",
+                new { email, password, confirmation = password });
+            var newSession = await profileClient.GetFromJsonAsync<JsonElement>("/api/v1/account");
+            check(registered.StatusCode == HttpStatusCode.NoContent && newSession.GetProperty("signedIn").GetBoolean() &&
+                !newSession.GetProperty("isAdmin").GetBoolean(), "Registration creates a signed-in customer without admin privileges");
+            await RefreshProfileToken();
+            using var phoneUpdate = await profileClient.PostAsJsonAsync("/api/v1/account/phone",
+                new { phoneNumber = "+218000000001" });
+            var profile = await profileClient.GetFromJsonAsync<JsonElement>("/api/v1/account");
+            check(phoneUpdate.StatusCode == HttpStatusCode.NoContent &&
+                profile.GetProperty("phoneNumber").GetString() == "+218000000001",
+                "Phone update persists on the authenticated profile");
+            var newPassword = password + "New1!";
+            using var badPassword = await profileClient.PostAsJsonAsync("/api/v1/account/password",
+                new { currentPassword = "Incorrect", newPassword, confirmation = newPassword });
+            check(badPassword.StatusCode == HttpStatusCode.BadRequest,
+                "Password change requires the current password");
+            using var passwordUpdate = await profileClient.PostAsJsonAsync("/api/v1/account/password",
+                new { currentPassword = password, newPassword, confirmation = newPassword });
+            check(passwordUpdate.StatusCode == HttpStatusCode.NoContent, "Password change succeeds with the current password");
+            using var loginClient = Client();
+            var loginSession = await loginClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+            loginClient.DefaultRequestHeaders.Add("RequestVerificationToken", loginSession.GetProperty("requestToken").GetString());
+            using var oldLogin = await loginClient.PostAsJsonAsync("/api/v1/account/login", new { email, password, rememberMe = false });
+            using var newLogin = await loginClient.PostAsJsonAsync("/api/v1/account/login",
+                new { email, password = newPassword, rememberMe = false });
+            check(oldLogin.StatusCode == HttpStatusCode.Unauthorized && newLogin.StatusCode == HttpStatusCode.OK,
+                "Only the new password can authenticate after the update");
+        }
+
         using var buyer = Client();
         await Login(buyer, customer.Email!);
         using (var manage = await buyer.GetAsync("/Identity/Account/Manage"))

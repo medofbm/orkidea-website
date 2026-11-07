@@ -1,5 +1,5 @@
 <script setup lang="ts">
-interface AccountSession { signedIn: boolean; name: string | null; isAdmin: boolean }
+interface AccountSession { signedIn: boolean; name: string | null; phoneNumber: string | null; isAdmin: boolean }
 const account = ref<AccountSession | null>(null)
 const loading = ref(true)
 const pending = ref(false)
@@ -30,12 +30,7 @@ async function submit(action: 'login' | 'verify' | 'logout') {
       ? { code: fields.code, recovery: fields.recovery, rememberMe: fields.rememberMe }
       : undefined
   try {
-    const session = await $fetch<{ requestToken: string }>('/api/session')
-    const response = await $fetch<{ requiresVerification: boolean } | undefined>('/api/account/' + action, {
-      method: 'POST', body, retry: 0, headers: { RequestVerificationToken: session.requestToken }
-    })
-    fields.password = ''
-    fields.code = ''
+    const response = await postAccount(action, body)
     verification.value = response?.requiresVerification === true
     if (!verification.value) await load()
   } catch {
@@ -43,6 +38,8 @@ async function submit(action: 'login' | 'verify' | 'logout') {
       ? 'تعذر تسجيل الخروج. حاولي مجددًا.'
       : 'تعذر تسجيل الدخول. راجعي البيانات وحاولي مرة أخرى.'
   } finally {
+    fields.password = ''
+    fields.code = ''
     pending.value = false
   }
 }
@@ -60,6 +57,7 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
       <p>تم تسجيل الدخول</p>
       <p v-if="account.name" class="my-2 break-all" dir="ltr">{{ account.name }}</p>
       <button type="button" :disabled="pending" class="mt-4 min-h-11 rounded-lg border px-4" @click="submit('logout')">تسجيل الخروج</button>
+      <AccountSettings :phone-number="account.phoneNumber" />
     </template>
     <form v-else-if="account && !loading" @submit.prevent="submit(verification ? 'verify' : 'login')">
       <fieldset :disabled="pending" class="space-y-4">
@@ -89,6 +87,8 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
       </fieldset>
     </form>
     <button v-else-if="!loading" class="min-h-11 underline" @click="load()">إعادة المحاولة</button>
+    <NuxtLink v-if="account && !account.signedIn && !verification" to="/account/register"
+      class="mt-5 block min-h-11 text-purple-900 underline">إنشاء حساب</NuxtLink>
     <NuxtLink to="/" class="mt-5 inline-block min-h-11 text-purple-900 underline">العودة للمتجر</NuxtLink>
   </section>
 </template>

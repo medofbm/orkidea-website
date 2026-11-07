@@ -1,6 +1,6 @@
 # Vue catalogue foundation
 
-The frontend is a Nuxt application using Vue, TypeScript and Tailwind. It contains a catalogue, product gallery and a session-backed cart. Guest checkout includes delivery estimates, reviewed totals, order confirmation and a session-bound receipt. The account page uses the existing ASP.NET Identity cookies for login, two-factor verification and logout. Registration, account management and admin screens remain migration milestones.
+The frontend is a Nuxt application using Vue, TypeScript and Tailwind. It contains a catalogue, product gallery and a session-backed cart. Guest checkout includes delivery estimates, reviewed totals, order confirmation and a session-bound receipt. The account page uses the existing ASP.NET Identity cookies for login, two-factor verification and logout. Registration follows the current Identity confirmation policy. The account screen supports phone and password updates. Email recovery and verification, two-factor enrollment and admin screens remain migration milestones.
 
 Run the ASP.NET application, then set NUXT_BACKEND_ORIGIN to its local HTTP origin. The default is http://127.0.0.1:5000. In frontend run npm ci, npm run dev, npm run typecheck and npm run build.
 
