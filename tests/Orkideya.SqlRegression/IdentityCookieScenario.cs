@@ -332,9 +332,26 @@ internal static class IdentityCookieScenario
             CheckoutToken=Guid.NewGuid(),CheckoutRequestHash=new string('A',64),OrderDate=DateTime.UtcNow,ShippingCost=1,TotalAmount=3,
             Items=[new(){ProductId=httpProduct.ProductId,Quantity=1,UnitPrice=2,VariantSize="50ml test",StockAccountId=httpProduct.ProductId,StockUnitsPerItem=50,StockUnit="ml"}] };
         await new OrderService(db).PlaceAsync(deliveryOrder);
-        var stockForDelivery = new Orkideya.Application.Inventory.StockService(db,TimeProvider.System);
-        await stockForDelivery.ApplyOrderAsync(deliveryOrder.OrderId,0,"Reserve",adminUser.Id);
-        await stockForDelivery.ApplyOrderAsync(deliveryOrder.OrderId,1,"Consume",adminUser.Id);
+        var fulfillmentPath = $"/api/v1/admin/orders/{deliveryOrder.OrderId}";
+        var fulfillmentSession = await adminClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+        var fulfillmentToken = fulfillmentSession.GetProperty("requestToken").GetString()!;
+        async Task<HttpStatusCode> PostFulfillment<T>(string action, T input)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, fulfillmentPath + "/" + action)
+                { Content = JsonContent.Create(input) };
+            request.Headers.Add("RequestVerificationToken", fulfillmentToken);
+            using var response = await adminClient.SendAsync(request);
+            return response.StatusCode;
+        }
+        var reserveInput = new { operation = "Reserve", expectedRevision = 0 };
+        using (var forbiddenStock = await buyer.PostAsJsonAsync(fulfillmentPath + "/stock", reserveInput))
+            check(forbiddenStock.StatusCode == HttpStatusCode.Forbidden, "Customer cannot use the stock JSON endpoint");
+        using (var missingStockToken = await adminClient.PostAsJsonAsync(fulfillmentPath + "/stock", reserveInput))
+            check(missingStockToken.StatusCode == HttpStatusCode.BadRequest, "Stock JSON endpoint requires antiforgery");
+        check(await PostFulfillment("stock", reserveInput) == HttpStatusCode.OK &&
+            await PostFulfillment("stock", new { operation = "Consume", expectedRevision = 0 }) == HttpStatusCode.Conflict &&
+            await PostFulfillment("stock", new { operation = "Consume", expectedRevision = 1 }) == HttpStatusCode.OK,
+            "Stock JSON reserves, rejects a stale fill and consumes the current reservation");
         var deliveryToken=await Token(adminClient,$"/Admin/Orders/Details/{deliveryOrder.OrderId}");
         Dictionary<string,string> DeliveryForm(string action,int revision) => new()
         {
@@ -349,7 +366,22 @@ internal static class IdentityCookieScenario
         using(var noCsrf=await adminClient.PostAsync($"/Admin/Delivery/Apply/{deliveryOrder.OrderId}",new FormUrlEncodedContent(new Dictionary<string,string>{{"Action","HandOver"}})))
             check(noCsrf.StatusCode==HttpStatusCode.BadRequest,"Real admin delivery mutation requires antiforgery");
         var httpHandoff=DeliveryForm("HandOver",2);httpHandoff["Mode"]="Company";httpHandoff["CarrierName"]="Synthetic HTTP carrier";httpHandoff["ShipmentReference"]="HTTP-QA-SHIP";
-        await PostDelivery(httpHandoff);await PostDelivery(httpHandoff);
+        var handoffInput = new
+        {
+            action = "HandOver", expectedRevision = 2, requestId = httpHandoff["RequestId"],
+            mode = "Company", carrierName = httpHandoff["CarrierName"], shipmentReference = httpHandoff["ShipmentReference"]
+        };
+        using (var forbiddenDelivery = await buyer.PostAsJsonAsync(fulfillmentPath + "/delivery", handoffInput))
+            check(forbiddenDelivery.StatusCode == HttpStatusCode.Forbidden, "Customer cannot use the delivery JSON endpoint");
+        using (var missingDeliveryToken = await adminClient.PostAsJsonAsync(fulfillmentPath + "/delivery", handoffInput))
+            check(missingDeliveryToken.StatusCode == HttpStatusCode.BadRequest, "Delivery JSON endpoint requires antiforgery");
+        check(await PostFulfillment("delivery", handoffInput) == HttpStatusCode.OK &&
+            await PostFulfillment("delivery", handoffInput) == HttpStatusCode.OK &&
+            await PostFulfillment("delivery", new
+            {
+                action = "MarkReturning", expectedRevision = 2, requestId = Guid.NewGuid(), reason = "Synthetic stale JSON"
+            }) == HttpStatusCode.Conflict, "Delivery JSON accepts identical replay and rejects a stale action");
+        await PostDelivery(httpHandoff);
         check(await db.OrderDeliveryEvents.CountAsync(e=>e.OrderId==deliveryOrder.OrderId)==1 &&
             await db.OrderDeliveryEvents.AnyAsync(e=>e.OrderId==deliveryOrder.OrderId && e.ActorUserId==adminUser.Id),
             "Real HTTP handoff replay stores one event with authenticated actor rather than posted actor");
@@ -363,9 +395,23 @@ internal static class IdentityCookieScenario
         var returnedDelivery=DeliveryForm("ReceiveReturn",4);await PostDelivery(returnedDelivery);
         check(await db.OrderDeliveries.AsNoTracking().AnyAsync(d=>d.OrderId==deliveryOrder.OrderId && d.State=="Returning"),
             "Real return form without physical receipt confirmation remains awaiting return");
-        returnedDelivery["ConfirmReturnReceived"]="true";await PostDelivery(returnedDelivery);
+        check(await PostFulfillment("delivery", new
+        {
+            action = "ReceiveReturn", expectedRevision = 4, requestId = returnedDelivery["RequestId"],
+            confirmReturnReceived = true
+        }) == HttpStatusCode.OK, "Delivery JSON registers physical receipt of a returned package");
         var resend=DeliveryForm("Redispatch",5);resend["Mode"]="Self";resend["ConfirmSamePackageReusable"]="true";resend["Reason"]="Synthetic reviewed same package";await PostDelivery(resend);
         await PostDelivery(DeliveryForm("Deliver",6));
+        var deliveredDetail = await adminClient.GetFromJsonAsync<JsonElement>(fulfillmentPath);
+        var shipment = deliveredDetail.GetProperty("delivery");
+        var shipmentHistory = deliveredDetail.GetProperty("deliveryHistory");
+        check(shipment.GetProperty("state").GetString() == "Delivered" &&
+            shipment.GetProperty("mode").GetString() == "Self" &&
+            shipmentHistory.GetArrayLength() == 5 &&
+            shipmentHistory[0].GetProperty("action").GetString() == "Deliver" &&
+            shipmentHistory[4].GetProperty("actorName").GetString() == adminUser.UserName &&
+            !shipmentHistory[4].TryGetProperty("requestHash", out _),
+            "Admin order JSON returns the latest shipment and its private bounded audit history");
         var deliveredHttp=await db.Orders.AsNoTracking().SingleAsync(o=>o.OrderId==deliveryOrder.OrderId);
         httpStock=await db.StockAccounts.AsNoTracking().SingleAsync(s=>s.ProductId==httpProduct.ProductId);
         check(deliveredHttp.Status=="Delivered" && deliveredHttp.StatusRevision==7 && deliveredHttp.StockState=="Filled" &&

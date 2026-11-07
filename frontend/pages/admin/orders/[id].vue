@@ -23,7 +23,8 @@ const editable = computed(() => {
     !(tracked.value && (order.stockState === 'Cancelled' || order.order.status === 'Cancelled'))
 })
 const allowedStatuses = computed(() => statuses.filter(value =>
-  !tracked.value || (value !== 'Shipped' && value !== 'Delivered') || value === data.value?.order.status))
+  !tracked.value || value === data.value?.order.status || value === 'Cancelled' ||
+  (value === 'Processing' && ['Reserved', 'Filled'].includes(data.value?.stockState ?? ''))))
 
 watch(data, order => {
   if (!order) return
@@ -38,31 +39,36 @@ async function refreshOrder() {
 
 async function updateStatus() {
   const order = data.value
-  if (!order || !editable.value || saving.value || needsRefresh.value ||
-      selectedStatus.value === order.order.status) return
+  if (!order || !editable.value || selectedStatus.value === order.order.status) return
+
+  await updateOrder('status', {
+    status: selectedStatus.value,
+    reason: selectedStatus.value === 'Cancelled' ? reason.value.trim() || null : null
+  })
+}
+
+async function updateOrder(action: 'status' | 'stock' | 'delivery', input: Record<string, string | boolean | null>) {
+  const order = data.value
+  if (!order || saving.value || needsRefresh.value) return
 
   saving.value = true
   failure.value = ''
   notice.value = ''
   try {
     const session = await $fetch<{ requestToken: string }>('/api/session')
-    const response = await $fetch.raw<{ success?: boolean, message?: string }>(orderUrl + '/status', {
+    const response = await $fetch.raw<{ success?: boolean, message?: string }>(orderUrl + '/' + action, {
       method: 'POST',
       headers: { RequestVerificationToken: session.requestToken },
-      body: {
-        status: selectedStatus.value,
-        expectedRevision: order.statusRevision,
-        reason: selectedStatus.value === 'Cancelled' ? reason.value.trim() || null : null
-      },
+      body: { ...input, expectedRevision: order.statusRevision },
       retry: 0,
       ignoreResponseError: true
     })
     if (!response.ok || response._data?.success !== true) {
       needsRefresh.value = response.status === 409 || response.status >= 500
-      failure.value = response._data?.message ?? 'تعذّر تحديث الحالة.'
+      failure.value = response._data?.message ?? 'تعذّر حفظ الإجراء. راجع البيانات المدخلة.'
       return
     }
-    notice.value = 'تم حفظ الحالة.'
+    notice.value = response._data.message ?? 'تم حفظ الإجراء.'
     await refreshOrder()
   } catch {
     needsRefresh.value = true
@@ -108,6 +114,10 @@ async function updateStatus() {
         <div class="flex justify-between"><dt>التوصيل</dt><dd>{{ data.order.shippingFee }} د.ل</dd></div>
         <div class="flex justify-between font-bold"><dt>الإجمالي</dt><dd>{{ data.order.total }} د.ل</dd></div>
       </dl>
+      <AdminOrderFulfillment :key="data.statusRevision" :order="data" :disabled="saving || needsRefresh"
+        @stock="operation => updateOrder('stock', { operation })"
+        @delivery="input => updateOrder('delivery', input)" />
+
       <section aria-labelledby="order-status-title" class="mt-6 rounded-xl bg-white p-4">
         <h2 id="order-status-title" class="mb-3 text-xl font-bold">تحديث الحالة</h2>
         <p v-if="data.hasDelivery">تحديث الحالة يتم من إجراءات التوصيل بعد تسجيل الشحنة.</p>

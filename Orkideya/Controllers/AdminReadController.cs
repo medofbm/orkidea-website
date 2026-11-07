@@ -44,9 +44,17 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
     [HttpGet("orders/{id:int}")]
     public async Task<IActionResult> Order(int id, CancellationToken cancellationToken)
     {
-        var order = await context.Orders.AsNoTracking().Include(item => item.Creation)
-            .SingleOrDefaultAsync(item => item.OrderId == id, cancellationToken);
-        if (order is null) return NotFound();
+        var snapshot = await (
+            from candidate in context.Orders.AsNoTracking().Include(item => item.Creation)
+            where candidate.OrderId == id
+            join shipment in context.OrderDeliveries.AsNoTracking() on candidate.OrderId equals shipment.OrderId into shipments
+            from shipment in shipments.DefaultIfEmpty()
+            select new { candidate, shipment }).SingleOrDefaultAsync(cancellationToken);
+        if (snapshot is null) return NotFound();
+        var order = snapshot.candidate;
+        var delivery = snapshot.shipment is { } currentShipment
+            ? new { currentShipment.State, currentShipment.Mode, currentShipment.CarrierName, currentShipment.ShipmentReference }
+            : null;
 
         var items = await (
             from item in context.OrderItems.AsNoTracking()
@@ -60,11 +68,21 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
                 productName = product == null ? null : product.Name
             }).ToListAsync(cancellationToken);
 
-        var hasDelivery = await context.OrderDeliveries.AsNoTracking()
-            .AnyAsync(delivery => delivery.OrderId == id, cancellationToken);
+        var deliveryHistory = await (
+            from entry in context.OrderDeliveryEvents.AsNoTracking()
+            where entry.OrderId == id && entry.Revision <= order.StatusRevision
+            join actor in context.Users.AsNoTracking() on entry.ActorUserId equals actor.Id into actors
+            from actor in actors.DefaultIfEmpty()
+            orderby entry.Revision descending
+            select new
+            {
+                entry.Revision, entry.Action, entry.NewState, entry.Mode, entry.CarrierName,
+                entry.ShipmentReference, entry.Reason, entry.ChangedAtUtc,
+                actorName = actor == null ? null : actor.UserName
+            }).Take(50).ToListAsync(cancellationToken);
         var history = await (
             from change in context.OrderStatusChanges.AsNoTracking()
-            where change.OrderId == id
+            where change.OrderId == id && change.Revision <= order.StatusRevision
             join actor in context.Users.AsNoTracking() on change.ActorUserId equals actor.Id into actors
             from actor in actors.DefaultIfEmpty()
             orderby change.Revision descending
@@ -77,7 +95,13 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
         return Ok(new
         {
             order = Summary(order), order.WhatsAppNumber, order.ShippingAddress, order.PaymentMethod,
-            order.StatusRevision, order.StockState, hasDelivery,
+            order.StatusRevision, order.StockState, hasDelivery = delivery is not null, delivery,
+            deliveryHistory = deliveryHistory.Select(entry => new
+            {
+                entry.Revision, entry.Action, entry.NewState, entry.Mode, entry.CarrierName,
+                entry.ShipmentReference, entry.Reason, entry.actorName,
+                ChangedAtUtc = DateTime.SpecifyKind(entry.ChangedAtUtc, DateTimeKind.Utc)
+            }),
             history = history.Select(change => new
             {
                 change.Revision, change.PreviousStatus, change.NewStatus, change.Reason, change.actorName,

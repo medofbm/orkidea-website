@@ -25,11 +25,29 @@ export interface AdminOrdersPage {
   pageSize: number
 }
 
+export interface AdminDelivery {
+  state: string
+  mode: 'Company' | 'Self'
+  carrierName: string | null
+  shipmentReference: string | null
+}
+
+export interface AdminDeliveryEvent extends Omit<AdminDelivery, 'state'> {
+  revision: number
+  action: string
+  newState: string
+  reason: string | null
+  actorName: string | null
+  changedAtUtc: string
+}
+
 export interface AdminOrderDetails {
   order: AdminOrderSummary
   statusRevision: number
   stockState: string
   hasDelivery: boolean
+  delivery: AdminDelivery | null
+  deliveryHistory: AdminDeliveryEvent[]
   history: { revision: number; previousStatus: string; newStatus: string;
     reason: string | null; changedAtUtc: string; actorName: string | null }[]
   whatsAppNumber: string
