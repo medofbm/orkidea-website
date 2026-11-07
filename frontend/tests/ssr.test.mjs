@@ -44,6 +44,12 @@ test('built storefront renders catalogue data and the product gallery on the ser
       res.statusCode = authorized ? 200 : 401
       return res.end(JSON.stringify({ state: query.get('state'), search: query.get('search') }))
     }
+    if (req.url === '/api/v1/admin/inventory/1/adjust' && req.method === 'POST') {
+      const authorized = req.headers.cookie === 'qa-session=synthetic' &&
+        req.headers.requestverificationtoken === 'synthetic-token'
+      res.statusCode = authorized ? 409 : 401
+      return res.end('{}')
+    }
     if (req.url === '/api/v1/catalogue/products/1') return res.end(JSON.stringify(product))
     if (req.url?.startsWith('/api/v1/catalogue/products?')) {
       return res.end(JSON.stringify({ items: [product], page: 1, pageSize: 24, total: 1 }))
@@ -111,6 +117,14 @@ test('built storefront renders catalogue data and the product gallery on the ser
     assert.ok(queue.headers.get('cache-control')?.includes('no-store'))
     assert.deepEqual(await queue.json(), { state: 'Returned', search: '#1' })
     assert.equal((await fetch(origin + '/api/admin/delivery', { method: 'POST' })).status, 404)
+    const stockPage = await (await fetch(origin + '/admin/inventory')).text()
+    assert.ok(stockPage.includes('المخزون والتعبئة'))
+    const adjust = await fetch(origin + '/api/admin/inventory/1/adjust', {
+      method: 'POST', headers: { Cookie: 'qa-session=synthetic', RequestVerificationToken: 'synthetic-token' }
+    })
+    assert.equal(adjust.status, 409)
+    assert.ok(adjust.headers.get('cache-control')?.includes('no-store'))
+    assert.equal((await fetch(origin + '/api/admin/inventory/1/delete', { method: 'POST' })).status, 404)
     const unsupportedAdminWrite = await fetch(origin + '/api/admin/orders/1', { method: 'POST' })
     assert.equal(unsupportedAdminWrite.status, 404)
     const write = await fetch(origin + '/api/v1/catalogue/products', { method: 'POST' })

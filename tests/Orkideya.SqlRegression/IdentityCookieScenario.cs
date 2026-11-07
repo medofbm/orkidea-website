@@ -294,11 +294,53 @@ internal static class IdentityCookieScenario
             using var response = await adminClient.PostAsync($"/Admin/Inventory/{action}/{httpProduct.ProductId}",new FormUrlEncodedContent(fields));
             check(response.StatusCode==HttpStatusCode.Redirect,"Real admin inventory form succeeds: "+action);
         }
-        await PostStock("Open",new(){{"unit","ml"}});
-        await PostStock("Configure",new(){{"VariantId",httpVariant.ProductVariantId.ToString()},{"Units","50"},{"ExpectedRevision","0"}});
+        var stockPath = $"/api/v1/admin/inventory/{httpProduct.ProductId}";
+        var inventorySession = await adminClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+        var inventoryRequestToken = inventorySession.GetProperty("requestToken").GetString()!;
+        async Task<HttpStatusCode> SendStock<T>(string action, T input)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, stockPath + "/" + action)
+                { Content = JsonContent.Create(input) };
+            request.Headers.Add("RequestVerificationToken", inventoryRequestToken);
+            using var response = await adminClient.SendAsync(request);
+            return response.StatusCode;
+        }
+        var openStock = new { unit = "ml" };
+        using (var deniedInventory = await buyer.GetAsync(stockPath))
+            check(deniedInventory.StatusCode == HttpStatusCode.Forbidden, "Inventory detail is admin-only");
+        using (var deniedOpen = await buyer.PostAsJsonAsync(stockPath + "/open", openStock))
+            check(deniedOpen.StatusCode == HttpStatusCode.Forbidden, "Inventory mutation is admin-only");
+        using (var missingInventoryToken = await adminClient.PostAsJsonAsync(stockPath + "/open", openStock))
+            check(missingInventoryToken.StatusCode == HttpStatusCode.BadRequest, "Inventory writes require antiforgery");
+        var beforeOpen = await adminClient.GetFromJsonAsync<JsonElement>(stockPath);
+        check(beforeOpen.GetProperty("account").ValueKind == JsonValueKind.Null &&
+            await SendStock("open", openStock) == HttpStatusCode.OK &&
+            await SendStock("open", openStock) == HttpStatusCode.Conflict,
+            "Inventory detail supports untracked products and prevents duplicate setup");
+        check(await SendStock("configure", new { variantId = httpVariant.ProductVariantId, units = 50, expectedRevision = 0 }) ==
+            HttpStatusCode.OK, "Inventory API configures per-variant consumption");
         var receiptKey=Guid.NewGuid().ToString();
         Dictionary<string,string> Receipt() => new(){{"Delta","500"},{"ExpectedRevision","1"},{"RequestId",receiptKey},{"Reason","Synthetic HTTP opening"},{"ActorUserId","forged-actor"}};
-        await PostStock("Adjust",Receipt()); await PostStock("Adjust",Receipt());
+        var receiptInput = new { delta = 500, expectedRevision = 1, requestId = receiptKey, reason = "Synthetic HTTP opening" };
+        check(await SendStock("adjust", receiptInput) == HttpStatusCode.OK &&
+            await SendStock("adjust", receiptInput) == HttpStatusCode.OK &&
+            await SendStock("adjust", new { delta = 1, expectedRevision = 1, requestId = Guid.NewGuid(), reason = "Stale" }) ==
+            HttpStatusCode.Conflict, "Inventory API adjusts once and rejects stale revisions");
+        await PostStock("Adjust",Receipt());
+        var stockList = await adminClient.GetFromJsonAsync<JsonElement>("/api/v1/admin/inventory?search=Synthetic%20HTTP%20stock&page=999");
+        check(stockList.GetProperty("total").GetInt32() == 1 && stockList.GetProperty("page").GetInt32() == 1 &&
+            stockList.GetProperty("items")[0].GetProperty("account").GetProperty("available").GetDecimal() == 500,
+            "Inventory API searches product and shows current availability");
+        using (var inventoryDetail = await adminClient.GetAsync(stockPath))
+        {
+            var detailsJson = await inventoryDetail.Content.ReadFromJsonAsync<JsonElement>();
+            var movements = detailsJson.GetProperty("movements");
+            check(inventoryDetail.Headers.CacheControl?.NoStore == true &&
+                detailsJson.GetProperty("variants")[0].GetProperty("stockUnitsPerItem").GetDecimal() == 50 &&
+                movements.GetArrayLength() == 3 &&
+                movements.EnumerateArray().All(move => move.GetProperty("actorName").GetString() == adminUser.UserName),
+                "Inventory detail exposes configured consumption and one ledger entry per operation");
+        }
         var httpStock=await db.StockAccounts.AsNoTracking().SingleAsync(s=>s.ProductId==httpProduct.ProductId);
         check(httpStock.OnHand==500 && httpStock.Reserved==0 &&
             await db.StockMovements.CountAsync(m=>m.StockAccountId==httpProduct.ProductId && m.Kind=="Adjust")==1 &&
@@ -318,6 +360,8 @@ internal static class IdentityCookieScenario
             check(response.StatusCode==HttpStatusCode.Redirect,"Real admin stock order operation completes: "+operation);
         }
         await Operate("Reserve",0); await Operate("Consume",0);
+        check(await SendStock("adjust", new { delta = -401, expectedRevision = 3, requestId = Guid.NewGuid(), reason = "Below reserve" }) ==
+            HttpStatusCode.BadRequest, "Inventory adjustment cannot reduce physical stock below reservations");
         httpStock=await db.StockAccounts.AsNoTracking().SingleAsync(s=>s.ProductId==httpProduct.ProductId);
         check(httpStock.OnHand==500 && httpStock.Reserved==100,"Real stale filling form cannot overwrite a confirmed reservation");
         await Operate("Consume",1);

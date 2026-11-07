@@ -1,7 +1,7 @@
 export default defineEventHandler(event => {
   const path = getRouterParam(event, 'path') ?? ''
-  const read = event.method === 'GET' && new RegExp('^(dashboard|delivery|orders(?:/[1-9][0-9]*)?)$').test(path)
-  const write = event.method === 'POST' && new RegExp('^orders/[1-9][0-9]*/(status|stock|delivery)$').test(path)
+  const read = event.method === 'GET' && new RegExp('^(dashboard|delivery|(?:orders|inventory)(?:/[1-9][0-9]*)?)$').test(path)
+  const write = event.method === 'POST' && new RegExp('^(orders/[1-9][0-9]*/(status|stock|delivery)|inventory/[1-9][0-9]*/(open|configure|adjust))$').test(path)
   if (!read && !write) {
     throw createError({ statusCode: 404 })
   }

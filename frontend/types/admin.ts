@@ -48,6 +48,36 @@ export interface AdminDeliveryEvent extends Omit<AdminDelivery, 'state'> {
   changedAtUtc: string
 }
 
+export interface AdminStockAccount {
+  unit: 'ml' | 'piece'
+  onHand: number
+  reserved: number
+  available: number
+  revision: number
+}
+
+export interface AdminStockProduct {
+  productId: number
+  name: string
+  account: AdminStockAccount | null
+}
+
+export interface AdminStockPage {
+  items: AdminStockProduct[]
+  total: number
+  page: number
+  pages: number
+}
+
+export interface AdminStockDetails extends AdminStockProduct {
+  variants: { productVariantId: number; size: string; stockUnitsPerItem: number | null }[]
+  movements: { stockMovementId: string; orderId: number | null; kind: string; onHandDelta: number;
+    reservedDelta: number; reason: string; actorName: string | null; createdAtUtc: string }[]
+  total: number
+  page: number
+  pages: number
+}
+
 export interface AdminOrderDetails {
   order: AdminOrderSummary
   statusRevision: number
