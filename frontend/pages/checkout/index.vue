@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { CheckoutReceipt, CheckoutState } from '~/types/checkout'
 
+const router = useRouter()
+const { cart } = useCart()
 const state = ref<CheckoutState | null>(null)
 const loading = ref(true)
 const busy = ref(false)
@@ -46,10 +48,10 @@ async function send(action: 'shipping' | 'orders') {
         method: 'POST', body, retry: 0, ignoreResponseError: true,
         headers: { RequestVerificationToken: session.requestToken }
       })
-    const result = response._data
+    const result = typeof response._data === 'object' ? response._data : undefined
     if (result && 'orderId' in result && response.ok) {
-      useState('cart').value = null
-      await navigateTo('/checkout/receipt')
+      cart.value = null
+      await router.push('/checkout/receipt')
     } else if (result && 'cartRevision' in result) {
       state.value = result
       errors.value = result.errors

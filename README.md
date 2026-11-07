@@ -10,7 +10,7 @@ Arabic, mobile-first storefront for natural oils and soap. The backend uses ASP.
 - deploy/ contains deployment configuration and operational instructions.
 - docs/ contains durable system documentation.
 
-The Vue frontend currently covers catalogue, product gallery, variant selection and cart. Checkout and administration still require migration and acceptance. The existing deployed store remains the release entry point. Backend folder relocation is a later change that must update solution, Docker and CI paths together.
+The Vue frontend currently covers catalogue, product gallery, variant selection, cart and guest checkout. Administration and account screens still require migration and acceptance. The existing deployed store remains the release entry point. Backend folder relocation is a later change that must update solution, Docker and CI paths together.
 
 ## Local development
 
