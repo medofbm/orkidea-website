@@ -13,7 +13,7 @@ using System.Text.Json;
 namespace Orkideya.Controllers;
 
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public class CheckoutController : Controller
+public partial class CheckoutController : Controller
 {
     private readonly ApplicationDbContext _context;
     private readonly OrderService _orders;
@@ -72,7 +72,10 @@ public class CheckoutController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PlaceOrder([Bind(Prefix = "Input")] CheckoutInput input)
+    public Task<IActionResult> PlaceOrder([Bind(Prefix = "Input")] CheckoutInput input) =>
+        PlaceOrderCore(input, null);
+
+    private async Task<IActionResult> PlaceOrderCore(CheckoutInput input, CheckoutReview? review)
     {
         if (input.CheckoutToken is null || input.CheckoutToken == Guid.Empty ||
             HttpContext.Session.GetString("CheckoutToken") != input.CheckoutToken.Value.ToString("D"))
@@ -122,6 +125,13 @@ public class CheckoutController : Controller
         }
         if (!ModelState.IsValid)
             return View("Index", await BuildViewModel(cart, input));
+
+        if (review is not null && (review.CartRevision != CartRevision(cart) ||
+            review.ShippingFee != (snapshot?.ShippingFee ?? rate!.Price)))
+        {
+            ModelState.AddModelError("", "تغيرت السلة أو تكلفة التوصيل. راجع الإجمالي ثم أكد الطلب مرة أخرى.");
+            return View("Index", await BuildViewModel(cart, input));
+        }
 
         var productIds = variants.Values.Select(v => v.ProductId).Distinct().ToArray();
         var stock = await _context.StockAccounts.AsNoTracking().Where(s => productIds.Contains(s.ProductId))

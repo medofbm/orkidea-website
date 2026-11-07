@@ -1,6 +1,6 @@
-namespace Orkideya.Areas.Admin.Models;
+namespace Orkideya.Application.Delivery;
 
-public sealed class DeliveryIndexViewModel
+public sealed class DeliveryListPage
 {
     public required List<DeliveryListRow> Rows { get; init; }
     public required string State { get; init; }

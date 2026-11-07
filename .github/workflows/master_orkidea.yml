@@ -15,7 +15,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --registry=https://registry.npmjs.org
+      - run: npm run typecheck
+      - run: npm run build
+      - run: node --test tests/ssr.test.mjs
+
   verify:
+    needs: frontend
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
