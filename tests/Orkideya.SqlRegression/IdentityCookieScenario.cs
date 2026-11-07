@@ -419,6 +419,50 @@ internal static class IdentityCookieScenario
             "Receipt refresh and forged lookup URLs create no orders or notification intents");
         await db.ProductVariants.Where(v=>v.ProductVariantId==manualVariant.ProductVariantId).ExecuteUpdateAsync(x=>x.SetProperty(v=>v.Price,3m));
 
+        using (var apiCheckout = Client())
+        {
+            var session = await apiCheckout.GetFromJsonAsync<JsonElement>("/api/v1/session");
+            apiCheckout.DefaultRequestHeaders.Add("RequestVerificationToken", session.GetProperty("requestToken").GetString());
+            using var added = await apiCheckout.PostAsJsonAsync("/api/v1/cart/items",
+                new { variantId = manualVariant.ProductVariantId, quantity = 2 });
+            var addedCart = await added.Content.ReadFromJsonAsync<JsonElement>();
+            check(addedCart.GetProperty("success").GetBoolean(), "Vue checkout journey shares the cart session");
+            var checkout = await apiCheckout.GetFromJsonAsync<JsonElement>("/api/v1/checkout");
+            var key = checkout.GetProperty("checkoutToken").GetGuid();
+            var revision = checkout.GetProperty("cartRevision").GetString();
+            var input = new CheckoutInput
+            {
+                CheckoutToken = key, FirstName = "Synthetic", LastName = "API receipt",
+                WhatsAppNumber = "+218000000000", ShippingAddress = "SYNTHETIC_API_PRIVATE_ADDRESS",
+                ShippingRateId = manualRate.ShippingRateId
+            };
+            var before = await db.Orders.CountAsync();
+            using var stale = await apiCheckout.PostAsJsonAsync("/api/v1/checkout/orders",
+                new { input, review = new { cartRevision = revision, shippingFee = "0.00" } });
+            var corrected = await stale.Content.ReadFromJsonAsync<JsonElement>();
+            check(stale.StatusCode == HttpStatusCode.UnprocessableEntity && await db.Orders.CountAsync() == before &&
+                corrected.GetProperty("shippingFee").GetString() == "2.00",
+                "Checkout API requires review when delivery cost differs from the displayed amount");
+            var order = new { input, review = new { cartRevision = revision, shippingFee = "2.00" } };
+            using var confirmed = await apiCheckout.PostAsJsonAsync("/api/v1/checkout/orders", order);
+            var receiptBody = await confirmed.Content.ReadAsStringAsync();
+            using var receiptJson = JsonDocument.Parse(receiptBody);
+            check(confirmed.StatusCode == HttpStatusCode.OK && receiptJson.RootElement.GetProperty("total").GetString() == "8.00",
+                "Checkout API creates one guest order with the confirmed totals");
+            check(confirmed.Headers.CacheControl?.NoStore == true &&
+                !receiptBody.Contains(input.ShippingAddress, StringComparison.Ordinal) &&
+                !receiptBody.Contains(input.WhatsAppNumber, StringComparison.Ordinal) &&
+                !receiptBody.Contains(key.ToString(), StringComparison.Ordinal),
+                "Checkout API response keeps receipt private");
+            using var replay = await apiCheckout.PostAsJsonAsync("/api/v1/checkout/orders", order);
+            check(replay.StatusCode == HttpStatusCode.OK && await db.Orders.CountAsync() == before + 1,
+                "Checkout API retries return the same receipt without duplicate orders");
+            using var unrelated = Client();
+            using var denied = await unrelated.GetAsync("/api/v1/checkout/receipt?orderId=" +
+                receiptJson.RootElement.GetProperty("orderId").GetInt32());
+            check(denied.StatusCode == HttpStatusCode.NotFound, "Another session cannot read the JSON receipt");
+        }
+
         using (var logout = await adminClient.PostAsync("/Identity/Account/Logout?returnUrl=%2F", new FormUrlEncodedContent(new Dictionary<string, string>
             { ["__RequestVerificationToken"] = logoutToken })))
             check(logout.StatusCode == HttpStatusCode.Redirect, "Real admin logout succeeds with antiforgery");

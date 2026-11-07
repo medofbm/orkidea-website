@@ -41,6 +41,8 @@ useSeoMeta({ title: 'سلة أوركيديا', robots: 'noindex, nofollow' })
       <div v-if="cart.items.length" class="mt-6 rounded-xl bg-purple-50 p-5">
         <p class="text-lg font-semibold">إجمالي المنتجات {{ cart.productsTotal }} د.ل</p>
         <p class="mt-2">تُضاف تكلفة التوصيل عند إتمام الطلب.</p>
+        <NuxtLink v-if="cart.items.every(item => item.available)" to="/checkout"
+          class="mt-4 inline-flex min-h-12 items-center rounded-xl bg-purple-800 px-5 text-white">إتمام الطلب</NuxtLink>
       </div>
     </template>
   </section>
