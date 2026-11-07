@@ -601,10 +601,10 @@ internal static class IdentityCookieScenario
         }
 
         var updatePath = "/api/v1/admin/orders/" + manualStored.OrderId + "/status";
-        var update = new { status = "Processing", expectedRevision = manualStored.StatusRevision };
-        using (var denied = await buyer.PostAsJsonAsync(updatePath, update))
+        var statusPayload = new { status = "Processing", expectedRevision = manualStored.StatusRevision };
+        using (var denied = await buyer.PostAsJsonAsync(updatePath, statusPayload))
             check(Denied(denied), "Customer role cannot update orders through the Vue API");
-        using (var missingToken = await adminClient.PostAsJsonAsync(updatePath, update))
+        using (var missingToken = await adminClient.PostAsJsonAsync(updatePath, statusPayload))
             check(missingToken.StatusCode == HttpStatusCode.BadRequest, "Admin status update requires antiforgery");
 
         var adminSession = await adminClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
@@ -618,13 +618,13 @@ internal static class IdentityCookieScenario
 
         using (var invalid = await SendUpdate(new { status = "Processing" }))
             check(invalid.StatusCode == HttpStatusCode.BadRequest, "Admin status update rejects missing revision");
-        using (var saved = await SendUpdate(update))
+        using (var saved = await SendUpdate(statusPayload))
         {
             var result = await saved.Content.ReadFromJsonAsync<JsonElement>();
             check(saved.StatusCode == HttpStatusCode.OK && result.GetProperty("success").GetBoolean(),
                 "Admin status API applies the current revision");
         }
-        using (var stale = await SendUpdate(update))
+        using (var stale = await SendUpdate(statusPayload))
             check(stale.StatusCode == HttpStatusCode.Conflict, "Admin status API rejects stale writes");
         using (var updated = await adminClient.GetAsync("/api/v1/admin/orders/" + manualStored.OrderId))
         {
