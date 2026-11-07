@@ -57,6 +57,7 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
       <p>تم تسجيل الدخول</p>
       <p v-if="account.name" class="my-2 break-all" dir="ltr">{{ account.name }}</p>
       <button type="button" :disabled="pending" class="mt-4 min-h-11 rounded-lg border px-4" @click="submit('logout')">تسجيل الخروج</button>
+      <NuxtLink v-if="account.isAdmin" to="/admin" class="ms-4 inline-block min-h-11 text-purple-900 underline">لوحة الإدارة</NuxtLink>
       <AccountSettings :phone-number="account.phoneNumber" />
     </template>
     <form v-else-if="account && !loading" @submit.prevent="submit(verification ? 'verify' : 'login')">

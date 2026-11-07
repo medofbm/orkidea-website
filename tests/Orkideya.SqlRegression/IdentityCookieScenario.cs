@@ -561,6 +561,45 @@ internal static class IdentityCookieScenario
             check(denied.StatusCode == HttpStatusCode.NotFound, "Another session cannot read the JSON receipt");
         }
 
+        foreach (var path in new[] { "/api/v1/admin/dashboard", "/api/v1/admin/orders", "/api/v1/admin/orders/" + manualStored.OrderId })
+        {
+            using var anonymousAdmin = Client();
+            using var deniedAnonymous = await anonymousAdmin.GetAsync(path);
+            using var deniedCustomer = await buyer.GetAsync(path);
+            check(deniedAnonymous.StatusCode == HttpStatusCode.Unauthorized &&
+                deniedCustomer.StatusCode == HttpStatusCode.Forbidden, "Admin read API enforces the Admin role: " + path);
+        }
+
+        using (var overview = await adminClient.GetAsync("/api/v1/admin/dashboard"))
+        {
+            var summary = await overview.Content.ReadFromJsonAsync<JsonElement>();
+            var nowUtc = factory.Services.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
+            var expected = await new DashboardMetrics(db, nowUtc).ThirtyDaysAsync();
+            check(overview.StatusCode == HttpStatusCode.OK && overview.Headers.CacheControl?.NoStore == true &&
+                summary.GetProperty("productsValueLast30Days").GetString() == expected.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                "Admin dashboard API uses the existing merchandise metric and private cache headers");
+        }
+        using (var orderList = await adminClient.GetAsync(
+            "/api/v1/admin/orders?source=FacebookManual&search=%23" + manualStored.OrderId))
+        {
+            var list = await orderList.Content.ReadFromJsonAsync<JsonElement>();
+            var row = list.GetProperty("items")[0];
+            check(orderList.StatusCode == HttpStatusCode.OK && orderList.Headers.CacheControl?.NoStore == true &&
+                list.GetProperty("total").GetInt32() == 1 && row.GetProperty("id").GetInt32() == manualStored.OrderId &&
+                !row.TryGetProperty("shippingAddress", out _) && !row.TryGetProperty("checkoutToken", out _),
+                "Admin list API filters by source and search and limits the summary fields");
+        }
+        using (var badFilter = await adminClient.GetAsync("/api/v1/admin/orders?source=unknown&page=0"))
+            check(badFilter.StatusCode == HttpStatusCode.BadRequest, "Admin list API rejects invalid filter input");
+        using (var orderDetail = await adminClient.GetAsync("/api/v1/admin/orders/" + manualStored.OrderId))
+        {
+            var detail = await orderDetail.Content.ReadFromJsonAsync<JsonElement>();
+            check(orderDetail.StatusCode == HttpStatusCode.OK && orderDetail.Headers.CacheControl?.NoStore == true &&
+                detail.GetProperty("order").GetProperty("id").GetInt32() == manualStored.OrderId &&
+                detail.GetProperty("items").GetArrayLength() == manualStored.Items.Count && detail.TryGetProperty("shippingAddress", out _),
+                "Admin detail API exposes the selected order and its items to the administrator");
+        }
+
         using (var logout = await adminClient.PostAsync("/Identity/Account/Logout?returnUrl=%2F", new FormUrlEncodedContent(new Dictionary<string, string>
             { ["__RequestVerificationToken"] = logoutToken })))
             check(logout.StatusCode == HttpStatusCode.Redirect, "Real admin logout succeeds with antiforgery");
