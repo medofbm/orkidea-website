@@ -101,6 +101,10 @@ var cookieSecurePolicy = builder.Environment.IsDevelopment()
     ? CookieSecurePolicy.SameAsRequest 
     : CookieSecurePolicy.Always;
 
+builder.Services.ConfigureApplicationCookie(options => options.Cookie.SecurePolicy = cookieSecurePolicy);
+builder.Services.Configure<Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions>(
+    IdentityConstants.TwoFactorUserIdScheme, options => options.Cookie.SecurePolicy = cookieSecurePolicy);
+
 // Session Configuration with Security
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

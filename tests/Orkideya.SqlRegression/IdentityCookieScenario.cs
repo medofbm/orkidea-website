@@ -128,6 +128,56 @@ internal static class IdentityCookieScenario
             check(delete.StatusCode == HttpStatusCode.OK && emptyPayload.GetProperty("count").GetInt32() == 0,
                 "Cart API removes the selected variant");
         }
+        using (var accountClient = Client())
+        {
+            var credentials = new { email = adminUser.Email, password, rememberMe = false };
+            using var rejected = await accountClient.PostAsJsonAsync("/api/v1/account/login", credentials);
+            check(rejected.StatusCode == HttpStatusCode.BadRequest, "Account API rejects login without antiforgery");
+            var session = await accountClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+            accountClient.DefaultRequestHeaders.Add("RequestVerificationToken", session.GetProperty("requestToken").GetString());
+            using var login = await accountClient.PostAsJsonAsync("/api/v1/account/login", credentials);
+            check(login.StatusCode == HttpStatusCode.OK && login.Headers.TryGetValues("Set-Cookie", out var authCookies) &&
+                authCookies.Any(cookie => cookie.Contains("Identity.Application=", StringComparison.Ordinal) &&
+                    cookie.Contains("; secure", StringComparison.OrdinalIgnoreCase) &&
+                    cookie.Contains("; httponly", StringComparison.OrdinalIgnoreCase)),
+                "Account API login issues the existing Secure HttpOnly Identity cookie");
+            using var account = await accountClient.GetAsync("/api/v1/account");
+            var signedIn = await account.Content.ReadFromJsonAsync<JsonElement>();
+            check(account.Headers.CacheControl?.NoStore == true &&
+                signedIn.GetProperty("signedIn").GetBoolean() && signedIn.GetProperty("isAdmin").GetBoolean(),
+                "Account API resolves the authenticated role without caching");
+            using var rejectedLogout = await accountClient.PostAsync("/api/v1/account/logout", null);
+            check(rejectedLogout.StatusCode == HttpStatusCode.BadRequest, "Account API rejects logout using the pre-login token");
+            accountClient.DefaultRequestHeaders.Remove("RequestVerificationToken");
+            session = await accountClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+            accountClient.DefaultRequestHeaders.Add("RequestVerificationToken", session.GetProperty("requestToken").GetString());
+            using var logoutApi = await accountClient.PostAsync("/api/v1/account/logout", null);
+            var signedOut = await accountClient.GetFromJsonAsync<JsonElement>("/api/v1/account");
+            check(logoutApi.StatusCode == HttpStatusCode.NoContent && !signedOut.GetProperty("signedIn").GetBoolean(),
+                "Account API logout removes authenticated access");
+        }
+
+        var twoFactorUser = await Seed("cookie-two-factor@orkidea.test", false);
+        check((await users.ResetAuthenticatorKeyAsync(twoFactorUser)).Succeeded &&
+            (await users.SetTwoFactorEnabledAsync(twoFactorUser, true)).Succeeded, "Synthetic account enables two-factor authentication");
+        var recoveryCode = (await users.GenerateNewTwoFactorRecoveryCodesAsync(twoFactorUser, 1))!.Single();
+        using (var twoFactorClient = Client())
+        {
+            var session = await twoFactorClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+            twoFactorClient.DefaultRequestHeaders.Add("RequestVerificationToken", session.GetProperty("requestToken").GetString());
+            using var login = await twoFactorClient.PostAsJsonAsync("/api/v1/account/login",
+                new { email = twoFactorUser.Email, password, rememberMe = false });
+            var challenge = await login.Content.ReadFromJsonAsync<JsonElement>();
+            var pendingAccount = await twoFactorClient.GetFromJsonAsync<JsonElement>("/api/v1/account");
+            check(challenge.GetProperty("requiresVerification").GetBoolean() && !pendingAccount.GetProperty("signedIn").GetBoolean(),
+                "Password alone does not authenticate an account with two-factor enabled");
+            using var verified = await twoFactorClient.PostAsJsonAsync("/api/v1/account/verify",
+                new { code = recoveryCode, recovery = true, rememberMe = false });
+            var signedIn = await twoFactorClient.GetFromJsonAsync<JsonElement>("/api/v1/account");
+            check(verified.StatusCode == HttpStatusCode.OK && signedIn.GetProperty("signedIn").GetBoolean() &&
+                !signedIn.GetProperty("isAdmin").GetBoolean(), "Recovery code completes the Identity challenge with customer permissions");
+        }
+
         using var buyer = Client();
         await Login(buyer, customer.Email!);
         using (var manage = await buyer.GetAsync("/Identity/Account/Manage"))
