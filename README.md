@@ -10,11 +10,11 @@ Arabic, mobile-first storefront for natural oils and soap. The backend uses ASP.
 - deploy/ contains deployment configuration and operational instructions.
 - docs/ contains durable system documentation.
 
-The Vue frontend currently covers catalogue, product gallery, variant selection, cart, guest checkout and basic account screens. Administration and advanced account flows still require migration and acceptance. The existing deployed store remains the release entry point. Backend folder relocation is a later change that must update solution, Docker and CI paths together.
+The Vue frontend covers the catalogue, product gallery, variant selection, cart, guest checkout and basic account screens. Vue administration includes the dashboard, order status and history, manual delivery and returns, inventory, product and gallery editing, prices and categories. Advanced account flows and staging browser acceptance remain open. The existing deployed store remains the release entry point. Backend folder relocation is a later change that must update solution, Docker and CI paths together.
 
 ## Local development
 
-Install the SDK selected by global.json and Node.js 24. Restore and build Orkideya.sln. Configure a dedicated development SQL connection through ASP.NET configuration, then run Orkideya/Orkideya.csproj. Configure Initialization:Run and notification flags deliberately for the development environment.
+Install the SDK selected by global.json and Node.js 24 LTS (24.15.0 or later within 24.x). Restore and build Orkideya.sln. Configure a dedicated development SQL connection through ASP.NET configuration, then run Orkideya/Orkideya.csproj. Configure Initialization:Run and notification flags deliberately for the development environment.
 
 For the Vue application, see [frontend/README.md](frontend/README.md). Its backend origin must point to the running local ASP.NET service. Keep development data separate from staging and production.
 

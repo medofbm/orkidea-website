@@ -15,7 +15,10 @@ const { data, status, error } = useFetch<AdminProductsPage>('/api/admin/products
   <section aria-labelledby="products-title">
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
       <h1 id="products-title" class="text-3xl font-bold">إدارة المنتجات</h1>
-      <NuxtLink to="/admin/products/new" class="inline-flex min-h-11 items-center rounded-lg bg-purple-900 px-4 text-white">إضافة منتج</NuxtLink>
+      <div class="flex flex-wrap gap-2">
+        <NuxtLink to="/admin/categories" class="inline-flex min-h-11 items-center rounded-lg border px-4">إدارة الفئات</NuxtLink>
+        <NuxtLink to="/admin/products/new" class="inline-flex min-h-11 items-center rounded-lg bg-purple-900 px-4 text-white">إضافة منتج</NuxtLink>
+      </div>
     </div>
     <form class="mb-5 flex flex-wrap items-end gap-3 rounded-xl bg-white p-4"
       @submit.prevent="query = { search: search.trim(), page: 1 }">

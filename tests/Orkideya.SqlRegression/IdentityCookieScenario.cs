@@ -746,8 +746,24 @@ internal static class IdentityCookieScenario
                 !await db.Products.AnyAsync(product => product.Name == "Rejected synthetic image"),
                 "Invalid product image creates no product");
 
+        const string categoriesApi = "/api/v1/admin/categories";
+        var newCategory = new { name = "Synthetic Vue category" };
+        using (var forbiddenCategories = await buyer.GetAsync(categoriesApi))
+            check(forbiddenCategories.StatusCode == HttpStatusCode.Forbidden, "Category management is admin-only");
+        using (var missingCategoryToken = await adminClient.PostAsJsonAsync(categoriesApi, newCategory))
+            check(missingCategoryToken.StatusCode == HttpStatusCode.BadRequest, "Category changes require antiforgery");
+        using (var savedCategory = await ProductWrite(categoriesApi, JsonContent.Create(newCategory)))
+            check(savedCategory.StatusCode == HttpStatusCode.OK, "Category API creates a named category");
+        using (var duplicateCategory = await ProductWrite(categoriesApi, JsonContent.Create(new { name = " Synthetic Vue category " })))
+            check(duplicateCategory.StatusCode == HttpStatusCode.BadRequest, "Category API rejects a duplicate normalized name");
+        var categoriesPage = await adminClient.GetFromJsonAsync<JsonElement>(categoriesApi + "?search=Synthetic%20Vue%20category&page=999");
+        var vueCategoryId = categoriesPage.GetProperty("items")[0].GetProperty("categoryId").GetInt32();
+        check(categoriesPage.GetProperty("total").GetInt32() == 1 && categoriesPage.GetProperty("page").GetInt32() == 1,
+            "Category list search and page clamping use persisted categories");
+
         var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jN0sAAAAASUVORK5CYII=");
         var newProduct = ProductForm("Synthetic Vue product");
+        newProduct.Add(new StringContent(vueCategoryId.ToString(System.Globalization.CultureInfo.InvariantCulture)), "categoryId");
         newProduct.Add(new ByteArrayContent(png), "imageFile", "cover.png");
         newProduct.Add(new ByteArrayContent(png), "galleryFiles", "first.png");
         newProduct.Add(new ByteArrayContent(png), "galleryFiles", "second.png");
@@ -764,6 +780,7 @@ internal static class IdentityCookieScenario
             File.Exists(Path.Combine(webRoot, coverImage.TrimStart('/'))),
             "Product multipart create persists its cover and two additional images in isolated storage");
         var productEdit = ProductForm("Synthetic Vue edited product");
+        productEdit.Add(new StringContent(vueCategoryId.ToString(System.Globalization.CultureInfo.InvariantCulture)), "categoryId");
         productEdit.Add(new StringContent(originalVersion), "version");
         productEdit.Add(new StringContent(coverImage), "imageUrl");
         productEdit.Add(new StringContent(originalGallery[0].GetString()!), "removeGallery");
@@ -793,6 +810,22 @@ internal static class IdentityCookieScenario
             check(savedPrice.StatusCode == HttpStatusCode.OK, "Product API updates variant pricing");
         using (var stalePrice = await ProductWrite(vueVariantPath, JsonContent.Create(variantEdit)))
             check(stalePrice.StatusCode == HttpStatusCode.Conflict, "Product API rejects a stale variant price");
+        var renameCategory = new { name = "Synthetic Vue renamed category", expectedName = newCategory.name };
+        using (var renamedCategory = await ProductWrite(categoriesApi + "/" + vueCategoryId, JsonContent.Create(renameCategory)))
+            check(renamedCategory.StatusCode == HttpStatusCode.OK, "Category API renames the linked category");
+        using (var staleCategory = await ProductWrite(categoriesApi + "/" + vueCategoryId, JsonContent.Create(renameCategory)))
+            check(staleCategory.StatusCode == HttpStatusCode.Conflict, "Category API rejects a stale rename");
+        using (var renamedPage = await adminClient.GetAsync(categoriesApi + "?search=Synthetic%20Vue%20renamed"))
+        {
+            var categoryList = await renamedPage.Content.ReadFromJsonAsync<JsonElement>();
+            check(renamedPage.Headers.CacheControl?.NoStore == true &&
+                categoryList.GetProperty("items")[0].GetProperty("products").GetInt32() == 1 &&
+                await db.Products.AnyAsync(product => product.ProductId == vueProductId && product.CategoryId == vueCategoryId),
+                "Category rename preserves product links and the private list includes linked product count");
+        }
+        var categoryOptions = await adminClient.GetFromJsonAsync<JsonElement>(productApi + "/categories");
+        check(categoryOptions.EnumerateArray().Any(category => category.GetProperty("categoryId").GetInt32() == vueCategoryId &&
+            category.GetProperty("name").GetString() == renameCategory.name), "Product picker returns the updated category name");
         var finalVariant = await db.ProductVariants.AsNoTracking().SingleAsync(variant => variant.ProductVariantId == vueVariantId);
         check(finalVariant.Price == 20.10m, "Updated variant price persists exactly");
 

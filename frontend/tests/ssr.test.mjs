@@ -64,6 +64,12 @@ test('built storefront renders catalogue data and the product gallery on the ser
       })
       return
     }
+    if (req.url === '/api/v1/admin/categories/1' && req.method === 'POST') {
+      const authorized = req.headers.cookie === 'qa-session=synthetic' &&
+        req.headers.requestverificationtoken === 'synthetic-token'
+      res.statusCode = authorized ? 409 : 401
+      return res.end('{}')
+    }
     if (req.url === '/api/v1/catalogue/products/1') return res.end(JSON.stringify(product))
     if (req.url?.startsWith('/api/v1/catalogue/products?')) {
       return res.end(JSON.stringify({ items: [product], page: 1, pageSize: 24, total: 1 }))
@@ -150,6 +156,16 @@ test('built storefront renders catalogue data and the product gallery on the ser
     assert.equal(productUpload.status, 200, 'product proxy preserves multipart boundary, file and credentials')
     assert.ok(productUpload.headers.get('cache-control')?.includes('no-store'))
     assert.equal((await fetch(origin + '/api/admin/products/1/delete', { method: 'POST' })).status, 404)
+    const adminCategoriesPage = await (await fetch(origin + '/admin/categories')).text()
+    assert.ok(adminCategoriesPage.includes('إدارة الفئات'))
+    const rename = await fetch(origin + '/api/admin/categories/1', {
+      method: 'POST',
+      headers: { Cookie: 'qa-session=synthetic', RequestVerificationToken: 'synthetic-token', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'New', expectedName: 'Old' })
+    })
+    assert.equal(rename.status, 409)
+    assert.ok(rename.headers.get('cache-control')?.includes('no-store'))
+    assert.equal((await fetch(origin + '/api/admin/categories/1/delete', { method: 'POST' })).status, 404)
     const unsupportedAdminWrite = await fetch(origin + '/api/admin/orders/1', { method: 'POST' })
     assert.equal(unsupportedAdminWrite.status, 404)
     const write = await fetch(origin + '/api/v1/catalogue/products', { method: 'POST' })
