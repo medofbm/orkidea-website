@@ -118,7 +118,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build the immutable preview image from a clean checkout
-        run: docker build --tag "orkidea-preview:${GITHUB_SHA}" .
+        run: docker build --label "org.opencontainers.image.revision=${GITHUB_SHA}" --tag "orkidea-preview:${GITHUB_SHA}" .
       - name: Inspect the image and run the real web process safely
         shell: bash
         run: |
@@ -143,6 +143,23 @@ jobs:
           assert 'نسخة تجريبية' in Path('/tmp/preview-login.html').read_text(encoding='utf-8')
           print('PASS: non-root, read-only web image; live endpoint and preview login/banner; noindex; private files excluded.')
           PY
+      - name: Build and verify the Vue preview image and isolated Compose stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="orkidea-vue-preview:${GITHUB_SHA}"
+          docker build --label "org.opencontainers.image.revision=${GITHUB_SHA}" --tag "$image" frontend
+          test "$(docker image inspect "$image" --format '{{.Config.User}}')" = node
+          docker run --rm --entrypoint sh "$image" -c 'test ! -e /src && test ! -e /app/.env && test ! -e /app/tests'
+          bash tests/check-vue-preview-compose.sh
+      - name: Save the verified Vue image for controlled transfer
+        run: docker save "orkidea-vue-preview:${GITHUB_SHA}" | gzip > orkidea-vue-preview-image.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orkidea-vue-preview-image-${{ github.sha }}
+          path: orkidea-vue-preview-image.tar.gz
+          retention-days: 3
+          if-no-files-found: error
       - name: Save the verified web image for controlled transfer
         run: docker save "orkidea-preview:${GITHUB_SHA}" | gzip > orkidea-preview-image.tar.gz
       - uses: actions/upload-artifact@v4

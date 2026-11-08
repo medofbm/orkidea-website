@@ -10,4 +10,4 @@ GitHub CI exercises the built frontend with Chromium and real ASP.NET on a dispo
 
 Set NUXT_PUBLIC_PREVIEW=true for a preview banner and a noindex meta tag. A staging host still needs protected access and its own noindex response header.
 
-The existing Docker image and application routes still serve the current store. A frontend runtime and reverse proxy rollout have not been configured yet.
+The existing Docker image and application routes serve the current store. CI builds and verifies a separate Nuxt image and isolated Compose preview. The [Vue preview runbook](../deploy/vue-preview.md) covers host preflight, first start and phone acceptance.
