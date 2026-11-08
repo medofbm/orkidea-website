@@ -11,6 +11,7 @@ useSeoMeta({ robots: 'noindex, nofollow, noarchive' })
         <NuxtLink to="/admin/orders" class="rounded-lg px-3 py-2">الطلبات</NuxtLink>
         <NuxtLink to="/admin/delivery" class="rounded-lg px-3 py-2">التوصيل والرواجع</NuxtLink>
         <NuxtLink to="/admin/inventory" class="rounded-lg px-3 py-2">المخزون</NuxtLink>
+        <NuxtLink to="/admin/products" class="rounded-lg px-3 py-2">المنتجات</NuxtLink>
         <NuxtLink to="/account" class="rounded-lg px-3 py-2">الحساب</NuxtLink>
         <NuxtLink to="/" class="rounded-lg px-3 py-2">المتجر</NuxtLink>
       </nav>

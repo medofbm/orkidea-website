@@ -50,6 +50,20 @@ test('built storefront renders catalogue data and the product gallery on the ser
       res.statusCode = authorized ? 409 : 401
       return res.end('{}')
     }
+    if (req.url === '/api/v1/admin/products' && req.method === 'POST') {
+      const chunks = []
+      req.on('data', chunk => chunks.push(chunk))
+      req.on('end', () => {
+        const payload = Buffer.concat(chunks).toString()
+        const valid = req.headers.cookie === 'qa-session=synthetic' &&
+          req.headers.requestverificationtoken === 'synthetic-token' &&
+          req.headers['content-type']?.startsWith('multipart/form-data; boundary=') &&
+          payload.includes('name="galleryFiles"; filename="synthetic.png"') && payload.includes('synthetic image bytes')
+        res.statusCode = valid ? 200 : 400
+        res.end(JSON.stringify({ success: valid }))
+      })
+      return
+    }
     if (req.url === '/api/v1/catalogue/products/1') return res.end(JSON.stringify(product))
     if (req.url?.startsWith('/api/v1/catalogue/products?')) {
       return res.end(JSON.stringify({ items: [product], page: 1, pageSize: 24, total: 1 }))
@@ -125,6 +139,17 @@ test('built storefront renders catalogue data and the product gallery on the ser
     assert.equal(adjust.status, 409)
     assert.ok(adjust.headers.get('cache-control')?.includes('no-store'))
     assert.equal((await fetch(origin + '/api/admin/inventory/1/delete', { method: 'POST' })).status, 404)
+    const adminProductsPage = await (await fetch(origin + '/admin/products')).text()
+    assert.ok(adminProductsPage.includes('إدارة المنتجات'))
+    const multipart = new FormData()
+    multipart.append('galleryFiles', new Blob(['synthetic image bytes'], { type: 'image/png' }), 'synthetic.png')
+    const productUpload = await fetch(origin + '/api/admin/products', {
+      method: 'POST', body: multipart,
+      headers: { Cookie: 'qa-session=synthetic', RequestVerificationToken: 'synthetic-token' }
+    })
+    assert.equal(productUpload.status, 200, 'product proxy preserves multipart boundary, file and credentials')
+    assert.ok(productUpload.headers.get('cache-control')?.includes('no-store'))
+    assert.equal((await fetch(origin + '/api/admin/products/1/delete', { method: 'POST' })).status, 404)
     const unsupportedAdminWrite = await fetch(origin + '/api/admin/orders/1', { method: 'POST' })
     assert.equal(unsupportedAdminWrite.status, 404)
     const write = await fetch(origin + '/api/v1/catalogue/products', { method: 'POST' })

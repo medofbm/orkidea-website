@@ -20,9 +20,17 @@ internal static class IdentityCookieScenario
 {
     public static async Task Run(string connection, Action<bool, string> check)
     {
+        var media = Directory.CreateTempSubdirectory("orkidea-http-media-");
+        try { await RunCore(connection, media.FullName, check); }
+        finally { media.Delete(recursive: true); }
+    }
+
+    private static async Task RunCore(string connection, string webRoot, Action<bool, string> check)
+    {
         using var factory = new WebApplicationFactory<CartController>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
+            builder.UseWebRoot(webRoot);
             builder.ConfigureAppConfiguration((_, config) =>
             {
                 config.Sources.Clear();
@@ -710,6 +718,83 @@ internal static class IdentityCookieScenario
                 detail.GetProperty("items").GetArrayLength() == manualStored.Items.Count && detail.TryGetProperty("shippingAddress", out _),
                 "Admin detail API exposes the selected order and its items to the administrator");
         }
+
+        const string productApi = "/api/v1/admin/products";
+        var productSession = await adminClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+        var productToken = productSession.GetProperty("requestToken").GetString()!;
+        async Task<HttpResponseMessage> ProductWrite(string path, HttpContent content)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = content };
+            request.Headers.Add("RequestVerificationToken", productToken);
+            return await adminClient.SendAsync(request);
+        }
+        MultipartFormDataContent ProductForm(string name)
+        {
+            var content = new MultipartFormDataContent();
+            content.Add(new StringContent(name), "name");
+            return content;
+        }
+
+        using (var forbiddenProduct = await buyer.GetAsync(productApi))
+            check(forbiddenProduct.StatusCode == HttpStatusCode.Forbidden, "Product management API requires Admin role");
+        using (var noProductCsrf = await adminClient.PostAsync(productApi, ProductForm("Rejected product")))
+            check(noProductCsrf.StatusCode == HttpStatusCode.BadRequest, "Product multipart writes require antiforgery");
+        var rejectedProduct = ProductForm("Rejected synthetic image");
+        rejectedProduct.Add(new ByteArrayContent([1, 2, 3]), "galleryFiles", "invalid.png");
+        using (var rejectedUpload = await ProductWrite(productApi, rejectedProduct))
+            check(rejectedUpload.StatusCode == HttpStatusCode.BadRequest &&
+                !await db.Products.AnyAsync(product => product.Name == "Rejected synthetic image"),
+                "Invalid product image creates no product");
+
+        var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jN0sAAAAASUVORK5CYII=");
+        var newProduct = ProductForm("Synthetic Vue product");
+        newProduct.Add(new ByteArrayContent(png), "imageFile", "cover.png");
+        newProduct.Add(new ByteArrayContent(png), "galleryFiles", "first.png");
+        newProduct.Add(new ByteArrayContent(png), "galleryFiles", "second.png");
+        using var createdProduct = await ProductWrite(productApi, newProduct);
+        var createdJson = await createdProduct.Content.ReadFromJsonAsync<JsonElement>();
+        var vueProductId = createdJson.GetProperty("productId").GetInt32();
+        var vueProductPath = productApi + "/" + vueProductId;
+        var originalProduct = await adminClient.GetFromJsonAsync<JsonElement>(vueProductPath);
+        var originalGallery = originalProduct.GetProperty("gallery");
+        var originalVersion = originalProduct.GetProperty("version").GetString()!;
+        var retainedImage = originalGallery[1].GetString()!;
+        var coverImage = originalProduct.GetProperty("imageUrl").GetString()!;
+        check(createdProduct.StatusCode == HttpStatusCode.OK && originalGallery.GetArrayLength() == 2 &&
+            File.Exists(Path.Combine(webRoot, coverImage.TrimStart('/'))),
+            "Product multipart create persists its cover and two additional images in isolated storage");
+        var productEdit = ProductForm("Synthetic Vue edited product");
+        productEdit.Add(new StringContent(originalVersion), "version");
+        productEdit.Add(new StringContent(coverImage), "imageUrl");
+        productEdit.Add(new StringContent(originalGallery[0].GetString()!), "removeGallery");
+        using (var savedProduct = await ProductWrite(vueProductPath, productEdit))
+            check(savedProduct.StatusCode == HttpStatusCode.OK, "Product edit saves gallery changes");
+        var staleProductForm = ProductForm("Synthetic stale product edit");
+        staleProductForm.Add(new StringContent(originalVersion), "version");
+        using (var staleProduct = await ProductWrite(vueProductPath, staleProductForm))
+            check(staleProduct.StatusCode == HttpStatusCode.Conflict, "Product edit rejects a stale gallery version");
+
+        var newSize = new { productId = vueProductId, size = "100 ml", price = "19.95" };
+        using (var savedSize = await ProductWrite(vueProductPath + "/variants", JsonContent.Create(newSize)))
+            check(savedSize.StatusCode == HttpStatusCode.OK, "Product API adds a size with an exact decimal price");
+        var editedProduct = await adminClient.GetFromJsonAsync<JsonElement>(vueProductPath);
+        var variantRow = editedProduct.GetProperty("variants")[0];
+        var vueVariantId = variantRow.GetProperty("productVariantId").GetInt32();
+        check(editedProduct.GetProperty("gallery").GetArrayLength() == 1 &&
+            editedProduct.GetProperty("gallery")[0].GetString() == retainedImage &&
+            variantRow.GetProperty("price").GetString() == "19.95", "Product gallery retains selected image and price precision");
+        var variantEdit = new
+        {
+            input = new { productId = vueProductId, productVariantId = vueVariantId, size = "100 ml", price = "20.10" },
+            expectedSize = "100 ml", expectedPrice = "19.95"
+        };
+        var vueVariantPath = vueProductPath + "/variants/" + vueVariantId;
+        using (var savedPrice = await ProductWrite(vueVariantPath, JsonContent.Create(variantEdit)))
+            check(savedPrice.StatusCode == HttpStatusCode.OK, "Product API updates variant pricing");
+        using (var stalePrice = await ProductWrite(vueVariantPath, JsonContent.Create(variantEdit)))
+            check(stalePrice.StatusCode == HttpStatusCode.Conflict, "Product API rejects a stale variant price");
+        var finalVariant = await db.ProductVariants.AsNoTracking().SingleAsync(variant => variant.ProductVariantId == vueVariantId);
+        check(finalVariant.Price == 20.10m, "Updated variant price persists exactly");
 
         var updatePath = "/api/v1/admin/orders/" + manualStored.OrderId + "/status";
         var statusPayload = new { status = "Processing", expectedRevision = manualStored.StatusRevision };

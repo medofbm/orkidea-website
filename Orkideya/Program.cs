@@ -85,6 +85,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 Orkideya.Infrastructure.Shipping.ShippingRegistration.AddCarrierReadGateway(builder.Services, builder.Configuration);
 builder.Services.AddSingleton<ExcelExportService>();
 builder.Services.AddSingleton<ProductImageStorage>();
+builder.Services.AddScoped<Orkideya.Application.Products.ProductEditor>();
 builder.Services.AddScoped<WhatsAppNotificationService>();
 builder.Services.AddScoped<Orkideya.Application.Notifications.IOrderNotificationTransport>(services => services.GetRequiredService<WhatsAppNotificationService>());
 builder.Services.AddScoped<Orkideya.Application.Notifications.NotificationDispatcher>();
