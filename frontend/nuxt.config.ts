@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   vite: { plugins: [tailwindcss()] },
   runtimeConfig: {
     backendOrigin: 'http://127.0.0.1:5000',
-    public: { apiBase: '/api/v1/catalogue' }
+    public: { apiBase: '/api/v1/catalogue', preview: false }
   },
   app: { head: { htmlAttrs: { lang: 'ar', dir: 'rtl' }, title: 'أوركيديا' } }
 })

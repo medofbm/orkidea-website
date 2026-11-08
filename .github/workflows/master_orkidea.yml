@@ -96,6 +96,17 @@ jobs:
         run: dotnet build tests/Orkideya.SqlRegression/Orkideya.SqlRegression.csproj -c Release --no-restore --warnaserror
       - name: Verify migrations, rollback and concurrent retry protection
         run: dotnet run --project tests/Orkideya.SqlRegression/Orkideya.SqlRegression.csproj -c Release --no-build --no-restore
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build Vue and install the Chromium test browser
+        working-directory: frontend
+        run: |
+          npm ci --registry=https://registry.npmjs.org
+          npm run build
+          npm exec -- playwright install --with-deps --only-shell chromium
+      - name: Exercise the Vue and ASP.NET preview in Chromium over HTTPS
+        run: bash tests/run-browser-preview.sh
       - name: Remove this run's disposable database container
         if: always()
         run: docker rm --force "orkidea-sql-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" || true

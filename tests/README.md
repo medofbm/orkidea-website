@@ -14,7 +14,7 @@ The console runner uses synthetic objects and in-memory workbooks. HTTP security
 
 Tests in this repository are authoritative. The parent workspace retains compatibility entry points for previous verification commands and source-only build bundles.
 
-The GitHub workflow performs verification only. It contains no publish, upload-artifact, deployment, Azure login, environment secrets or write permissions. This replaces the old automatic Azure deployment when the change reaches master; the remote master remains unchanged until then.
+The GitHub workflow runs verification and builds a backend preview artifact. On successful master runs it can publish the verified backend image to GHCR. Host rollout is a separate operation.
 
 
 ## SQL Server integration gate
@@ -23,4 +23,8 @@ The separate `tests/Orkideya.SqlRegression` runner requires `ORKIDEA_RUN_SQL_TES
 
 GitHub creates a disposable SQL Server Developer container with a fresh masked password, loopback-only port, no volumes and explicit CPU/memory limits. Cleanup targets only the current run's container. Tests migrate the historical schema, exercise an orphan-row upgrade guard, preserve synthetic legacy orders, verify the current model snapshot, prove one-save atomicity with a SQL CHECK-constraint failure, and race eight submissions against a unique retry key. Controller scenarios check session binding, totals, replay and preserving a later basket. No real notifications are enabled.
 
-Applying the committed migration to a real environment is a separate guarded operation requiring schema/backup review. Adding the retry key does not provide a durable notification outbox or verify unknown-commit network failures.
+## Browser preview gate
+
+GitHub builds Nuxt and runs Chromium at a 390 px viewport through a temporary loopback HTTPS gateway. The test uses real ASP.NET Core with the same run's disposable SQL container. It checks admin sign-in, Secure/HttpOnly Identity cookies, category and image upload, gallery selection, cart, guest checkout, exact totals and receipt privacy. Data, TLS material and credentials are synthetic and run-scoped. The workflow removes the SQL container after the test. The runner script requires the isolated CI connection and is not a deployment command.
+
+This verifies the frontend and backend together. Host Nginx, staging DNS/certificate, real-device acceptance and provider behavior have separate checks.
