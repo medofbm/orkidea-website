@@ -680,7 +680,8 @@ internal static class IdentityCookieScenario
             check(denied.StatusCode == HttpStatusCode.NotFound, "Another session cannot read the JSON receipt");
         }
 
-        foreach (var path in new[] { "/api/v1/admin/dashboard", "/api/v1/admin/delivery", "/api/v1/admin/orders", "/api/v1/admin/orders/" + manualStored.OrderId })
+        foreach (var path in new[] { "/api/v1/admin/dashboard", "/api/v1/admin/delivery", "/api/v1/admin/orders",
+            "/api/v1/admin/orders/export", "/api/v1/admin/orders/manual", "/api/v1/admin/orders/" + manualStored.OrderId })
         {
             using var anonymousAdmin = Client();
             using var deniedAnonymous = await anonymousAdmin.GetAsync(path);
@@ -710,6 +711,18 @@ internal static class IdentityCookieScenario
         }
         using (var badFilter = await adminClient.GetAsync("/api/v1/admin/orders?source=unknown&page=0"))
             check(badFilter.StatusCode == HttpStatusCode.BadRequest, "Admin list API rejects invalid filter input");
+        using (var export = await adminClient.GetAsync("/api/v1/admin/orders/export?source=FacebookManual&search=%23" + manualStored.OrderId))
+        {
+            check(export.StatusCode == HttpStatusCode.OK && export.Headers.CacheControl?.NoStore == true &&
+                export.Content.Headers.ContentDisposition?.DispositionType == "attachment",
+                "Admin export returns a private workbook attachment");
+            using var workbook = new ClosedXML.Excel.XLWorkbook(await export.Content.ReadAsStreamAsync());
+            var sheet = workbook.Worksheet(1);
+            check(sheet.LastRowUsed()?.RowNumber() == 2 && sheet.Cell(2, 1).GetValue<int>() == manualStored.OrderId,
+                "Admin export applies the order list filters");
+        }
+        using (var badExport = await adminClient.GetAsync("/api/v1/admin/orders/export?source=unknown"))
+            check(badExport.StatusCode == HttpStatusCode.BadRequest, "Admin export rejects invalid filter input");
         using (var orderDetail = await adminClient.GetAsync("/api/v1/admin/orders/" + manualStored.OrderId))
         {
             var detail = await orderDetail.Content.ReadFromJsonAsync<JsonElement>();
@@ -866,6 +879,51 @@ internal static class IdentityCookieScenario
                 history[0].GetProperty("actorName").GetString() == adminUser.UserName,
                 "Admin status and audit history are persisted exactly once with the authenticated actor");
         }
+
+        const string manualApi = "/api/v1/admin/orders/manual";
+        var apiManualId = Guid.NewGuid();
+        var apiManualInput = new
+        {
+            requestId = apiManualId, customerName = "Synthetic Vue manual customer", phone = "0910000000",
+            address = "Synthetic address", shippingRateId = manualRate.ShippingRateId,
+            lines = new[] { new { variantId = manualVariant.ProductVariantId, quantity = 2 } }
+        };
+        async Task<HttpResponseMessage> SendManual(string action, object payload)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, manualApi + "/" + action)
+                { Content = JsonContent.Create(payload) };
+            request.Headers.Add("RequestVerificationToken", adminRequestToken);
+            return await adminClient.SendAsync(request);
+        }
+        using (var denied = await buyer.PostAsJsonAsync(manualApi + "/review", apiManualInput))
+            check(Denied(denied), "Customer cannot review an administrative manual order");
+        using (var missingToken = await adminClient.PostAsJsonAsync(manualApi + "/review", apiManualInput))
+            check(missingToken.StatusCode == HttpStatusCode.BadRequest, "Vue manual review requires antiforgery");
+        using var previewResponse = await SendManual("review", apiManualInput);
+        var preview = await previewResponse.Content.ReadFromJsonAsync<JsonElement>();
+        check(previewResponse.StatusCode == HttpStatusCode.OK && previewResponse.Headers.CacheControl?.NoStore == true &&
+            preview.GetProperty("total").GetString() == "8.00" && !await db.Orders.AnyAsync(o => o.CheckoutToken == apiManualId),
+            "Vue manual review computes private totals without placing an order");
+        var reviewToken = preview.GetProperty("reviewToken").GetString();
+        var modified = apiManualInput with { lines = [new { variantId = manualVariant.ProductVariantId, quantity = 3 }] };
+        using var renewedResponse = await SendManual("confirm", new { input = modified, reviewToken });
+        var renewed = await renewedResponse.Content.ReadFromJsonAsync<JsonElement>();
+        check(renewedResponse.StatusCode == HttpStatusCode.OK && renewed.GetProperty("total").GetString() == "11.00" &&
+            !await db.Orders.AnyAsync(o => o.CheckoutToken == apiManualId), "Edited input needs explicit review before any save");
+        using (var tampered = await SendManual("confirm", new { input = modified, reviewToken = "invalid-token" }))
+            check(tampered.StatusCode == HttpStatusCode.Conflict, "Manual confirmation rejects tampered review tokens");
+        var accepted = new { input = modified, reviewToken = renewed.GetProperty("reviewToken").GetString() };
+        using var manualSaved = await SendManual("confirm", accepted);
+        using var manualReplay = await SendManual("confirm", accepted);
+        var first = await manualSaved.Content.ReadFromJsonAsync<JsonElement>();
+        var repeated = await manualReplay.Content.ReadFromJsonAsync<JsonElement>();
+        var apiStored = await db.Orders.AsNoTracking().Include(o => o.Creation).Include(o => o.Items)
+            .SingleAsync(o => o.CheckoutToken == apiManualId);
+        check(manualSaved.StatusCode == HttpStatusCode.OK && manualReplay.StatusCode == HttpStatusCode.OK &&
+            first.GetProperty("orderId").GetInt32() == apiStored.OrderId && repeated.GetProperty("orderId").GetInt32() == apiStored.OrderId &&
+            apiStored.TotalAmount == 11 && apiStored.ShippingCost == 2 && apiStored.Items.Single().Quantity == 3 &&
+            apiStored.Status == "Pending" && apiStored.Creation?.Source == OrderSources.Facebook &&
+            apiStored.Creation.ActorUserId == adminUser.Id, "Vue manual order stores provenance once and replay returns the same order");
 
         using (var logout = await adminClient.PostAsync("/Identity/Account/Logout?returnUrl=%2F", new FormUrlEncodedContent(new Dictionary<string, string>
             { ["__RequestVerificationToken"] = logoutToken })))

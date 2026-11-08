@@ -44,6 +44,34 @@ test('built storefront renders catalogue data and the product gallery on the ser
       res.statusCode = authorized ? 200 : 401
       return res.end(JSON.stringify({ state: query.get('state'), search: query.get('search') }))
     }
+    if (req.url === '/api/v1/admin/orders/export?status=pending&search=%231&source=FacebookManual' && req.method === 'GET') {
+      if (req.headers.cookie !== 'qa-session=synthetic') {
+        res.statusCode = 401
+        return res.end('{}')
+      }
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      res.setHeader('Content-Disposition', 'attachment; filename="qa-orders.xlsx"')
+      return res.end(Buffer.from([0x50, 0x4b, 0x03, 0x04]))
+    }
+    const manualPath = req.url?.match(/^\/api\/v1\/admin\/orders\/manual(?:\/(review|confirm))?$/)
+    if (manualPath) {
+      if (req.headers.cookie !== 'qa-session=synthetic') {
+        res.statusCode = 401
+        return res.end('{}')
+      }
+      if (!manualPath[1] && req.method === 'GET') return res.end(JSON.stringify({ variants: [], rates: [] }))
+      const chunks = []
+      req.on('data', chunk => chunks.push(chunk))
+      req.on('end', () => {
+        const payload = JSON.parse(Buffer.concat(chunks).toString())
+        const input = manualPath[1] === 'review' ? payload : payload.input
+        const valid = req.method === 'POST' && req.headers.requestverificationtoken === 'synthetic-token' &&
+          input?.lines?.[0]?.quantity === 2 && (manualPath[1] === 'review' || payload.reviewToken === 'qa-review-token')
+        res.statusCode = valid ? 200 : 400
+        res.end(JSON.stringify(manualPath[1] === 'review' ? { reviewToken: 'qa-review-token' } : { orderId: 1 }))
+      })
+      return
+    }
     if (req.url === '/api/v1/admin/inventory/1/adjust' && req.method === 'POST') {
       const authorized = req.headers.cookie === 'qa-session=synthetic' &&
         req.headers.requestverificationtoken === 'synthetic-token'
@@ -137,6 +165,34 @@ test('built storefront renders catalogue data and the product gallery on the ser
     assert.ok(queue.headers.get('cache-control')?.includes('no-store'))
     assert.deepEqual(await queue.json(), { state: 'Returned', search: '#1' })
     assert.equal((await fetch(origin + '/api/admin/delivery', { method: 'POST' })).status, 404)
+    const exportUrl = origin + '/api/admin/orders/export?status=pending&search=%231&source=FacebookManual'
+    assert.equal((await fetch(exportUrl)).status, 401)
+    assert.equal((await fetch(exportUrl, { method: 'POST' })).status, 404)
+    const exported = await fetch(exportUrl, { headers: { Cookie: 'qa-session=synthetic' } })
+    assert.equal(exported.status, 200)
+    assert.equal(exported.headers.get('content-type'), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    assert.match(exported.headers.get('content-disposition'), /attachment; filename="qa-orders.xlsx"/)
+    assert.match(exported.headers.get('cache-control'), /no-store/)
+    assert.deepEqual(new Uint8Array(await exported.arrayBuffer()), new Uint8Array([0x50, 0x4b, 0x03, 0x04]))
+    const manualUrl = origin + '/api/admin/orders/manual'
+    assert.equal((await fetch(manualUrl)).status, 401)
+    assert.equal((await fetch(manualUrl + '/confirm')).status, 404)
+    const manualPage = await (await fetch(origin + '/admin/orders/manual')).text()
+    assert.ok(manualPage.includes('تسجيل طلب من فيسبوك'))
+    const options = await fetch(manualUrl, { headers: { Cookie: 'qa-session=synthetic' } })
+    assert.deepEqual(await options.json(), { variants: [], rates: [] })
+    assert.match(options.headers.get('cache-control'), /no-store/)
+    const manualHeaders = { Cookie: 'qa-session=synthetic', RequestVerificationToken: 'synthetic-token', 'Content-Type': 'application/json' }
+    const manualInput = { lines: [{ variantId: 1, quantity: 2 }] }
+    const manualReview = await fetch(manualUrl + '/review', {
+      method: 'POST', headers: manualHeaders, body: JSON.stringify(manualInput)
+    })
+    assert.equal(manualReview.status, 200)
+    const manualConfirm = await fetch(manualUrl + '/confirm', {
+      method: 'POST', headers: manualHeaders, body: JSON.stringify({ input: manualInput, ...await manualReview.json() })
+    })
+    assert.equal(manualConfirm.status, 200)
+    assert.deepEqual(await manualConfirm.json(), { orderId: 1 })
     const stockPage = await (await fetch(origin + '/admin/inventory')).text()
     assert.ok(stockPage.includes('المخزون والتعبئة'))
     const adjust = await fetch(origin + '/api/admin/inventory/1/adjust', {

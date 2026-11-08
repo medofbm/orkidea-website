@@ -8,6 +8,10 @@ const filters = ref({ ...fields, page: 1 })
 const { data, error, status } = useFetch<AdminOrdersPage>('/api/admin/orders', {
   query: filters, server: false, cache: 'no-store'
 })
+const exportUrl = computed(() => {
+  const { status, search, source } = filters.value
+  return '/api/admin/orders/export?' + new URLSearchParams({ status, search, source })
+})
 function apply() {
   filters.value = { ...fields, search: fields.search.trim(), page: 1 }
 }
@@ -18,7 +22,12 @@ function changePage(page: number) {
 
 <template>
   <section aria-labelledby="orders-title">
-    <h1 id="orders-title" class="mb-6 text-3xl font-bold">الطلبات</h1>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <h1 id="orders-title" class="text-3xl font-bold">الطلبات</h1>
+      <NuxtLink to="/admin/orders/manual" class="inline-flex min-h-11 items-center rounded-lg bg-purple-800 px-4 text-white">
+        تسجيل طلب من فيسبوك
+      </NuxtLink>
+    </div>
     <form class="mb-6 flex flex-wrap items-end gap-3 rounded-xl bg-white p-4" @submit.prevent="apply">
       <label class="min-w-40 flex-1">البحث
         <input v-model="fields.search" type="search" maxlength="100" placeholder="رقم الطلب أو اسم الزبون أو المدينة"
@@ -47,7 +56,12 @@ function changePage(page: number) {
     <p v-if="status === 'idle' || status === 'pending'" role="status">جاري تحميل الطلبات…</p>
     <AdminReadError v-else-if="error" :status-code="error.statusCode" />
     <template v-else-if="data">
-      <p class="mb-3">{{ data.total }} طلب</p>
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <p>{{ data.total }} طلب</p>
+        <a v-if="data.total > 0" :href="exportUrl" class="inline-flex min-h-11 items-center rounded-lg border px-4">
+          تصدير نتائج البحث إلى Excel
+        </a>
+      </div>
       <AdminOrderList :orders="data.items" />
       <nav v-if="data.pages > 1" class="mt-5 flex flex-wrap items-center justify-between gap-3" aria-label="صفحات الطلبات">
         <button type="button" :disabled="data.page <= 1" class="min-h-11 rounded-lg border px-4 disabled:opacity-50"

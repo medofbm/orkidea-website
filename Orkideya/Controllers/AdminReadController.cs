@@ -6,6 +6,7 @@ using Orkideya.Application.Delivery;
 using Orkideya.Application.Orders;
 using Orkideya.Data;
 using Orkideya.Models;
+using Orkideya.Services;
 
 namespace Orkideya.Controllers;
 
@@ -40,6 +41,19 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
             return BadRequest(new { message = "بيانات البحث أو رقم الصفحة غير صالح." });
         var result = await new OrderListQuery(context).PageAsync(filter, page, cancellationToken);
         return Ok(new { items = result.Orders.Select(Summary), result.Page, result.Pages, result.Total, result.PageSize });
+    }
+
+    [HttpGet("orders/export")]
+    public async Task<IActionResult> ExportOrders([FromServices] ExcelExportService excel,
+        CancellationToken cancellationToken, string status = "all", string search = "", string source = "all")
+    {
+        if (!OrderListFilter.TryCreate(status, search, out var filter, source))
+            return BadRequest(new { message = "بيانات البحث غير صالحة." });
+
+        var orders = await new OrderListQuery(context).Ordered(filter).ToListAsync(cancellationToken);
+        return File(excel.ExportOrders(orders),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"Orkideya_Orders_{clock.GetUtcNow():yyyyMMdd_HHmmss}.xlsx");
     }
 
     [HttpGet("delivery")]
