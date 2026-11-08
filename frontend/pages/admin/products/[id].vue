@@ -206,14 +206,15 @@ async function saveVariant() {
           <label class="block">اسم المنتج
             <input v-model="form.name" maxlength="150" required class="mt-1 block min-h-11 w-full rounded-lg border px-3">
           </label>
-          <label class="block">الفئة
-            <select v-model="form.categoryId" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+          <div>
+            <label for="product-category" class="block">الفئة</label>
+            <select id="product-category" v-model="form.categoryId" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
               <option value="">بدون فئة</option>
               <option v-for="category in categories.data.value" :key="category.categoryId" :value="String(category.categoryId)">
                 {{ category.name }}
               </option>
             </select>
-          </label>
+          </div>
           <label class="block">الوصف
             <textarea v-model="form.description" maxlength="10000" rows="4" class="mt-1 block w-full rounded-lg border p-2" />
           </label>
