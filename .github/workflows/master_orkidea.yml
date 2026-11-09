@@ -17,7 +17,7 @@ permissions:
 
 concurrency:
   group: verification-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   frontend:
@@ -210,7 +210,7 @@ jobs:
 
   publish-vue-preview:
     needs: preview-image
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.deploy_vue_preview
+    if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_vue_preview))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -253,16 +253,33 @@ jobs:
 
   deploy-vue-preview:
     needs: publish-vue-preview
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.deploy_vue_preview
+    if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_vue_preview))
     runs-on: ubuntu-latest
     timeout-minutes: 12
-    permissions: {}
+    permissions:
+      contents: read
     environment: orkidea-vue-preview
     concurrency:
       group: orkidea-vue-preview-deployment
       cancel-in-progress: false
     steps:
+      - name: Check that the tested revision is still current
+        id: current
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" --jq '.object.sha')
+          [[ "$current" =~ ^[0-9a-f]{40}$ ]]
+          if [[ "$current" == "$GITHUB_SHA" ]]; then
+            echo 'matches=true' >> "$GITHUB_OUTPUT"
+          else
+            echo '::notice::A newer master revision superseded this preview deployment.'
+            echo 'matches=false' >> "$GITHUB_OUTPUT"
+          fi
       - name: Update the isolated Vue preview by immutable digest
+        if: steps.current.outputs.matches == 'true'
         shell: bash
         env:
           PREVIEW_SSH_HOST: ${{ vars.PREVIEW_SSH_HOST }}
