@@ -28,6 +28,7 @@ const savedId = ref<number>()
 const pending = ref(false)
 const error = ref('')
 const feedback = ref<HTMLElement | null>(null)
+const customerNameInput = ref<HTMLInputElement | null>(null)
 let requestId: string | undefined
 
 function input() {
@@ -63,9 +64,11 @@ async function submit() {
   }
 }
 
-function edit() {
+async function edit() {
   review.value = undefined
   error.value = ''
+  await nextTick()
+  customerNameInput.value?.focus()
 }
 </script>
 
@@ -109,7 +112,8 @@ function edit() {
         <p v-if="!options.variants.length || !options.rates.length" class="mb-4">أضف حجماً بسعر صالح ومدينة توصيل قبل تسجيل طلب.</p>
         <fieldset :disabled="pending || !options.variants.length || !options.rates.length" class="space-y-4">
           <label class="block">اسم الزبون
-            <input v-model.trim="fields.customerName" required maxlength="100" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+            <input ref="customerNameInput" v-model.trim="fields.customerName" required maxlength="100"
+              class="mt-1 block min-h-11 w-full rounded-lg border px-3">
           </label>
           <label class="block">رقم الهاتف
             <input v-model.trim="fields.phone" required type="tel" maxlength="20" dir="ltr" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
