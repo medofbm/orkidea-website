@@ -71,56 +71,75 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
 </script>
 
 <template>
-  <section aria-labelledby="checkout-heading" class="mx-auto max-w-xl">
-    <h1 id="checkout-heading" class="mb-6 text-3xl font-bold">إتمام الطلب</h1>
+  <section aria-labelledby="checkout-heading">
+    <NuxtLink to="/cart" class="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 font-semibold text-purple-900 hover:bg-purple-50">
+      <span aria-hidden="true">→</span> رجوع للسلة
+    </NuxtLink>
+    <h1 id="checkout-heading" class="mb-5 text-3xl font-bold text-purple-950 sm:text-4xl">إتمام الطلب</h1>
     <p v-if="loading" role="status">جاري تجهيز الطلب…</p>
     <ul v-if="errors.length" role="alert" class="mb-4 list-inside list-disc rounded-xl bg-red-50 p-4 text-red-800">
       <li v-for="(error, index) in errors" :key="index">{{ error }}</li>
     </ul>
-    <form v-if="state" class="rounded-xl bg-white p-4 md:p-6" @submit.prevent="send('orders')">
-      <fieldset :disabled="busy" class="space-y-4">
-        <legend class="mb-3 font-semibold">بيانات التوصيل</legend>
-        <label class="block">الاسم الأول
-          <input v-model="fields.firstName" required maxlength="50" autocomplete="given-name" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
-        </label>
-        <label class="block">اسم العائلة
-          <input v-model="fields.lastName" required maxlength="50" autocomplete="family-name" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
-        </label>
-        <label class="block">رقم الواتساب
-          <input v-model="fields.whatsAppNumber" required maxlength="20" type="tel" dir="ltr" autocomplete="tel" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
-        </label>
-        <label class="block">العنوان بالتفصيل
-          <textarea v-model="fields.shippingAddress" required maxlength="200" autocomplete="street-address" rows="3" class="mt-1 block w-full rounded-lg border p-3" />
-        </label>
-        <template v-if="state.destinations">
-          <label class="block">المدينة والمنطقة
-            <select v-model="fields.carrierDestination" required class="mt-1 block min-h-11 w-full rounded-lg border px-3">
-              <option value="" disabled>اختاري المنطقة</option>
-              <option v-for="destination in state.destinations" :key="destination.key" :value="destination.key">
-                {{ destination.city }} — {{ destination.area }}
+    <button v-if="!state && !loading && errors.length" type="button"
+      class="min-h-11 rounded-xl bg-purple-900 px-4 font-semibold text-white" @click="load">إعادة المحاولة</button>
+    <form v-if="state" class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.65fr)]"
+      @submit.prevent="send('orders')">
+      <section aria-labelledby="delivery-heading" class="min-w-0 rounded-2xl border border-purple-100 bg-white p-4 sm:p-6">
+        <h2 id="delivery-heading" class="mb-4 text-lg font-bold text-purple-950">بيانات التوصيل</h2>
+        <fieldset :disabled="busy" aria-labelledby="delivery-heading" class="min-w-0 space-y-4">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="block">الاسم الأول
+              <input v-model="fields.firstName" required maxlength="50" autocomplete="given-name" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+            </label>
+            <label class="block">اسم العائلة
+              <input v-model="fields.lastName" required maxlength="50" autocomplete="family-name" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+            </label>
+          </div>
+          <label class="block">رقم الواتساب
+            <input v-model="fields.whatsAppNumber" required maxlength="20" type="tel" dir="ltr" autocomplete="tel" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+          </label>
+          <label class="block">العنوان بالتفصيل
+            <textarea v-model="fields.shippingAddress" required maxlength="200" autocomplete="street-address" rows="3" class="mt-1 block w-full rounded-lg border p-3" />
+          </label>
+          <template v-if="state.destinations">
+            <label class="block">المدينة والمنطقة
+              <select v-model="fields.carrierDestination" required class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+                <option value="" disabled>اختاري المنطقة</option>
+                <option v-for="destination in state.destinations" :key="destination.key" :value="destination.key">
+                  {{ destination.city }} — {{ destination.area }}
+                </option>
+              </select>
+            </label>
+            <button type="button" :disabled="!fields.carrierDestination" class="min-h-11 rounded-xl border border-purple-300 px-4 font-semibold text-purple-950 hover:bg-purple-50 disabled:opacity-50" @click="send('shipping')">احسبي التوصيل</button>
+          </template>
+          <label v-else class="block">مدينة التوصيل
+            <select v-model.number="fields.shippingRateId" required class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+              <option :value="0" disabled>اختاري المدينة</option>
+              <option v-for="shippingRate in state.shippingRates" :key="shippingRate.id" :value="shippingRate.id">
+                {{ shippingRate.city }} — {{ shippingRate.price }} د.ل
               </option>
             </select>
           </label>
-          <button type="button" :disabled="!fields.carrierDestination" class="min-h-11 rounded-lg border px-4 disabled:opacity-50" @click="send('shipping')">احسبي التوصيل</button>
-        </template>
-        <label v-else class="block">مدينة التوصيل
-          <select v-model.number="fields.shippingRateId" required class="mt-1 block min-h-11 w-full rounded-lg border px-3">
-            <option :value="0" disabled>اختاري المدينة</option>
-            <option v-for="shippingRate in state.shippingRates" :key="shippingRate.id" :value="shippingRate.id">
-              {{ shippingRate.city }} — {{ shippingRate.price }} د.ل
-            </option>
-          </select>
-        </label>
-        <dl aria-live="polite" class="space-y-2 rounded-xl bg-purple-50 p-4">
-          <div class="flex justify-between"><dt>المنتجات</dt><dd>{{ state.productsTotal }} د.ل</dd></div>
-          <div class="flex justify-between"><dt>التوصيل</dt><dd>{{ shippingFee == null ? 'بانتظار الاختيار' : shippingFee + ' د.ل' }}</dd></div>
-          <div v-if="total != null" class="flex justify-between font-bold"><dt>الإجمالي</dt><dd>{{ total }} د.ل</dd></div>
+        </fieldset>
+      </section>
+      <section aria-labelledby="order-summary" class="min-w-0 rounded-2xl border border-purple-100 bg-purple-50 p-4 text-purple-950 sm:p-6">
+        <h2 id="order-summary" class="mb-4 text-lg font-bold">ملخص الطلب</h2>
+        <dl aria-live="polite" class="space-y-3">
+          <div class="flex flex-wrap justify-between gap-2"><dt>المنتجات</dt><dd><bdi>{{ state.productsTotal }}</bdi> د.ل</dd></div>
+          <div class="flex flex-wrap justify-between gap-2"><dt>التوصيل</dt><dd>
+            <template v-if="shippingFee != null"><bdi>{{ shippingFee }}</bdi> د.ل</template>
+            <template v-else-if="state.destinations && fields.carrierDestination">بانتظار حساب التوصيل</template>
+            <template v-else>بانتظار اختيار الوجهة</template>
+          </dd></div>
+          <div v-if="total != null" class="flex flex-wrap justify-between gap-2 border-t border-purple-200 pt-3 text-lg font-bold">
+            <dt>الإجمالي</dt><dd><bdi>{{ total }}</bdi> د.ل</dd>
+          </div>
         </dl>
-        <button type="submit" :disabled="shippingFee == null" class="min-h-12 w-full rounded-xl bg-purple-800 px-4 text-white disabled:opacity-50">
+        <button type="submit" :disabled="busy || shippingFee == null" class="mt-5 min-h-12 w-full rounded-xl bg-purple-900 px-4 py-2 font-bold text-white hover:bg-purple-800 disabled:opacity-50">
           تأكيد الطلب والدفع عند الاستلام
         </button>
-      </fieldset>
+        <p role="status" :class="{ 'mt-2': busy }" class="text-sm">{{ busy ? 'جاري المعالجة…' : '' }}</p>
+      </section>
     </form>
-    <NuxtLink to="/cart" class="mt-4 inline-block min-h-11 text-purple-900 underline">رجوع للسلة</NuxtLink>
   </section>
 </template>
