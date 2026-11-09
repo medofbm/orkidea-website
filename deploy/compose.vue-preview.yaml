@@ -1,0 +1,110 @@
+name: orkidea-vue-preview
+x-backend: &backend
+  image: ${ORKIDEA_PREVIEW_BACKEND_IMAGE:?Load the tested backend image}
+  pull_policy: never
+  init: true
+  user: "1654:1654"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  tmpfs: ["/tmp:rw,nosuid,size=128m"]
+  cpus: 1.5
+  mem_limit: 768m
+  pids_limit: 256
+  volumes:
+    - keys:/var/orkidea/keys
+    - media:/app/wwwroot/images/products
+  logging: &logs
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+x-backend-env: &backend-env
+  ASPNETCORE_ENVIRONMENT: Staging
+  ASPNETCORE_HTTP_PORTS: "8080"
+  ASPNETCORE_HTTPS_PORT: "443"
+  AllowedHosts: web;localhost;127.0.0.1
+  Notifications__WhatsAppEnabled: "false"
+  Notifications__OutboxWorkerEnabled: "false"
+  Carriers__Sabil__QuoteEnabled: "false"
+  DataProtection__KeysPath: /var/orkidea/keys
+  DataProtection__ApplicationName: Orkidea.VuePreview
+
+services:
+  frontend:
+    image: ${ORKIDEA_PREVIEW_FRONTEND_IMAGE:?Load the tested frontend image}
+    pull_policy: never
+    init: true
+    user: "1000:1000"
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,nosuid,size=64m"]
+    cpus: 1
+    mem_limit: 512m
+    pids_limit: 128
+    logging: *logs
+    ports: ["127.0.0.1:${ORKIDEA_PREVIEW_PORT:?Choose a free loopback port}:3000"]
+    environment:
+      NUXT_BACKEND_ORIGIN: http://web:8080
+      NUXT_PUBLIC_PREVIEW: "true"
+    networks:
+      front:
+        ipv4_address: ${ORKIDEA_PREVIEW_PROXY_IP:?Set an address within the preview subnet}
+    depends_on:
+      web: {condition: service_healthy}
+  web:
+    <<: *backend
+    restart: unless-stopped
+    networks: [front, data]
+    environment:
+      <<: *backend-env
+      Initialization__Run: "false"
+      ReverseProxy__KnownProxies__0: ${ORKIDEA_PREVIEW_PROXY_IP:?Set the frontend address}
+      ConnectionStrings__DefaultConnection: Server=db;Database=OrkideaStaging;User Id=orkidea_preview_app;Password=${ORKIDEA_PREVIEW_APP_PASSWORD:?Set a preview-only app password};Encrypt=True;TrustServerCertificate=True
+    depends_on:
+      db: {condition: service_healthy}
+  initialize:
+    <<: *backend
+    profiles: [maintenance]
+    restart: "no"
+    networks: [data]
+    environment:
+      <<: *backend-env
+      Initialization__Run: "true"
+      Initialization__SeedPreviewData: "true"
+      Bootstrap__AdminEmail: ${ORKIDEA_PREVIEW_ADMIN_EMAIL:-}
+      Bootstrap__AdminPassword: ${ORKIDEA_PREVIEW_ADMIN_PASSWORD:-}
+      ConnectionStrings__DefaultConnection: Server=db;Database=OrkideaStaging;User Id=orkidea_preview_migrate;Password=${ORKIDEA_PREVIEW_MIGRATION_PASSWORD:?Set a preview-only migration password};Encrypt=True;TrustServerCertificate=True
+    depends_on:
+      db: {condition: service_healthy}
+  db:
+    image: mcr.microsoft.com/mssql/server@sha256:cf8f0ab2ebe61feec2eed2629061a07d247f791c2a8ddda74a4ac9f06a291718
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_MEMORY_LIMIT_MB: "2048"
+      MSSQL_SA_PASSWORD: ${ORKIDEA_PREVIEW_SQL_PASSWORD:?Set a preview-only SQL password}
+    volumes: ["database:/var/opt/mssql"]
+    networks: [data]
+    cpus: 2
+    mem_limit: 3g
+    pids_limit: 512
+    security_opt: ["no-new-privileges:true"]
+    logging: *logs
+    healthcheck:
+      test: [CMD-SHELL, 'SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S tcp:127.0.0.1,1433 -U sa -C -Q "SELECT 1" -b -o /dev/null']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+volumes:
+  database:
+  keys:
+  media:
+networks:
+  front:
+    ipam:
+      config:
+        - subnet: ${ORKIDEA_PREVIEW_SUBNET:?Choose an unused Docker subnet}
+  data:
+    internal: true

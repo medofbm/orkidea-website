@@ -1,70 +1,27 @@
-# 🌸 Orkideya — متجر المنتجات الطبيعية
+# Orkidea
 
-متجر إلكتروني متخصص في بيع الزيوت الطبيعية والصابون والمقشرات المصنوعة يدوياً، مبني بـ **ASP.NET Core MVC**.
+Arabic, mobile-first storefront for natural oils and soap. The backend uses ASP.NET Core 10, EF Core and SQL Server.
 
----
+## Current structure
 
-## ✨ المميزات
-- 🛍️ عرض المنتجات مع تصنيفات متعددة
-- 🛒 سلة تسوق بتحديث فوري (AJAX)
-- ✅ إتمام الطلب مع اختيار مدينة التوصيل
-- 📲 إشعارات واتساب عند كل طلب
-- ⭐ قسم آراء العملاء
-- 👤 لوحة تحكم للمدير (إدارة الطلبات، المنتجات، التقييمات)
-- 📱 تصميم متجاوب (Desktop + Mobile)
-- 🎨 واجهة زجاجية Glassmorphism باللون البنفسجي
+- Orkideya/ contains the C# application, existing Razor store and administration, Identity, migrations and domain services.
+- frontend/ contains the Vue 3 storefront under migration, built with Nuxt, TypeScript and Tailwind.
+- tests/ contains JavaScript, backend and isolated SQL/HTTP regression checks.
+- deploy/ contains deployment configuration and operational instructions.
+- docs/ contains durable system documentation.
 
----
+The Vue frontend covers the catalogue, product gallery, variant selection, cart, guest checkout and basic account screens. Vue administration includes the dashboard, order status and history, manual delivery and returns, inventory, product and gallery editing, prices and categories. Advanced account flows and staging browser acceptance remain open. The existing deployed store remains the release entry point. Backend folder relocation is a later change that must update solution, Docker and CI paths together.
 
-## ⚙️ متطلبات التشغيل
-- .NET 8 SDK
-- SQL Server (LocalDB أو SQLEXPRESS)
+## Local development
 
----
+Install the SDK selected by global.json and Node.js 24 LTS (24.15.0 or later within 24.x). Restore and build Orkideya.sln. Configure a dedicated development SQL connection through ASP.NET configuration, then run Orkideya/Orkideya.csproj. Configure Initialization:Run and notification flags deliberately for the development environment.
 
-## 🚀 خطوات التشغيل
+For the Vue application, see [frontend/README.md](frontend/README.md). Its backend origin must point to the running local ASP.NET service. Keep development data separate from staging and production.
 
-```bash
-# 1. استنساخ المشروع
-git clone https://github.com/YOUR_USERNAME/Orkideya.git
-cd Orkideya
+## Verification and deployment
 
-# 2. إعداد قاعدة البيانات
-cp Orkideya/appsettings.Example.json Orkideya/appsettings.json
-# عدّل appsettings.json وضع اسم السيرفر الخاص بك
+GitHub runs frontend type checking, build and SSR checks, backend regressions, disposable SQL/HTTP integration tests and a non-root image smoke test. After a successful master run, it publishes the tested backend image to GHCR. Automated server rollout and image retention still require infrastructure configuration.
 
-# 3. تطبيق Migrations
-cd Orkideya
-dotnet ef database update
+See [test execution](tests/README.md) and [staging deployment](deploy/README.md). The domain-specific files in deploy/ explain order history, delivery, stock and shipping behavior, and remain operational references. [Notification outbox](docs/notification-outbox.md) documents notification recovery.
 
-# 4. تشغيل المشروع
-dotnet run
-```
-
----
-
-## 📁 هيكل المشروع
-```
-Orkideya/
-├── Controllers/          # المتحكمات
-├── Models/               # نماذج البيانات
-├── Views/                # واجهات العرض
-├── Areas/
-│   ├── Admin/            # لوحة الإدارة
-│   └── Identity/         # تسجيل الدخول والحساب
-├── wwwroot/
-│   ├── css/site.css      # التنسيقات الرئيسية
-│   └── js/site.js        # السكريبتات
-└── appsettings.Example.json  # قالب الإعدادات
-```
-
----
-
-## 🔒 الأمان
-- لا ترفع ملف `appsettings.json` (مُضمَّن في .gitignore)
-- انسخ `appsettings.Example.json` وعدّله محلياً
-
----
-
-## 📄 الترخيص
-خاص — جميع الحقوق محفوظة لـ Orkideya © 2025
+Product prices, availability, shipping coverage and brand claims require operator review before launch. Store secrets in the environment or secret storage; never commit runtime configuration or customer exports.

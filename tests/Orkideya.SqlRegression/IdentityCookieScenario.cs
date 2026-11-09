@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkideya.Controllers;
 using Orkideya.Data;
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 
@@ -18,9 +20,17 @@ internal static class IdentityCookieScenario
 {
     public static async Task Run(string connection, Action<bool, string> check)
     {
+        var media = Directory.CreateTempSubdirectory("orkidea-http-media-");
+        try { await RunCore(connection, media.FullName, check); }
+        finally { media.Delete(recursive: true); }
+    }
+
+    private static async Task RunCore(string connection, string webRoot, Action<bool, string> check)
+    {
         using var factory = new WebApplicationFactory<CartController>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
+            builder.UseWebRoot(webRoot);
             builder.ConfigureAppConfiguration((_, config) =>
             {
                 config.Sources.Clear();
@@ -98,6 +108,132 @@ internal static class IdentityCookieScenario
             using var response = await guest.GetAsync(path);
             check(LoginRequired(response), "Anonymous real-cookie host cannot read admin: " + path);
         }
+        using (var apiBuyer = Client())
+        {
+            using var session = await apiBuyer.GetAsync("/api/v1/session");
+            var tokenPayload = await session.Content.ReadFromJsonAsync<JsonElement>();
+            var apiToken = tokenPayload.GetProperty("requestToken").GetString();
+            check(session.Headers.CacheControl?.NoStore == true, "API token response disables caching");
+            var variantId = await db.ProductVariants.Where(v => v.Price > 0).Select(v => v.ProductVariantId).FirstAsync();
+            using var unsafeAdd = await apiBuyer.PostAsJsonAsync("/api/v1/cart/items", new { variantId, quantity = 1 });
+            check(unsafeAdd.StatusCode == HttpStatusCode.BadRequest, "Cart API rejects a write without antiforgery");
+            apiBuyer.DefaultRequestHeaders.Add("RequestVerificationToken", apiToken);
+            using var add = await apiBuyer.PostAsJsonAsync("/api/v1/cart/items", new { variantId, quantity = 2 });
+            var added = await add.Content.ReadFromJsonAsync<JsonElement>();
+            check(add.StatusCode == HttpStatusCode.OK && added.GetProperty("success").GetBoolean(),
+                "Cart API adds an existing variant with real session and antiforgery cookies");
+            using var state = await apiBuyer.GetAsync("/api/v1/cart");
+            var cartPayload = await state.Content.ReadFromJsonAsync<JsonElement>();
+            check(cartPayload.GetProperty("count").GetInt32() == 2 && state.Headers.CacheControl?.NoStore == true,
+                "Cart API reads the same private session cart");
+            using var invalid = await apiBuyer.PatchAsJsonAsync("/api/v1/cart/items/" + variantId, new { variantId, quantity = 100 });
+            check(invalid.StatusCode == HttpStatusCode.BadRequest, "Cart API enforces the quantity limit");
+            using var update = await apiBuyer.PatchAsJsonAsync("/api/v1/cart/items/" + variantId, new { variantId, quantity = 3 });
+            check(update.StatusCode == HttpStatusCode.OK, "Cart API updates the selected quantity");
+            using var delete = await apiBuyer.DeleteAsync("/api/v1/cart/items/" + variantId);
+            using var empty = await apiBuyer.GetAsync("/api/v1/cart");
+            var emptyPayload = await empty.Content.ReadFromJsonAsync<JsonElement>();
+            check(delete.StatusCode == HttpStatusCode.OK && emptyPayload.GetProperty("count").GetInt32() == 0,
+                "Cart API removes the selected variant");
+        }
+        using (var accountClient = Client())
+        {
+            var credentials = new { email = adminUser.Email, password, rememberMe = false };
+            using var rejected = await accountClient.PostAsJsonAsync("/api/v1/account/login", credentials);
+            check(rejected.StatusCode == HttpStatusCode.BadRequest, "Account API rejects login without antiforgery");
+            var session = await accountClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+            accountClient.DefaultRequestHeaders.Add("RequestVerificationToken", session.GetProperty("requestToken").GetString());
+            using var login = await accountClient.PostAsJsonAsync("/api/v1/account/login", credentials);
+            check(login.StatusCode == HttpStatusCode.OK && login.Headers.TryGetValues("Set-Cookie", out var authCookies) &&
+                authCookies.Any(cookie => cookie.Contains("Identity.Application=", StringComparison.Ordinal) &&
+                    cookie.Contains("; secure", StringComparison.OrdinalIgnoreCase) &&
+                    cookie.Contains("; httponly", StringComparison.OrdinalIgnoreCase)),
+                "Account API login issues the existing Secure HttpOnly Identity cookie");
+            using var account = await accountClient.GetAsync("/api/v1/account");
+            var signedIn = await account.Content.ReadFromJsonAsync<JsonElement>();
+            check(account.Headers.CacheControl?.NoStore == true &&
+                signedIn.GetProperty("signedIn").GetBoolean() && signedIn.GetProperty("isAdmin").GetBoolean(),
+                "Account API resolves the authenticated role without caching");
+            using var rejectedLogout = await accountClient.PostAsync("/api/v1/account/logout", null);
+            check(rejectedLogout.StatusCode == HttpStatusCode.BadRequest, "Account API rejects logout using the pre-login token");
+            accountClient.DefaultRequestHeaders.Remove("RequestVerificationToken");
+            session = await accountClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+            accountClient.DefaultRequestHeaders.Add("RequestVerificationToken", session.GetProperty("requestToken").GetString());
+            using var logoutApi = await accountClient.PostAsync("/api/v1/account/logout", null);
+            var signedOut = await accountClient.GetFromJsonAsync<JsonElement>("/api/v1/account");
+            check(logoutApi.StatusCode == HttpStatusCode.NoContent && !signedOut.GetProperty("signedIn").GetBoolean(),
+                "Account API logout removes authenticated access");
+        }
+
+        var twoFactorUser = await Seed("cookie-two-factor@orkidea.test", false);
+        check((await users.ResetAuthenticatorKeyAsync(twoFactorUser)).Succeeded &&
+            (await users.SetTwoFactorEnabledAsync(twoFactorUser, true)).Succeeded, "Synthetic account enables two-factor authentication");
+        var recoveryCode = (await users.GenerateNewTwoFactorRecoveryCodesAsync(twoFactorUser, 1))!.Single();
+        using (var twoFactorClient = Client())
+        {
+            var session = await twoFactorClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+            twoFactorClient.DefaultRequestHeaders.Add("RequestVerificationToken", session.GetProperty("requestToken").GetString());
+            using var login = await twoFactorClient.PostAsJsonAsync("/api/v1/account/login",
+                new { email = twoFactorUser.Email, password, rememberMe = false });
+            var challenge = await login.Content.ReadFromJsonAsync<JsonElement>();
+            var pendingAccount = await twoFactorClient.GetFromJsonAsync<JsonElement>("/api/v1/account");
+            check(challenge.GetProperty("requiresVerification").GetBoolean() && !pendingAccount.GetProperty("signedIn").GetBoolean(),
+                "Password alone does not authenticate an account with two-factor enabled");
+            using var verified = await twoFactorClient.PostAsJsonAsync("/api/v1/account/verify",
+                new { code = recoveryCode, recovery = true, rememberMe = false });
+            var signedIn = await twoFactorClient.GetFromJsonAsync<JsonElement>("/api/v1/account");
+            check(verified.StatusCode == HttpStatusCode.OK && signedIn.GetProperty("signedIn").GetBoolean() &&
+                !signedIn.GetProperty("isAdmin").GetBoolean(), "Recovery code completes the Identity challenge with customer permissions");
+        }
+
+        using (var profileClient = Client())
+        {
+            const string email = "vue-profile-customer@orkidea.test";
+            using var anonymousWrite = await profileClient.PostAsJsonAsync("/api/v1/account/phone",
+                new { phoneNumber = "+218000000001" });
+            check(anonymousWrite.StatusCode == HttpStatusCode.Unauthorized,
+                "Anonymous API callers cannot update a profile");
+            async Task RefreshProfileToken()
+            {
+                profileClient.DefaultRequestHeaders.Remove("RequestVerificationToken");
+                var session = await profileClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+                profileClient.DefaultRequestHeaders.Add("RequestVerificationToken", session.GetProperty("requestToken").GetString());
+            }
+            await RefreshProfileToken();
+            using var mismatch = await profileClient.PostAsJsonAsync("/api/v1/account/register",
+                new { email, password, confirmation = password + "x" });
+            check(mismatch.StatusCode == HttpStatusCode.BadRequest && await users.FindByEmailAsync(email) is null,
+                "Registration with mismatched passwords creates no account");
+            using var registered = await profileClient.PostAsJsonAsync("/api/v1/account/register",
+                new { email, password, confirmation = password });
+            var newSession = await profileClient.GetFromJsonAsync<JsonElement>("/api/v1/account");
+            check(registered.StatusCode == HttpStatusCode.NoContent && newSession.GetProperty("signedIn").GetBoolean() &&
+                !newSession.GetProperty("isAdmin").GetBoolean(), "Registration creates a signed-in customer without admin privileges");
+            await RefreshProfileToken();
+            using var phoneUpdate = await profileClient.PostAsJsonAsync("/api/v1/account/phone",
+                new { phoneNumber = "+218000000001" });
+            var profile = await profileClient.GetFromJsonAsync<JsonElement>("/api/v1/account");
+            check(phoneUpdate.StatusCode == HttpStatusCode.NoContent &&
+                profile.GetProperty("phoneNumber").GetString() == "+218000000001",
+                "Phone update persists on the authenticated profile");
+            var newPassword = password + "New1!";
+            using var badPassword = await profileClient.PostAsJsonAsync("/api/v1/account/password",
+                new { currentPassword = "Incorrect", newPassword, confirmation = newPassword });
+            check(badPassword.StatusCode == HttpStatusCode.BadRequest,
+                "Password change requires the current password");
+            using var passwordUpdate = await profileClient.PostAsJsonAsync("/api/v1/account/password",
+                new { currentPassword = password, newPassword, confirmation = newPassword });
+            check(passwordUpdate.StatusCode == HttpStatusCode.NoContent, "Password change succeeds with the current password");
+            using var loginClient = Client();
+            var loginSession = await loginClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+            loginClient.DefaultRequestHeaders.Add("RequestVerificationToken", loginSession.GetProperty("requestToken").GetString());
+            using var oldLogin = await loginClient.PostAsJsonAsync("/api/v1/account/login", new { email, password, rememberMe = false });
+            using var newLogin = await loginClient.PostAsJsonAsync("/api/v1/account/login",
+                new { email, password = newPassword, rememberMe = false });
+            check(oldLogin.StatusCode == HttpStatusCode.Unauthorized && newLogin.StatusCode == HttpStatusCode.OK,
+                "Only the new password can authenticate after the update");
+        }
+
         using var buyer = Client();
         await Login(buyer, customer.Email!);
         using (var manage = await buyer.GetAsync("/Identity/Account/Manage"))
@@ -166,11 +302,53 @@ internal static class IdentityCookieScenario
             using var response = await adminClient.PostAsync($"/Admin/Inventory/{action}/{httpProduct.ProductId}",new FormUrlEncodedContent(fields));
             check(response.StatusCode==HttpStatusCode.Redirect,"Real admin inventory form succeeds: "+action);
         }
-        await PostStock("Open",new(){{"unit","ml"}});
-        await PostStock("Configure",new(){{"VariantId",httpVariant.ProductVariantId.ToString()},{"Units","50"},{"ExpectedRevision","0"}});
+        var stockPath = $"/api/v1/admin/inventory/{httpProduct.ProductId}";
+        var inventorySession = await adminClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+        var inventoryRequestToken = inventorySession.GetProperty("requestToken").GetString()!;
+        async Task<HttpStatusCode> SendStock<T>(string action, T input)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, stockPath + "/" + action)
+                { Content = JsonContent.Create(input) };
+            request.Headers.Add("RequestVerificationToken", inventoryRequestToken);
+            using var response = await adminClient.SendAsync(request);
+            return response.StatusCode;
+        }
+        var openStock = new { unit = "ml" };
+        using (var deniedInventory = await buyer.GetAsync(stockPath))
+            check(deniedInventory.StatusCode == HttpStatusCode.Forbidden, "Inventory detail is admin-only");
+        using (var deniedOpen = await buyer.PostAsJsonAsync(stockPath + "/open", openStock))
+            check(deniedOpen.StatusCode == HttpStatusCode.Forbidden, "Inventory mutation is admin-only");
+        using (var missingInventoryToken = await adminClient.PostAsJsonAsync(stockPath + "/open", openStock))
+            check(missingInventoryToken.StatusCode == HttpStatusCode.BadRequest, "Inventory writes require antiforgery");
+        var beforeOpen = await adminClient.GetFromJsonAsync<JsonElement>(stockPath);
+        check(beforeOpen.GetProperty("account").ValueKind == JsonValueKind.Null &&
+            await SendStock("open", openStock) == HttpStatusCode.OK &&
+            await SendStock("open", openStock) == HttpStatusCode.Conflict,
+            "Inventory detail supports untracked products and prevents duplicate setup");
+        check(await SendStock("configure", new { variantId = httpVariant.ProductVariantId, units = 50, expectedRevision = 0 }) ==
+            HttpStatusCode.OK, "Inventory API configures per-variant consumption");
         var receiptKey=Guid.NewGuid().ToString();
         Dictionary<string,string> Receipt() => new(){{"Delta","500"},{"ExpectedRevision","1"},{"RequestId",receiptKey},{"Reason","Synthetic HTTP opening"},{"ActorUserId","forged-actor"}};
-        await PostStock("Adjust",Receipt()); await PostStock("Adjust",Receipt());
+        var receiptInput = new { delta = 500, expectedRevision = 1, requestId = receiptKey, reason = "Synthetic HTTP opening" };
+        check(await SendStock("adjust", receiptInput) == HttpStatusCode.OK &&
+            await SendStock("adjust", receiptInput) == HttpStatusCode.OK &&
+            await SendStock("adjust", new { delta = 1, expectedRevision = 1, requestId = Guid.NewGuid(), reason = "Stale" }) ==
+            HttpStatusCode.Conflict, "Inventory API adjusts once and rejects stale revisions");
+        await PostStock("Adjust",Receipt());
+        var stockList = await adminClient.GetFromJsonAsync<JsonElement>("/api/v1/admin/inventory?search=Synthetic%20HTTP%20stock&page=999");
+        check(stockList.GetProperty("total").GetInt32() == 1 && stockList.GetProperty("page").GetInt32() == 1 &&
+            stockList.GetProperty("items")[0].GetProperty("account").GetProperty("available").GetDecimal() == 500,
+            "Inventory API searches product and shows current availability");
+        using (var inventoryDetail = await adminClient.GetAsync(stockPath))
+        {
+            var detailsJson = await inventoryDetail.Content.ReadFromJsonAsync<JsonElement>();
+            var movements = detailsJson.GetProperty("movements");
+            check(inventoryDetail.Headers.CacheControl?.NoStore == true &&
+                detailsJson.GetProperty("variants")[0].GetProperty("stockUnitsPerItem").GetDecimal() == 50 &&
+                movements.GetArrayLength() == 3 &&
+                movements.EnumerateArray().All(move => move.GetProperty("actorName").GetString() == adminUser.UserName),
+                "Inventory detail exposes configured consumption and one ledger entry per operation");
+        }
         var httpStock=await db.StockAccounts.AsNoTracking().SingleAsync(s=>s.ProductId==httpProduct.ProductId);
         check(httpStock.OnHand==500 && httpStock.Reserved==0 &&
             await db.StockMovements.CountAsync(m=>m.StockAccountId==httpProduct.ProductId && m.Kind=="Adjust")==1 &&
@@ -190,6 +368,8 @@ internal static class IdentityCookieScenario
             check(response.StatusCode==HttpStatusCode.Redirect,"Real admin stock order operation completes: "+operation);
         }
         await Operate("Reserve",0); await Operate("Consume",0);
+        check(await SendStock("adjust", new { delta = -401, expectedRevision = 3, requestId = Guid.NewGuid(), reason = "Below reserve" }) ==
+            HttpStatusCode.BadRequest, "Inventory adjustment cannot reduce physical stock below reservations");
         httpStock=await db.StockAccounts.AsNoTracking().SingleAsync(s=>s.ProductId==httpProduct.ProductId);
         check(httpStock.OnHand==500 && httpStock.Reserved==100,"Real stale filling form cannot overwrite a confirmed reservation");
         await Operate("Consume",1);
@@ -204,9 +384,26 @@ internal static class IdentityCookieScenario
             CheckoutToken=Guid.NewGuid(),CheckoutRequestHash=new string('A',64),OrderDate=DateTime.UtcNow,ShippingCost=1,TotalAmount=3,
             Items=[new(){ProductId=httpProduct.ProductId,Quantity=1,UnitPrice=2,VariantSize="50ml test",StockAccountId=httpProduct.ProductId,StockUnitsPerItem=50,StockUnit="ml"}] };
         await new OrderService(db).PlaceAsync(deliveryOrder);
-        var stockForDelivery = new Orkideya.Application.Inventory.StockService(db,TimeProvider.System);
-        await stockForDelivery.ApplyOrderAsync(deliveryOrder.OrderId,0,"Reserve",adminUser.Id);
-        await stockForDelivery.ApplyOrderAsync(deliveryOrder.OrderId,1,"Consume",adminUser.Id);
+        var fulfillmentPath = $"/api/v1/admin/orders/{deliveryOrder.OrderId}";
+        var fulfillmentSession = await adminClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+        var fulfillmentToken = fulfillmentSession.GetProperty("requestToken").GetString()!;
+        async Task<HttpStatusCode> PostFulfillment<T>(string action, T input)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, fulfillmentPath + "/" + action)
+                { Content = JsonContent.Create(input) };
+            request.Headers.Add("RequestVerificationToken", fulfillmentToken);
+            using var response = await adminClient.SendAsync(request);
+            return response.StatusCode;
+        }
+        var reserveInput = new { operation = "Reserve", expectedRevision = 0 };
+        using (var forbiddenStock = await buyer.PostAsJsonAsync(fulfillmentPath + "/stock", reserveInput))
+            check(forbiddenStock.StatusCode == HttpStatusCode.Forbidden, "Customer cannot use the stock JSON endpoint");
+        using (var missingStockToken = await adminClient.PostAsJsonAsync(fulfillmentPath + "/stock", reserveInput))
+            check(missingStockToken.StatusCode == HttpStatusCode.BadRequest, "Stock JSON endpoint requires antiforgery");
+        check(await PostFulfillment("stock", reserveInput) == HttpStatusCode.OK &&
+            await PostFulfillment("stock", new { operation = "Consume", expectedRevision = 0 }) == HttpStatusCode.Conflict &&
+            await PostFulfillment("stock", new { operation = "Consume", expectedRevision = 1 }) == HttpStatusCode.OK,
+            "Stock JSON reserves, rejects a stale fill and consumes the current reservation");
         var deliveryToken=await Token(adminClient,$"/Admin/Orders/Details/{deliveryOrder.OrderId}");
         Dictionary<string,string> DeliveryForm(string action,int revision) => new()
         {
@@ -221,10 +418,36 @@ internal static class IdentityCookieScenario
         using(var noCsrf=await adminClient.PostAsync($"/Admin/Delivery/Apply/{deliveryOrder.OrderId}",new FormUrlEncodedContent(new Dictionary<string,string>{{"Action","HandOver"}})))
             check(noCsrf.StatusCode==HttpStatusCode.BadRequest,"Real admin delivery mutation requires antiforgery");
         var httpHandoff=DeliveryForm("HandOver",2);httpHandoff["Mode"]="Company";httpHandoff["CarrierName"]="Synthetic HTTP carrier";httpHandoff["ShipmentReference"]="HTTP-QA-SHIP";
-        await PostDelivery(httpHandoff);await PostDelivery(httpHandoff);
+        var handoffInput = new
+        {
+            action = "HandOver", expectedRevision = 2, requestId = httpHandoff["RequestId"],
+            mode = "Company", carrierName = httpHandoff["CarrierName"], shipmentReference = httpHandoff["ShipmentReference"]
+        };
+        using (var forbiddenDelivery = await buyer.PostAsJsonAsync(fulfillmentPath + "/delivery", handoffInput))
+            check(forbiddenDelivery.StatusCode == HttpStatusCode.Forbidden, "Customer cannot use the delivery JSON endpoint");
+        using (var missingDeliveryToken = await adminClient.PostAsJsonAsync(fulfillmentPath + "/delivery", handoffInput))
+            check(missingDeliveryToken.StatusCode == HttpStatusCode.BadRequest, "Delivery JSON endpoint requires antiforgery");
+        check(await PostFulfillment("delivery", handoffInput) == HttpStatusCode.OK &&
+            await PostFulfillment("delivery", handoffInput) == HttpStatusCode.OK &&
+            await PostFulfillment("delivery", new
+            {
+                action = "MarkReturning", expectedRevision = 2, requestId = Guid.NewGuid(), reason = "Synthetic stale JSON"
+            }) == HttpStatusCode.Conflict, "Delivery JSON accepts identical replay and rejects a stale action");
+        await PostDelivery(httpHandoff);
         check(await db.OrderDeliveryEvents.CountAsync(e=>e.OrderId==deliveryOrder.OrderId)==1 &&
             await db.OrderDeliveryEvents.AnyAsync(e=>e.OrderId==deliveryOrder.OrderId && e.ActorUserId==adminUser.Id),
             "Real HTTP handoff replay stores one event with authenticated actor rather than posted actor");
+        using (var openResponse = await adminClient.GetAsync("/api/v1/admin/delivery?search=HTTP-QA-SHIP"))
+        {
+            var openShipments = await openResponse.Content.ReadFromJsonAsync<JsonElement>();
+            var openShipment = openShipments.GetProperty("items")[0];
+            check(openResponse.StatusCode == HttpStatusCode.OK && openResponse.Headers.CacheControl?.NoStore == true &&
+                openShipments.GetProperty("total").GetInt32() == 1 &&
+                openShipment.GetProperty("orderId").GetInt32() == deliveryOrder.OrderId &&
+                openShipment.GetProperty("state").GetString() == "HandedOver" &&
+                !openShipment.TryGetProperty("shippingAddress", out _) && !openShipment.TryGetProperty("whatsAppNumber", out _),
+                "Delivery queue defaults to open shipments and searches reference without exposing contact fields");
+        }
         var staleDelivery=DeliveryForm("MarkReturning",2);staleDelivery["Reason"]="Synthetic stale page";await PostDelivery(staleDelivery);
         check(await db.OrderDeliveryEvents.CountAsync(e=>e.OrderId==deliveryOrder.OrderId)==1,
             "Stale real delivery form cannot change a newer shipment");
@@ -235,9 +458,33 @@ internal static class IdentityCookieScenario
         var returnedDelivery=DeliveryForm("ReceiveReturn",4);await PostDelivery(returnedDelivery);
         check(await db.OrderDeliveries.AsNoTracking().AnyAsync(d=>d.OrderId==deliveryOrder.OrderId && d.State=="Returning"),
             "Real return form without physical receipt confirmation remains awaiting return");
-        returnedDelivery["ConfirmReturnReceived"]="true";await PostDelivery(returnedDelivery);
+        check(await PostFulfillment("delivery", new
+        {
+            action = "ReceiveReturn", expectedRevision = 4, requestId = returnedDelivery["RequestId"],
+            confirmReturnReceived = true
+        }) == HttpStatusCode.OK, "Delivery JSON registers physical receipt of a returned package");
         var resend=DeliveryForm("Redispatch",5);resend["Mode"]="Self";resend["ConfirmSamePackageReusable"]="true";resend["Reason"]="Synthetic reviewed same package";await PostDelivery(resend);
         await PostDelivery(DeliveryForm("Deliver",6));
+        var deliveredQueue = await adminClient.GetFromJsonAsync<JsonElement>(
+            $"/api/v1/admin/delivery?state=Delivered&search=%23{deliveryOrder.OrderId}&page=999");
+        var activeQueue = await adminClient.GetFromJsonAsync<JsonElement>(
+            $"/api/v1/admin/delivery?state=active&search=%23{deliveryOrder.OrderId}");
+        check(deliveredQueue.GetProperty("total").GetInt32() == 1 && deliveredQueue.GetProperty("page").GetInt32() == 1 &&
+            deliveredQueue.GetProperty("items")[0].GetProperty("state").GetString() == "Delivered" &&
+            activeQueue.GetProperty("total").GetInt32() == 0,
+            "Delivery queue filters state, matches order number and clamps a page beyond the last result");
+        using (var invalidQueue = await adminClient.GetAsync("/api/v1/admin/delivery?state=invalid&page=0"))
+            check(invalidQueue.StatusCode == HttpStatusCode.BadRequest, "Delivery queue rejects invalid filters");
+        var deliveredDetail = await adminClient.GetFromJsonAsync<JsonElement>(fulfillmentPath);
+        var shipment = deliveredDetail.GetProperty("delivery");
+        var shipmentHistory = deliveredDetail.GetProperty("deliveryHistory");
+        check(shipment.GetProperty("state").GetString() == "Delivered" &&
+            shipment.GetProperty("mode").GetString() == "Self" &&
+            shipmentHistory.GetArrayLength() == 5 &&
+            shipmentHistory[0].GetProperty("action").GetString() == "Deliver" &&
+            shipmentHistory[4].GetProperty("actorName").GetString() == adminUser.UserName &&
+            !shipmentHistory[4].TryGetProperty("requestHash", out _),
+            "Admin order JSON returns the latest shipment and its private bounded audit history");
         var deliveredHttp=await db.Orders.AsNoTracking().SingleAsync(o=>o.OrderId==deliveryOrder.OrderId);
         httpStock=await db.StockAccounts.AsNoTracking().SingleAsync(s=>s.ProductId==httpProduct.ProductId);
         check(deliveredHttp.Status=="Delivered" && deliveredHttp.StatusRevision==7 && deliveredHttp.StockState=="Filled" &&
@@ -388,6 +635,295 @@ internal static class IdentityCookieScenario
         check(await db.Orders.CountAsync()==receiptOrderCount && await db.OrderNotifications.CountAsync()==receiptNotificationCount,
             "Receipt refresh and forged lookup URLs create no orders or notification intents");
         await db.ProductVariants.Where(v=>v.ProductVariantId==manualVariant.ProductVariantId).ExecuteUpdateAsync(x=>x.SetProperty(v=>v.Price,3m));
+
+        using (var apiCheckout = Client())
+        {
+            var session = await apiCheckout.GetFromJsonAsync<JsonElement>("/api/v1/session");
+            apiCheckout.DefaultRequestHeaders.Add("RequestVerificationToken", session.GetProperty("requestToken").GetString());
+            using var added = await apiCheckout.PostAsJsonAsync("/api/v1/cart/items",
+                new { variantId = manualVariant.ProductVariantId, quantity = 2 });
+            var addedCart = await added.Content.ReadFromJsonAsync<JsonElement>();
+            check(addedCart.GetProperty("success").GetBoolean(), "Vue checkout journey shares the cart session");
+            var checkout = await apiCheckout.GetFromJsonAsync<JsonElement>("/api/v1/checkout");
+            var key = checkout.GetProperty("checkoutToken").GetGuid();
+            var revision = checkout.GetProperty("cartRevision").GetString();
+            var input = new CheckoutInput
+            {
+                CheckoutToken = key, FirstName = "Synthetic", LastName = "API receipt",
+                WhatsAppNumber = "+218000000000", ShippingAddress = "SYNTHETIC_API_PRIVATE_ADDRESS",
+                ShippingRateId = manualRate.ShippingRateId
+            };
+            var before = await db.Orders.CountAsync();
+            using var stale = await apiCheckout.PostAsJsonAsync("/api/v1/checkout/orders",
+                new { input, review = new { cartRevision = revision, shippingFee = "0.00" } });
+            var corrected = await stale.Content.ReadFromJsonAsync<JsonElement>();
+            check(stale.StatusCode == HttpStatusCode.UnprocessableEntity && await db.Orders.CountAsync() == before &&
+                corrected.GetProperty("shippingFee").GetString() == "2.00",
+                "Checkout API requires review when delivery cost differs from the displayed amount");
+            var order = new { input, review = new { cartRevision = revision, shippingFee = "2.00" } };
+            using var confirmed = await apiCheckout.PostAsJsonAsync("/api/v1/checkout/orders", order);
+            var receiptBody = await confirmed.Content.ReadAsStringAsync();
+            using var receiptJson = JsonDocument.Parse(receiptBody);
+            check(confirmed.StatusCode == HttpStatusCode.OK && receiptJson.RootElement.GetProperty("total").GetString() == "8.00",
+                "Checkout API creates one guest order with the confirmed totals");
+            check(confirmed.Headers.CacheControl?.NoStore == true &&
+                !receiptBody.Contains(input.ShippingAddress, StringComparison.Ordinal) &&
+                !receiptBody.Contains(input.WhatsAppNumber, StringComparison.Ordinal) &&
+                !receiptBody.Contains(key.ToString(), StringComparison.Ordinal),
+                "Checkout API response keeps receipt private");
+            using var replay = await apiCheckout.PostAsJsonAsync("/api/v1/checkout/orders", order);
+            check(replay.StatusCode == HttpStatusCode.OK && await db.Orders.CountAsync() == before + 1,
+                "Checkout API retries return the same receipt without duplicate orders");
+            using var unrelated = Client();
+            using var denied = await unrelated.GetAsync("/api/v1/checkout/receipt?orderId=" +
+                receiptJson.RootElement.GetProperty("orderId").GetInt32());
+            check(denied.StatusCode == HttpStatusCode.NotFound, "Another session cannot read the JSON receipt");
+        }
+
+        foreach (var path in new[] { "/api/v1/admin/dashboard", "/api/v1/admin/delivery", "/api/v1/admin/orders",
+            "/api/v1/admin/orders/export", "/api/v1/admin/orders/manual", "/api/v1/admin/orders/" + manualStored.OrderId })
+        {
+            using var anonymousAdmin = Client();
+            using var deniedAnonymous = await anonymousAdmin.GetAsync(path);
+            using var deniedCustomer = await buyer.GetAsync(path);
+            check(deniedAnonymous.StatusCode == HttpStatusCode.Unauthorized &&
+                deniedCustomer.StatusCode == HttpStatusCode.Forbidden, "Admin read API enforces the Admin role: " + path);
+        }
+
+        using (var overview = await adminClient.GetAsync("/api/v1/admin/dashboard"))
+        {
+            var summary = await overview.Content.ReadFromJsonAsync<JsonElement>();
+            var nowUtc = factory.Services.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
+            var expected = await new DashboardMetrics(db, nowUtc).ThirtyDaysAsync();
+            check(overview.StatusCode == HttpStatusCode.OK && overview.Headers.CacheControl?.NoStore == true &&
+                summary.GetProperty("productsValueLast30Days").GetString() == expected.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                "Admin dashboard API uses the existing merchandise metric and private cache headers");
+        }
+        using (var orderList = await adminClient.GetAsync(
+            "/api/v1/admin/orders?source=FacebookManual&search=%23" + manualStored.OrderId))
+        {
+            var list = await orderList.Content.ReadFromJsonAsync<JsonElement>();
+            var row = list.GetProperty("items")[0];
+            check(orderList.StatusCode == HttpStatusCode.OK && orderList.Headers.CacheControl?.NoStore == true &&
+                list.GetProperty("total").GetInt32() == 1 && row.GetProperty("id").GetInt32() == manualStored.OrderId &&
+                !row.TryGetProperty("shippingAddress", out _) && !row.TryGetProperty("checkoutToken", out _),
+                "Admin list API filters by source and search and limits the summary fields");
+        }
+        using (var badFilter = await adminClient.GetAsync("/api/v1/admin/orders?source=unknown&page=0"))
+            check(badFilter.StatusCode == HttpStatusCode.BadRequest, "Admin list API rejects invalid filter input");
+        using (var export = await adminClient.GetAsync("/api/v1/admin/orders/export?source=FacebookManual&search=%23" + manualStored.OrderId))
+        {
+            check(export.StatusCode == HttpStatusCode.OK && export.Headers.CacheControl?.NoStore == true &&
+                export.Content.Headers.ContentDisposition?.DispositionType == "attachment",
+                "Admin export returns a private workbook attachment");
+            using var workbook = new ClosedXML.Excel.XLWorkbook(await export.Content.ReadAsStreamAsync());
+            var sheet = workbook.Worksheet(1);
+            check(sheet.LastRowUsed()?.RowNumber() == 2 && sheet.Cell(2, 1).GetValue<int>() == manualStored.OrderId,
+                "Admin export applies the order list filters");
+        }
+        using (var badExport = await adminClient.GetAsync("/api/v1/admin/orders/export?source=unknown"))
+            check(badExport.StatusCode == HttpStatusCode.BadRequest, "Admin export rejects invalid filter input");
+        using (var orderDetail = await adminClient.GetAsync("/api/v1/admin/orders/" + manualStored.OrderId))
+        {
+            var detail = await orderDetail.Content.ReadFromJsonAsync<JsonElement>();
+            check(orderDetail.StatusCode == HttpStatusCode.OK && orderDetail.Headers.CacheControl?.NoStore == true &&
+                detail.GetProperty("order").GetProperty("id").GetInt32() == manualStored.OrderId &&
+                detail.GetProperty("items").GetArrayLength() == manualStored.Items.Count && detail.TryGetProperty("shippingAddress", out _),
+                "Admin detail API exposes the selected order and its items to the administrator");
+        }
+
+        const string productApi = "/api/v1/admin/products";
+        var productSession = await adminClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+        var productToken = productSession.GetProperty("requestToken").GetString()!;
+        async Task<HttpResponseMessage> ProductWrite(string path, HttpContent content)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = content };
+            request.Headers.Add("RequestVerificationToken", productToken);
+            return await adminClient.SendAsync(request);
+        }
+        MultipartFormDataContent ProductForm(string name)
+        {
+            var content = new MultipartFormDataContent();
+            content.Add(new StringContent(name), "name");
+            return content;
+        }
+
+        using (var forbiddenProduct = await buyer.GetAsync(productApi))
+            check(forbiddenProduct.StatusCode == HttpStatusCode.Forbidden, "Product management API requires Admin role");
+        using (var noProductCsrf = await adminClient.PostAsync(productApi, ProductForm("Rejected product")))
+            check(noProductCsrf.StatusCode == HttpStatusCode.BadRequest, "Product multipart writes require antiforgery");
+        var rejectedProduct = ProductForm("Rejected synthetic image");
+        rejectedProduct.Add(new ByteArrayContent([1, 2, 3]), "galleryFiles", "invalid.png");
+        using (var rejectedUpload = await ProductWrite(productApi, rejectedProduct))
+            check(rejectedUpload.StatusCode == HttpStatusCode.BadRequest &&
+                !await db.Products.AnyAsync(product => product.Name == "Rejected synthetic image"),
+                "Invalid product image creates no product");
+
+        const string categoriesApi = "/api/v1/admin/categories";
+        var newCategory = new { name = "Synthetic Vue category" };
+        using (var forbiddenCategories = await buyer.GetAsync(categoriesApi))
+            check(forbiddenCategories.StatusCode == HttpStatusCode.Forbidden, "Category management is admin-only");
+        using (var missingCategoryToken = await adminClient.PostAsJsonAsync(categoriesApi, newCategory))
+            check(missingCategoryToken.StatusCode == HttpStatusCode.BadRequest, "Category changes require antiforgery");
+        using (var savedCategory = await ProductWrite(categoriesApi, JsonContent.Create(newCategory)))
+            check(savedCategory.StatusCode == HttpStatusCode.OK, "Category API creates a named category");
+        using (var duplicateCategory = await ProductWrite(categoriesApi, JsonContent.Create(new { name = " Synthetic Vue category " })))
+            check(duplicateCategory.StatusCode == HttpStatusCode.BadRequest, "Category API rejects a duplicate normalized name");
+        var categoriesPage = await adminClient.GetFromJsonAsync<JsonElement>(categoriesApi + "?search=Synthetic%20Vue%20category&page=999");
+        var vueCategoryId = categoriesPage.GetProperty("items")[0].GetProperty("categoryId").GetInt32();
+        check(categoriesPage.GetProperty("total").GetInt32() == 1 && categoriesPage.GetProperty("page").GetInt32() == 1,
+            "Category list search and page clamping use persisted categories");
+
+        var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jN0sAAAAASUVORK5CYII=");
+        var newProduct = ProductForm("Synthetic Vue product");
+        newProduct.Add(new StringContent(vueCategoryId.ToString(System.Globalization.CultureInfo.InvariantCulture)), "categoryId");
+        newProduct.Add(new ByteArrayContent(png), "imageFile", "cover.png");
+        newProduct.Add(new ByteArrayContent(png), "galleryFiles", "first.png");
+        newProduct.Add(new ByteArrayContent(png), "galleryFiles", "second.png");
+        using var createdProduct = await ProductWrite(productApi, newProduct);
+        var createdJson = await createdProduct.Content.ReadFromJsonAsync<JsonElement>();
+        var vueProductId = createdJson.GetProperty("productId").GetInt32();
+        var vueProductPath = productApi + "/" + vueProductId;
+        var originalProduct = await adminClient.GetFromJsonAsync<JsonElement>(vueProductPath);
+        var originalGallery = originalProduct.GetProperty("gallery");
+        var originalVersion = originalProduct.GetProperty("version").GetString()!;
+        var retainedImage = originalGallery[1].GetString()!;
+        var coverImage = originalProduct.GetProperty("imageUrl").GetString()!;
+        check(createdProduct.StatusCode == HttpStatusCode.OK && originalGallery.GetArrayLength() == 2 &&
+            File.Exists(Path.Combine(webRoot, coverImage.TrimStart('/'))),
+            "Product multipart create persists its cover and two additional images in isolated storage");
+        var productEdit = ProductForm("Synthetic Vue edited product");
+        productEdit.Add(new StringContent(vueCategoryId.ToString(System.Globalization.CultureInfo.InvariantCulture)), "categoryId");
+        productEdit.Add(new StringContent(originalVersion), "version");
+        productEdit.Add(new StringContent(coverImage), "imageUrl");
+        productEdit.Add(new StringContent(originalGallery[0].GetString()!), "removeGallery");
+        using (var savedProduct = await ProductWrite(vueProductPath, productEdit))
+            check(savedProduct.StatusCode == HttpStatusCode.OK, "Product edit saves gallery changes");
+        var staleProductForm = ProductForm("Synthetic stale product edit");
+        staleProductForm.Add(new StringContent(originalVersion), "version");
+        using (var staleProduct = await ProductWrite(vueProductPath, staleProductForm))
+            check(staleProduct.StatusCode == HttpStatusCode.Conflict, "Product edit rejects a stale gallery version");
+
+        var newSize = new { productId = vueProductId, size = "100 ml", price = "19.95" };
+        using (var savedSize = await ProductWrite(vueProductPath + "/variants", JsonContent.Create(newSize)))
+            check(savedSize.StatusCode == HttpStatusCode.OK, "Product API adds a size with an exact decimal price");
+        var editedProduct = await adminClient.GetFromJsonAsync<JsonElement>(vueProductPath);
+        var variantRow = editedProduct.GetProperty("variants")[0];
+        var vueVariantId = variantRow.GetProperty("productVariantId").GetInt32();
+        check(editedProduct.GetProperty("gallery").GetArrayLength() == 1 &&
+            editedProduct.GetProperty("gallery")[0].GetString() == retainedImage &&
+            variantRow.GetProperty("price").GetString() == "19.95", "Product gallery retains selected image and price precision");
+        var variantEdit = new
+        {
+            input = new { productId = vueProductId, productVariantId = vueVariantId, size = "100 ml", price = "20.10" },
+            expectedSize = "100 ml", expectedPrice = "19.95"
+        };
+        var vueVariantPath = vueProductPath + "/variants/" + vueVariantId;
+        using (var savedPrice = await ProductWrite(vueVariantPath, JsonContent.Create(variantEdit)))
+            check(savedPrice.StatusCode == HttpStatusCode.OK, "Product API updates variant pricing");
+        using (var stalePrice = await ProductWrite(vueVariantPath, JsonContent.Create(variantEdit)))
+            check(stalePrice.StatusCode == HttpStatusCode.Conflict, "Product API rejects a stale variant price");
+        var renameCategory = new { name = "Synthetic Vue renamed category", expectedName = newCategory.name };
+        using (var renamedCategory = await ProductWrite(categoriesApi + "/" + vueCategoryId, JsonContent.Create(renameCategory)))
+            check(renamedCategory.StatusCode == HttpStatusCode.OK, "Category API renames the linked category");
+        using (var staleCategory = await ProductWrite(categoriesApi + "/" + vueCategoryId, JsonContent.Create(renameCategory)))
+            check(staleCategory.StatusCode == HttpStatusCode.Conflict, "Category API rejects a stale rename");
+        using (var renamedPage = await adminClient.GetAsync(categoriesApi + "?search=Synthetic%20Vue%20renamed"))
+        {
+            var categoryList = await renamedPage.Content.ReadFromJsonAsync<JsonElement>();
+            check(renamedPage.Headers.CacheControl?.NoStore == true &&
+                categoryList.GetProperty("items")[0].GetProperty("products").GetInt32() == 1 &&
+                await db.Products.AnyAsync(product => product.ProductId == vueProductId && product.CategoryId == vueCategoryId),
+                "Category rename preserves product links and the private list includes linked product count");
+        }
+        var categoryOptions = await adminClient.GetFromJsonAsync<JsonElement>(productApi + "/categories");
+        check(categoryOptions.EnumerateArray().Any(category => category.GetProperty("categoryId").GetInt32() == vueCategoryId &&
+            category.GetProperty("name").GetString() == renameCategory.name), "Product picker returns the updated category name");
+        var finalVariant = await db.ProductVariants.AsNoTracking().SingleAsync(variant => variant.ProductVariantId == vueVariantId);
+        check(finalVariant.Price == 20.10m, "Updated variant price persists exactly");
+
+        var updatePath = "/api/v1/admin/orders/" + manualStored.OrderId + "/status";
+        var statusPayload = new { status = "Processing", expectedRevision = manualStored.StatusRevision };
+        using (var denied = await buyer.PostAsJsonAsync(updatePath, statusPayload))
+            check(Denied(denied), "Customer role cannot update orders through the Vue API");
+        using (var missingToken = await adminClient.PostAsJsonAsync(updatePath, statusPayload))
+            check(missingToken.StatusCode == HttpStatusCode.BadRequest, "Admin status update requires antiforgery");
+
+        var adminSession = await adminClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+        var adminRequestToken = adminSession.GetProperty("requestToken").GetString()!;
+        async Task<HttpResponseMessage> SendUpdate<T>(T payload)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, updatePath) { Content = JsonContent.Create(payload) };
+            request.Headers.Add("RequestVerificationToken", adminRequestToken);
+            return await adminClient.SendAsync(request);
+        }
+
+        using (var invalid = await SendUpdate(new { status = "Processing" }))
+            check(invalid.StatusCode == HttpStatusCode.BadRequest, "Admin status update rejects missing revision");
+        using (var saved = await SendUpdate(statusPayload))
+        {
+            var result = await saved.Content.ReadFromJsonAsync<JsonElement>();
+            check(saved.StatusCode == HttpStatusCode.OK && result.GetProperty("success").GetBoolean(),
+                "Admin status API applies the current revision");
+        }
+        using (var stale = await SendUpdate(statusPayload))
+            check(stale.StatusCode == HttpStatusCode.Conflict, "Admin status API rejects stale writes");
+        using (var updated = await adminClient.GetAsync("/api/v1/admin/orders/" + manualStored.OrderId))
+        {
+            var detail = await updated.Content.ReadFromJsonAsync<JsonElement>();
+            var history = detail.GetProperty("history");
+            check(detail.GetProperty("order").GetProperty("status").GetString() == "Processing" &&
+                detail.GetProperty("statusRevision").GetInt32() == manualStored.StatusRevision + 1 &&
+                history.GetArrayLength() == 1 && history[0].GetProperty("previousStatus").GetString() == "Pending" &&
+                history[0].GetProperty("newStatus").GetString() == "Processing" &&
+                history[0].GetProperty("actorName").GetString() == adminUser.UserName,
+                "Admin status and audit history are persisted exactly once with the authenticated actor");
+        }
+
+        const string manualApi = "/api/v1/admin/orders/manual";
+        var apiManualId = Guid.NewGuid();
+        var apiManualInput = new
+        {
+            requestId = apiManualId, customerName = "Synthetic Vue manual customer", phone = "0910000000",
+            address = "Synthetic address", shippingRateId = manualRate.ShippingRateId,
+            lines = new[] { new { variantId = manualVariant.ProductVariantId, quantity = 2 } }
+        };
+        async Task<HttpResponseMessage> SendManual(string action, object payload)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, manualApi + "/" + action)
+                { Content = JsonContent.Create(payload) };
+            request.Headers.Add("RequestVerificationToken", adminRequestToken);
+            return await adminClient.SendAsync(request);
+        }
+        using (var denied = await buyer.PostAsJsonAsync(manualApi + "/review", apiManualInput))
+            check(Denied(denied), "Customer cannot review an administrative manual order");
+        using (var missingToken = await adminClient.PostAsJsonAsync(manualApi + "/review", apiManualInput))
+            check(missingToken.StatusCode == HttpStatusCode.BadRequest, "Vue manual review requires antiforgery");
+        using var previewResponse = await SendManual("review", apiManualInput);
+        var preview = await previewResponse.Content.ReadFromJsonAsync<JsonElement>();
+        check(previewResponse.StatusCode == HttpStatusCode.OK && previewResponse.Headers.CacheControl?.NoStore == true &&
+            preview.GetProperty("total").GetString() == "8.00" && !await db.Orders.AnyAsync(o => o.CheckoutToken == apiManualId),
+            "Vue manual review computes private totals without placing an order");
+        var reviewToken = preview.GetProperty("reviewToken").GetString();
+        var modified = apiManualInput with { lines = [new { variantId = manualVariant.ProductVariantId, quantity = 3 }] };
+        using var renewedResponse = await SendManual("confirm", new { input = modified, reviewToken });
+        var renewed = await renewedResponse.Content.ReadFromJsonAsync<JsonElement>();
+        check(renewedResponse.StatusCode == HttpStatusCode.OK && renewed.GetProperty("total").GetString() == "11.00" &&
+            !await db.Orders.AnyAsync(o => o.CheckoutToken == apiManualId), "Edited input needs explicit review before any save");
+        using (var tampered = await SendManual("confirm", new { input = modified, reviewToken = "invalid-token" }))
+            check(tampered.StatusCode == HttpStatusCode.Conflict, "Manual confirmation rejects tampered review tokens");
+        var accepted = new { input = modified, reviewToken = renewed.GetProperty("reviewToken").GetString() };
+        using var manualSaved = await SendManual("confirm", accepted);
+        using var manualReplay = await SendManual("confirm", accepted);
+        var first = await manualSaved.Content.ReadFromJsonAsync<JsonElement>();
+        var repeated = await manualReplay.Content.ReadFromJsonAsync<JsonElement>();
+        var apiStored = await db.Orders.AsNoTracking().Include(o => o.Creation).Include(o => o.Items)
+            .SingleAsync(o => o.CheckoutToken == apiManualId);
+        check(manualSaved.StatusCode == HttpStatusCode.OK && manualReplay.StatusCode == HttpStatusCode.OK &&
+            first.GetProperty("orderId").GetInt32() == apiStored.OrderId && repeated.GetProperty("orderId").GetInt32() == apiStored.OrderId &&
+            apiStored.TotalAmount == 11 && apiStored.ShippingCost == 2 && apiStored.Items.Single().Quantity == 3 &&
+            apiStored.Status == "Pending" && apiStored.Creation?.Source == OrderSources.Facebook &&
+            apiStored.Creation.ActorUserId == adminUser.Id, "Vue manual order stores provenance once and replay returns the same order");
 
         using (var logout = await adminClient.PostAsync("/Identity/Account/Logout?returnUrl=%2F", new FormUrlEncodedContent(new Dictionary<string, string>
             { ["__RequestVerificationToken"] = logoutToken })))

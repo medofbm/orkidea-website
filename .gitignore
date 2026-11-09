@@ -56,3 +56,7 @@ Thumbs.db
 **/App_Data/
 **/wwwroot/*.xlsx
 **/TestResults/
+
+/frontend/node_modules/
+/frontend/.nuxt/
+/frontend/.output/

@@ -85,6 +85,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 Orkideya.Infrastructure.Shipping.ShippingRegistration.AddCarrierReadGateway(builder.Services, builder.Configuration);
 builder.Services.AddSingleton<ExcelExportService>();
 builder.Services.AddSingleton<ProductImageStorage>();
+builder.Services.AddScoped<Orkideya.Application.Products.ProductEditor>();
 builder.Services.AddScoped<WhatsAppNotificationService>();
 builder.Services.AddScoped<Orkideya.Application.Notifications.IOrderNotificationTransport>(services => services.GetRequiredService<WhatsAppNotificationService>());
 builder.Services.AddScoped<Orkideya.Application.Notifications.NotificationDispatcher>();
@@ -100,6 +101,10 @@ builder.Services.AddScoped<Orkideya.Application.Delivery.DeliveryService>();
 var cookieSecurePolicy = builder.Environment.IsDevelopment() 
     ? CookieSecurePolicy.SameAsRequest 
     : CookieSecurePolicy.Always;
+
+builder.Services.ConfigureApplicationCookie(options => options.Cookie.SecurePolicy = cookieSecurePolicy);
+builder.Services.Configure<Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions>(
+    IdentityConstants.TwoFactorUserIdScheme, options => options.Cookie.SecurePolicy = cookieSecurePolicy);
 
 // Session Configuration with Security
 builder.Services.AddDistributedMemoryCache();

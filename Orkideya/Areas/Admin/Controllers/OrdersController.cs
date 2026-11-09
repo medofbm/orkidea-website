@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Orkideya.Application.Orders;
 using Microsoft.AspNetCore.Authorization;
@@ -110,13 +111,29 @@ namespace Orkideya.Areas.Admin.Controllers
         /// Update Order Status (AJAX)
         /// </summary>
         [HttpPost]
-        public async Task<IActionResult> UpdateStatus(int id, string? status, int? expectedRevision)
+        public Task<IActionResult> UpdateStatus(int id, string? status, int? expectedRevision) =>
+            ChangeStatus(id, status, expectedRevision, null);
+
+        public sealed record StatusUpdate(
+            [Required, StringLength(32)] string Status,
+            [Required, Range(0, int.MaxValue)] int? ExpectedRevision,
+            [StringLength(500)] string? Reason);
+
+        [HttpPost("/api/v1/admin/orders/{id:int}/status")]
+        [ValidateAntiForgeryToken]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public Task<IActionResult> ApiUpdateStatus(int id, [FromBody] StatusUpdate? input) =>
+            input is null || !ModelState.IsValid
+                ? Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "بيانات التحديث غير صالحة." }))
+                : ChangeStatus(id, input.Status, input.ExpectedRevision, input.Reason);
+
+        private async Task<IActionResult> ChangeStatus(int id, string? status, int? expectedRevision, string? reason)
         {
             var actor = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrWhiteSpace(actor)) return Forbid();
             try
             {
-                var result = await _statusService.ChangeAsync(id, status, expectedRevision, actor, HttpContext.RequestAborted);
+                var result = await _statusService.ChangeAsync(id, status, expectedRevision, actor, HttpContext.RequestAborted, reason);
                 return result switch
                 {
                     StatusChangeResult.Changed or StatusChangeResult.Unchanged => Json(new {

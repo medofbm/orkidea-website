@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace Orkideya.Controllers
 {
-    public class CartController : Controller
+    public partial class CartController : Controller
     {
         private readonly ApplicationDbContext _context;
 

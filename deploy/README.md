@@ -1,5 +1,7 @@
 # Isolated staging deployment
 
+For a separate Nuxt and C# preview alongside the existing Razor staging site, see [Isolated Vue preview](vue-preview.md).
+
 These files prepare staging. They do not deploy automatically. The public site and existing ALTO/PharmaNet services must remain available.
 
 1. Obtain authorized SSH access and run `bash deploy/preflight.sh`. Review current capacity, existing containers, listeners and Docker networks before choosing a loopback port or subnet. Do not infer availability from an old inventory.

@@ -1,4 +1,4 @@
-using Orkideya.Services;
+using Orkideya.Application.Products;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,12 +18,12 @@ namespace Orkideya.Areas.Admin.Controllers
     {
         private readonly ApplicationDbContext _context;
 
-        private readonly ProductImageStorage _images;
+        private readonly ProductEditor _editor;
 
-        public ProductsController(ApplicationDbContext context, ProductImageStorage images)
+        public ProductsController(ApplicationDbContext context, ProductEditor editor)
         {
             _context = context;
-            _images = images;
+            _editor = editor;
         }
 
         // GET: Admin/Products
@@ -70,14 +70,14 @@ namespace Orkideya.Areas.Admin.Controllers
         [RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
         public async Task<IActionResult> Create(ProductInput input, IFormFile? imageFile, List<IFormFile>? galleryFiles = null)
         {
-            await ValidateInputAsync(input);
-            var gallery = await SaveGalleryAsync(input, [], galleryFiles, imageFile);
+            await _editor.ValidateInputAsync(input, ModelState, HttpContext.RequestAborted);
+            var gallery = await _editor.SaveGalleryAsync(input, [], galleryFiles, imageFile, ModelState, HttpContext.RequestAborted);
             if (gallery is not null)
             {
                 var product = new Product
                 {
                     Name = input.Name.Trim(), Description = input.Description,
-                    CategoryId = input.CategoryId, ImageUrl = input.ImageUrl, GalleryJson = SerializeGallery(gallery)
+                    CategoryId = input.CategoryId, ImageUrl = input.ImageUrl, GalleryJson = ProductEditor.SerializeGallery(gallery)
                 };
                 _context.Products.Add(product);
                 await _context.SaveChangesAsync();
@@ -122,16 +122,16 @@ namespace Orkideya.Areas.Admin.Controllers
             if (id != input.ProductId) return NotFound();
             var product = await _context.Products.FindAsync(id);
             if (product == null) return NotFound();
-            await ValidateInputAsync(input);
+            await _editor.ValidateInputAsync(input, ModelState, HttpContext.RequestAborted);
             var retained = product.GalleryImages.Where(url => removeGallery?.Contains(url) != true).ToList();
-            var gallery = await SaveGalleryAsync(input, retained, galleryFiles, imageFile);
+            var gallery = await _editor.SaveGalleryAsync(input, retained, galleryFiles, imageFile, ModelState, HttpContext.RequestAborted);
             if (gallery is not null)
             {
                 product.Name = input.Name.Trim();
                 product.Description = input.Description;
                 product.CategoryId = input.CategoryId;
                 product.ImageUrl = input.ImageUrl;
-                product.GalleryJson = SerializeGallery(gallery);
+                product.GalleryJson = ProductEditor.SerializeGallery(gallery);
                 await _context.SaveChangesAsync();
                 // Keep old images until a separate reference-aware cleanup is implemented.
                 TempData["SuccessMessage"] = "تم تحديث المنتج بنجاح";
@@ -141,55 +141,6 @@ namespace Orkideya.Areas.Admin.Controllers
             ViewBag.Variants = await _context.ProductVariants.Where(v => v.ProductId == id).ToListAsync();
             ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "Name", input.CategoryId);
             return View(input);
-        }
-
-        private async Task ValidateInputAsync(ProductInput input)
-        {
-            if (!ProductImageStorage.IsAllowedReference(input.ImageUrl))
-                ModelState.AddModelError(nameof(input.ImageUrl), "استخدم رابط HTTPS أو صورة محلية ضمن /images/.");
-            if (input.CategoryId.HasValue && !await _context.Categories.AnyAsync(c => c.CategoryId == input.CategoryId.Value))
-                ModelState.AddModelError(nameof(input.CategoryId), "الفئة المختارة غير موجودة.");
-        }
-
-        private static string? SerializeGallery(List<string> images) =>
-            images.Count == 0 ? null : System.Text.Json.JsonSerializer.Serialize(images);
-
-        private async Task<List<string>?> SaveGalleryAsync(
-            ProductInput input, List<string> retained, List<IFormFile>? uploads, IFormFile? cover)
-        {
-            if (!ModelState.IsValid) return null;
-            uploads ??= [];
-            if (retained.Count + uploads.Count > 5)
-            {
-                ModelState.AddModelError("galleryFiles", "يمكن إضافة خمس صور إضافية كحد أقصى.");
-                return null;
-            }
-
-            if (uploads.Sum(file => file.Length) + (cover?.Length ?? 0) > ProductImageStorage.MaxBytes)
-            {
-                ModelState.AddModelError("galleryFiles", "إجمالي حجم الصور المرفوعة لا يتجاوز 5 ميجابايت.");
-                return null;
-            }
-
-            if (uploads.Count == 0 && cover is null) return retained;
-
-            try
-            {
-                var cancellationToken = HttpContext.RequestAborted;
-                var gallery = new List<(byte[] Bytes, string Extension)>();
-                foreach (var file in uploads)
-                    gallery.Add(await ProductImageStorage.ReadValidatedAsync(file, cancellationToken));
-                if (cover is not null)
-                    input.ImageUrl = await _images.SaveAsync(cover, cancellationToken);
-                foreach (var image in gallery)
-                    retained.Add(await _images.SaveValidatedAsync(image, cancellationToken));
-                return retained;
-            }
-            catch (InvalidDataException exception)
-            {
-                ModelState.AddModelError("galleryFiles", exception.Message);
-                return null;
-            }
         }
 
         [HttpPost]

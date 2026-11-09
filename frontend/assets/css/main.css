@@ -1,0 +1,4 @@
+@import "tailwindcss";
+:root { font-family: system-ui, sans-serif; color: #251333; background: #faf8fc; }
+button, a { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 3px solid #7e22ce; outline-offset: 3px; }

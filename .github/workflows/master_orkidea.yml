@@ -6,16 +6,38 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      deploy_vue_preview:
+        description: Deploy the verified Vue preview to the isolated preview host
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: verification-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: verification-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --registry=https://registry.npmjs.org
+      - run: npm run typecheck
+      - run: npm run build
+      - run: node --test tests/ssr.test.mjs
+
   verify:
+    needs: frontend
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -79,6 +101,17 @@ jobs:
         run: dotnet build tests/Orkideya.SqlRegression/Orkideya.SqlRegression.csproj -c Release --no-restore --warnaserror
       - name: Verify migrations, rollback and concurrent retry protection
         run: dotnet run --project tests/Orkideya.SqlRegression/Orkideya.SqlRegression.csproj -c Release --no-build --no-restore
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build Vue and install the Chromium test browser
+        working-directory: frontend
+        run: |
+          npm ci --registry=https://registry.npmjs.org
+          npm run build
+          npm exec -- playwright install --with-deps --only-shell chromium
+      - name: Exercise the Vue and ASP.NET preview in Chromium over HTTPS
+        run: bash tests/run-browser-preview.sh
       - name: Remove this run's disposable database container
         if: always()
         run: docker rm --force "orkidea-sql-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" || true
@@ -90,7 +123,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build the immutable preview image from a clean checkout
-        run: docker build --tag "orkidea-preview:${GITHUB_SHA}" .
+        run: docker build --label "org.opencontainers.image.revision=${GITHUB_SHA}" --tag "orkidea-preview:${GITHUB_SHA}" .
       - name: Inspect the image and run the real web process safely
         shell: bash
         run: |
@@ -115,6 +148,23 @@ jobs:
           assert 'نسخة تجريبية' in Path('/tmp/preview-login.html').read_text(encoding='utf-8')
           print('PASS: non-root, read-only web image; live endpoint and preview login/banner; noindex; private files excluded.')
           PY
+      - name: Build and verify the Vue preview image and isolated Compose stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="orkidea-vue-preview:${GITHUB_SHA}"
+          docker build --label "org.opencontainers.image.revision=${GITHUB_SHA}" --tag "$image" frontend
+          test "$(docker image inspect "$image" --format '{{.Config.User}}')" = node
+          docker run --rm --entrypoint sh "$image" -c 'test ! -e /src && test ! -e /app/.env && test ! -e /app/tests'
+          bash tests/check-vue-preview-compose.sh
+      - name: Save the verified Vue image for controlled transfer
+        run: docker save "orkidea-vue-preview:${GITHUB_SHA}" | gzip > orkidea-vue-preview-image.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orkidea-vue-preview-image-${{ github.sha }}
+          path: orkidea-vue-preview-image.tar.gz
+          retention-days: 3
+          if-no-files-found: error
       - name: Save the verified web image for controlled transfer
         run: docker save "orkidea-preview:${GITHUB_SHA}" | gzip > orkidea-preview-image.tar.gz
       - uses: actions/upload-artifact@v4
@@ -157,3 +207,83 @@ jobs:
           digest="$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')"
           test -n "$digest"
           printf 'Verified image: `%s`\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
+
+  publish-vue-preview:
+    needs: preview-image
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.deploy_vue_preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      backend: ${{ steps.publish.outputs.backend }}
+      frontend: ${{ steps.publish.outputs.frontend }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: orkidea-preview-image-${{ github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: orkidea-vue-preview-image-${{ github.sha }}
+      - name: Publish the two images verified in this run
+        id: publish
+        shell: bash
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          repository="ghcr.io/${GITHUB_REPOSITORY,,}"
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          unset REGISTRY_TOKEN
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          publish() {
+            local role=$1 local_image=$2 archive=$3 runtime_user=$4 tag=$5 ref
+            gunzip --stdout "$archive" | docker load
+            [[ "$(docker image inspect --format '{{.Config.User}} {{index .Config.Labels "org.opencontainers.image.revision"}}' "$local_image")" == "$runtime_user $GITHUB_SHA" ]]
+            docker tag "$local_image" "$tag"
+            docker push "$tag"
+            ref=$(docker image inspect "$tag" --format '{{range .RepoDigests}}{{println .}}{{end}}' | grep -F "$repository@")
+            [[ "$ref" == "$repository@"* && "${ref#*@}" =~ ^sha256:[0-9a-f]{64}$ ]]
+            printf '%s=%s\n' "$role" "${ref#*@}" >> "$GITHUB_OUTPUT"
+            printf '%s: `%s`\n' "$role" "$ref" >> "$GITHUB_STEP_SUMMARY"
+          }
+          publish backend "orkidea-preview:$GITHUB_SHA" orkidea-preview-image.tar.gz 1654 "$repository:preview-backend-sha-$GITHUB_SHA"
+          publish frontend "orkidea-vue-preview:$GITHUB_SHA" orkidea-vue-preview-image.tar.gz node "$repository:preview-frontend-sha-$GITHUB_SHA"
+
+  deploy-vue-preview:
+    needs: publish-vue-preview
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.deploy_vue_preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions: {}
+    environment: orkidea-vue-preview
+    concurrency:
+      group: orkidea-vue-preview-deployment
+      cancel-in-progress: false
+    steps:
+      - name: Update the isolated Vue preview by immutable digest
+        shell: bash
+        env:
+          PREVIEW_SSH_HOST: ${{ vars.PREVIEW_SSH_HOST }}
+          PREVIEW_SSH_KEY: ${{ secrets.PREVIEW_SSH_KEY }}
+          PREVIEW_SSH_KNOWN_HOSTS: ${{ secrets.PREVIEW_SSH_KNOWN_HOSTS }}
+          BACKEND_DIGEST: ${{ needs.publish-vue-preview.outputs.backend }}
+          FRONTEND_DIGEST: ${{ needs.publish-vue-preview.outputs.frontend }}
+        run: |
+          set -euo pipefail
+          umask 077
+          [[ "$PREVIEW_SSH_HOST" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+          [[ -n "$PREVIEW_SSH_KEY" && -n "$PREVIEW_SSH_KNOWN_HOSTS" ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ && "$BACKEND_DIGEST" =~ ^sha256:[0-9a-f]{64}$ &&
+             "$FRONTEND_DIGEST" =~ ^sha256:[0-9a-f]{64}$ && "$BACKEND_DIGEST" != "$FRONTEND_DIGEST" ]]
+          temp=$(mktemp -d)
+          trap 'rm -f -- "$temp/key" "$temp/known_hosts"; rmdir -- "$temp"' EXIT
+          printf '%s\n' "$PREVIEW_SSH_KEY" | tr -d '\r' > "$temp/key"
+          printf '%s\n' "$PREVIEW_SSH_KNOWN_HOSTS" | tr -d '\r' > "$temp/known_hosts"
+          unset PREVIEW_SSH_KEY PREVIEW_SSH_KNOWN_HOSTS
+          ssh -T -i "$temp/key" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$temp/known_hosts" \
+            -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=15 \
+            -- "orkidea-preview-ci@$PREVIEW_SSH_HOST" \
+            "orkidea-preview-deploy $GITHUB_SHA $BACKEND_DIGEST $FRONTEND_DIGEST"
