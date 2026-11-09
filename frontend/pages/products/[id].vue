@@ -10,6 +10,14 @@ const selectedVariant = ref(0)
 const failedImages = ref<string[]>([])
 const images = computed(() => product.value?.images.filter(image => image !== '/images/logo.jpg') ?? [])
 const currentImage = computed(() => images.value[selectedImage.value])
+function markFailedImage(image: string) {
+  if (!failedImages.value.includes(image)) failedImages.value.push(image)
+}
+function checkLoadedImage(element: unknown, image: string) {
+  if (element instanceof HTMLImageElement && element.complete && !element.naturalWidth) {
+    markFailedImage(image)
+  }
+}
 watch(() => product.value?.id, () => {
   selectedImage.value = 0
   selectedVariant.value = 0
@@ -38,7 +46,8 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
       <div class="relative grid aspect-square max-h-120 place-items-center overflow-hidden rounded-2xl border border-purple-100 bg-purple-50">
         <img v-if="currentImage && !failedImages.includes(currentImage)" :key="currentImage"
           :src="currentImage" :alt="product.name" class="absolute inset-0 size-full object-contain"
-          width="480" height="480" @error="failedImages.push(currentImage)">
+          width="480" height="480" @vue:mounted="checkLoadedImage($event.el, currentImage)"
+          @error="markFailedImage(currentImage)">
         <div v-else class="grid place-items-center gap-2 p-4 text-center text-sm text-purple-900">
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-10">
             <rect x="3" y="4" width="18" height="16" rx="3" />
@@ -54,7 +63,8 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
           :class="selectedImage === index ? 'border-purple-800' : 'border-purple-100'"
           @click="selectedImage = index">
           <img v-if="!failedImages.includes(image)" :src="image" alt="" class="size-full object-contain"
-            width="56" height="56" loading="lazy" @error="failedImages.push(image)">
+            width="56" height="56" loading="lazy" @vue:mounted="checkLoadedImage($event.el, image)"
+            @error="markFailedImage(image)">
           <span v-else aria-hidden="true" class="text-sm text-purple-900">{{ index + 1 }}</span>
         </button>
       </div>
