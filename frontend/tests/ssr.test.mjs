@@ -99,6 +99,9 @@ test('built storefront renders catalogue data and the product gallery on the ser
       return res.end('{}')
     }
     if (req.url === '/api/v1/catalogue/products/1') return res.end(JSON.stringify(product))
+    if (req.url === '/api/v1/catalogue/products/2') {
+      return res.end(JSON.stringify({ ...product, id: 2, images: ['/images/logo.jpg'], variants: [] }))
+    }
     if (req.url?.startsWith('/api/v1/catalogue/products?')) {
       return res.end(JSON.stringify({ items: [product], page: 1, pageSize: 24, total: 1 }))
     }
@@ -129,6 +132,10 @@ test('built storefront renders catalogue data and the product gallery on the ser
     assert.ok(detail.includes('25.00'), 'decimal price remains exact')
     assert.ok(detail.includes('/images/back.png'), 'gallery includes additional photo')
     assert.ok(detail.includes('100 مل'), 'variant is rendered')
+    const unavailable = await (await fetch(origin + '/products/2')).text()
+    assert.ok(unavailable.includes('صورة غير متاحة'), 'brand-only cover uses the gallery placeholder')
+    assert.ok(unavailable.includes('المنتج غير متاح للطلب حاليًا.'), 'missing variants explain why ordering is unavailable')
+    assert.ok(!unavailable.includes('أضيفي للسلة'), 'product without variants cannot be added to cart')
     const missing = await fetch(origin + '/api/v1/catalogue/products/999')
     assert.equal(missing.status, 404)
     const session = await fetch(origin + '/api/session')
