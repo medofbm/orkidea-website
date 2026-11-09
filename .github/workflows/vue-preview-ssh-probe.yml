@@ -1,0 +1,39 @@
+name: Vue preview SSH probe
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  probe:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    environment: orkidea-vue-preview
+    env:
+      PREVIEW_SSH_HOST: ${{ vars.PREVIEW_SSH_HOST }}
+      PREVIEW_SSH_KEY: ${{ secrets.PREVIEW_SSH_KEY }}
+      PREVIEW_SSH_KNOWN_HOSTS: ${{ secrets.PREVIEW_SSH_KNOWN_HOSTS }}
+    steps:
+      - name: Verify the allowed command and reject a shell command
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          [[ "$PREVIEW_SSH_HOST" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+          [[ -n "$PREVIEW_SSH_KEY" && -n "$PREVIEW_SSH_KNOWN_HOSTS" ]]
+          temp=$(mktemp -d)
+          trap 'rm -f -- "$temp/key" "$temp/known_hosts"; rmdir -- "$temp"' EXIT
+          printf '%s\n' "$PREVIEW_SSH_KEY" | tr -d '\r' > "$temp/key"
+          printf '%s\n' "$PREVIEW_SSH_KNOWN_HOSTS" | tr -d '\r' > "$temp/known_hosts"
+          unset PREVIEW_SSH_KEY PREVIEW_SSH_KNOWN_HOSTS
+          opts=(-T -i "$temp/key" -o BatchMode=yes -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$temp/known_hosts"
+            -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=10)
+          target="orkidea-preview-ci@$PREVIEW_SSH_HOST"
+          [[ "$(ssh "${opts[@]}" -- "$target" orkidea-preview-probe)" == ORKIDEA_PREVIEW_SSH_OK ]]
+          denied=0
+          ssh "${opts[@]}" -- "$target" id >/dev/null || denied=$?
+          [[ "$denied" == 126 ]]
+          printf 'PASS: the GitHub runner reached the restricted preview probe and arbitrary shell commands were refused.\n'
