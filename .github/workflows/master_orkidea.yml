@@ -16,8 +16,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: verification-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: verification-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
   frontend:
