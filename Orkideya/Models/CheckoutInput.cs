@@ -28,6 +28,8 @@ public sealed class CheckoutInput : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        if (string.IsNullOrEmpty(CarrierDestination) && string.IsNullOrWhiteSpace(ShippingAddress))
+            yield return new ValidationResult("الرجاء إدخال عنوان الشحن", [nameof(ShippingAddress)]);
         if (ShippingRateId < 0 || (string.IsNullOrEmpty(CarrierDestination) && ShippingRateId == 0))
             yield return new ValidationResult("الرجاء اختيار مدينة توصيل متاحة", [nameof(ShippingRateId)]);
     }

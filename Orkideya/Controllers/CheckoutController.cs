@@ -83,7 +83,8 @@ public partial class CheckoutController : Controller
         if (_quotes?.CheckoutEnabled == true && input.CarrierDestination is { Length: > 0 and <= 128 } selected &&
             _quotes.HomeDestinations.TryGetValue(selected, out var destination) && destination.IsPickup)
             input.ShippingAddress = "استلام من مكتب درب السبيل";
-        else if (string.IsNullOrWhiteSpace(input.ShippingAddress))
+        else if (string.IsNullOrWhiteSpace(input.ShippingAddress) &&
+            !(ModelState.TryGetValue("Input.ShippingAddress", out var addressState) && addressState.Errors.Count > 0))
             ModelState.AddModelError("Input.ShippingAddress", "الرجاء إدخال عنوان الشحن");
         var requestHash = ModelState.IsValid ? OrderService.RequestHash(input) : null;
         if (requestHash != null)
