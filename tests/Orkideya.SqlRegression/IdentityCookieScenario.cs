@@ -792,7 +792,13 @@ internal static class IdentityCookieScenario
         check(createdProduct.StatusCode == HttpStatusCode.OK && originalGallery.GetArrayLength() == 2 &&
             File.Exists(Path.Combine(webRoot, coverImage.TrimStart('/'))),
             "Product multipart create persists its cover and two additional images in isolated storage");
+        var initialList = await adminClient.GetFromJsonAsync<JsonElement>(productApi + "?search=Synthetic%20Vue%20product");
+        var initialRow = initialList.GetProperty("items").EnumerateArray().Single(row => row.GetProperty("productId").GetInt32() == vueProductId);
+        check(initialRow.GetProperty("imageUrl").GetString() == coverImage &&
+            initialRow.GetProperty("pricedVariants").GetInt32() == 0 && !initialRow.GetProperty("hasDescription").GetBoolean(),
+            "Product list distinguishes the saved cover from missing description and priced variants");
         var productEdit = ProductForm("Synthetic Vue edited product");
+        productEdit.Add(new StringContent("Synthetic catalogue description"), "description");
         productEdit.Add(new StringContent(vueCategoryId.ToString(System.Globalization.CultureInfo.InvariantCulture)), "categoryId");
         productEdit.Add(new StringContent(originalVersion), "version");
         productEdit.Add(new StringContent(coverImage), "imageUrl");
@@ -807,6 +813,10 @@ internal static class IdentityCookieScenario
         var newSize = new { productId = vueProductId, size = "100 ml", price = "19.95" };
         using (var savedSize = await ProductWrite(vueProductPath + "/variants", JsonContent.Create(newSize)))
             check(savedSize.StatusCode == HttpStatusCode.OK, "Product API adds a size with an exact decimal price");
+        var updatedList = await adminClient.GetFromJsonAsync<JsonElement>(productApi + "?search=Synthetic%20Vue%20edited%20product");
+        var updatedRow = updatedList.GetProperty("items").EnumerateArray().Single(row => row.GetProperty("productId").GetInt32() == vueProductId);
+        check(updatedRow.GetProperty("pricedVariants").GetInt32() == 1 && updatedRow.GetProperty("hasDescription").GetBoolean(),
+            "Product list reflects the saved description and priced variant");
         var editedProduct = await adminClient.GetFromJsonAsync<JsonElement>(vueProductPath);
         var variantRow = editedProduct.GetProperty("variants")[0];
         var vueVariantId = variantRow.GetProperty("productVariantId").GetInt32();
