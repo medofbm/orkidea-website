@@ -27,6 +27,14 @@ internal static class SabilQuoteClientRegression
         check(!root.TryGetProperty("contacts",out _) && !root.TryGetProperty("from",out _) && !root.GetProperty("to").TryGetProperty("address",out _),
             "Quote payload excludes contacts, personal address and shipment creation details");
         check(handler.Auth == "apikey synthetic" && handler.Version == "1.0.0", "Quote preview uses documented authentication/version headers");
+        var officeService = new string('b', 24);
+        check((await gateway.CalculateAsync(request with { ServiceId = officeService, IsPickup = true })).State == CarrierReadState.Success,
+            "The provider transport accepts a server-selected service and office pickup");
+        using var officeBody = JsonDocument.Parse(handler.Body!);
+        check(officeBody.RootElement.GetProperty("service").GetString() == officeService &&
+            officeBody.RootElement.GetProperty("isPickup").GetBoolean() &&
+            !officeBody.RootElement.GetProperty("to").TryGetProperty("isPickup", out _),
+            "Office pickup is sent as a top-level flag, separate from destination");
         foreach (var invalid in new[] { request with { City = "" }, request with { Area = "bad\narea" }, request with { Products = [] },
             request with { Products = [new(-1,1)] }, request with { Products = [new(1,0)] }, request with { Products = [new(1,1001)] }, request with { Products = [new(1.001m,1)] } })
         {

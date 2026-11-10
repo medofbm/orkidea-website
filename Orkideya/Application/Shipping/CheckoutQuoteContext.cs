@@ -1,12 +1,21 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.DataProtection;
 
 namespace Orkideya.Application.Shipping;
 
 public sealed record QuoteCartLine(int VariantId, int Quantity, decimal UnitPrice);
-public sealed record QuoteDestination(string BranchId, string City, string Area);
+public sealed record QuoteDestination(string BranchId, string City, string Area)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ServiceId { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Service { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IsPickup { get; init; }
+}
 // OriginRevision is a server-owned configuration revision, never a customer-supplied address.
 public sealed record QuoteBinding(Guid CheckoutToken, string ServiceId, string OriginRevision,
     string HandoffMode, QuoteDestination Destination, IReadOnlyList<QuoteCartLine> Lines);

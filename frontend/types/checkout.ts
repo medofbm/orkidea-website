@@ -1,3 +1,11 @@
+export interface CheckoutDestination {
+  key: string
+  city: string
+  area: string
+  service?: 'women' | 'men' | null
+  isPickup?: boolean
+}
+
 export interface CheckoutState {
   checkoutToken: string
   quoteToken: string | null
@@ -6,7 +14,7 @@ export interface CheckoutState {
   total: string | null
   cartRevision: string
   shippingRates: { id: number; city: string; price: string; total: string }[]
-  destinations: { key: string; city: string; area: string }[] | null
+  destinations: CheckoutDestination[] | null
   errors: string[]
 }
 

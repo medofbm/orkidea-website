@@ -9,17 +9,61 @@ const busy = ref(false)
 const errors = ref<string[]>([])
 const fields = reactive({ firstName: '', lastName: '', whatsAppNumber: '', shippingAddress: '',
   shippingRateId: 0, carrierDestination: '' })
+const serviceLabels = { women: 'توصيل نسائي', men: 'توصيل رجالي' }
+const service = ref<keyof typeof serviceLabels | ''>('')
+const city = ref('')
+const method = ref<'home' | 'office' | ''>('')
+const destinationKey = ref('')
+const destinations = computed(() => state.value?.destinations ?? [])
+const services = computed(() => (['women', 'men'] as const)
+  .filter(kind => destinations.value.some(destination => destination.service === kind)))
+const selectedService = computed(() => services.value.length === 1 ? services.value[0] : service.value)
+const serviceDestinations = computed(() => destinations.value.filter(destination =>
+  services.value.length ? destination.service === selectedService.value : !destination.service))
+const cities = computed(() => [...new Set(serviceDestinations.value.map(destination => destination.city))])
+const cityDestinations = computed(() => serviceDestinations.value.filter(destination => destination.city === city.value))
+const canDeliver = computed(() => cityDestinations.value.some(destination => !destination.isPickup))
+const canCollect = computed(() => cityDestinations.value.some(destination => destination.isPickup))
+const selectedMethod = computed(() => canDeliver.value && canCollect.value ? method.value :
+  canCollect.value ? 'office' : canDeliver.value ? 'home' : '')
+const options = computed(() => selectedMethod.value ? cityDestinations.value.filter(destination =>
+  !!destination.isPickup === (selectedMethod.value === 'office')) : [])
+const selectedDestination = computed(() => options.value.length === 1 ? options.value[0] :
+  options.value.find(destination => destination.key === destinationKey.value))
 const rate = computed(() => state.value?.shippingRates.find(item => item.id === fields.shippingRateId))
 const hasDeliveryOptions = computed(() => (state.value?.destinations?.length ?? state.value?.shippingRates.length ?? 0) > 0)
 const shippingFee = computed(() => state.value?.destinations ? state.value.shippingFee : rate.value?.price)
 const total = computed(() => state.value?.destinations ? state.value.total : rate.value?.total)
 
-watch(() => fields.carrierDestination, () => {
+function chooseService(kind: keyof typeof serviceLabels) {
+  city.value = ''
+  resetMethod()
+  service.value = kind
+}
+
+function resetMethod() {
+  method.value = ''
+  destinationKey.value = ''
+}
+
+function chooseCity(event: Event) {
+  resetMethod()
+  city.value = (event.target as HTMLSelectElement).value
+}
+
+function chooseMethod(kind: 'home' | 'office') {
+  destinationKey.value = ''
+  method.value = kind
+}
+
+watch(() => selectedDestination.value?.key ?? '', key => {
+  fields.carrierDestination = key
   if (state.value) {
     state.value.quoteToken = null
     state.value.shippingFee = null
     state.value.total = null
   }
+  if (key) void send('shipping')
 })
 
 async function load() {
@@ -39,8 +83,10 @@ async function send(action: 'shipping' | 'orders') {
   if (!checkout || busy.value || (action === 'orders' && shippingFee.value == null)) return
   busy.value = true
   errors.value = []
-  const input = { ...fields, checkoutToken: checkout.checkoutToken, quoteToken: checkout.quoteToken }
-  const body = action === 'shipping' ? input :
+  const selection = { checkoutToken: checkout.checkoutToken, carrierDestination: fields.carrierDestination }
+  const input = { ...fields, ...selection, quoteToken: checkout.quoteToken,
+    shippingAddress: selectedDestination.value?.isPickup ? '' : fields.shippingAddress }
+  const body = action === 'shipping' ? selection :
     { input, review: { cartRevision: checkout.cartRevision, shippingFee: shippingFee.value } }
   try {
     const session = await $fetch<{ requestToken: string }>('/api/session')
@@ -90,8 +136,66 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
     <form v-if="state && hasDeliveryOptions" class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.65fr)]"
       @submit.prevent="send('orders')">
       <section aria-labelledby="delivery-heading" class="min-w-0 rounded-2xl border border-purple-100 bg-white p-4 sm:p-6">
-        <h2 id="delivery-heading" class="mb-4 text-lg font-bold text-purple-950">بيانات التوصيل</h2>
+        <h2 id="delivery-heading" class="mb-4 text-lg font-bold text-purple-950">خيارات التوصيل</h2>
         <fieldset :disabled="busy" aria-labelledby="delivery-heading" class="min-w-0 space-y-4">
+          <template v-if="state.destinations">
+            <fieldset v-if="services.length > 1">
+              <legend class="mb-2 font-semibold">اختاري نوع التوصيل</legend>
+              <div class="grid gap-2 min-[360px]:grid-cols-2">
+                <label v-for="kind in services" :key="kind"
+                  class="flex min-h-11 items-center gap-2 rounded-xl border border-purple-200 px-3 py-2 has-checked:border-purple-800 has-checked:bg-purple-50">
+                  <input :checked="service === kind" name="carrierService" type="radio" :value="kind"
+                    class="accent-purple-800" @change="chooseService(kind)">
+                  {{ serviceLabels[kind] }}
+                </label>
+              </div>
+            </fieldset>
+            <p v-else-if="selectedService" class="font-semibold text-purple-950">{{ serviceLabels[selectedService] }}</p>
+            <label v-if="cities.length" class="block">مدينة التوصيل
+              <select :value="city" class="mt-1 block min-h-11 w-full rounded-lg border px-3" @change="chooseCity">
+                <option value="" disabled>اختاري المدينة</option>
+                <option v-for="name in cities" :key="name" :value="name">{{ name }}</option>
+              </select>
+            </label>
+            <fieldset v-if="canDeliver && canCollect">
+              <legend class="mb-2 font-semibold">كيف تبي تستلمي الطلب؟</legend>
+              <div class="grid gap-2 sm:grid-cols-2">
+                <label class="flex min-h-11 items-center gap-2 rounded-xl border border-purple-200 px-3 py-2 has-checked:border-purple-800 has-checked:bg-purple-50">
+                  <input :checked="method === 'home'" name="deliveryMethod" type="radio" value="home"
+                    class="accent-purple-800" @change="chooseMethod('home')">
+                  توصيل للعنوان
+                </label>
+                <label class="flex min-h-11 items-center gap-2 rounded-xl border border-purple-200 px-3 py-2 has-checked:border-purple-800 has-checked:bg-purple-50">
+                  <input :checked="method === 'office'" name="deliveryMethod" type="radio" value="office"
+                    class="accent-purple-800" @change="chooseMethod('office')">
+                  استلام من المكتب
+                </label>
+              </div>
+            </fieldset>
+            <label v-if="options.length > 1" class="block">{{ selectedMethod === 'office' ? 'مكتب الاستلام' : 'المنطقة' }}
+              <select v-model="destinationKey" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+                <option value="" disabled>{{ selectedMethod === 'office' ? 'اختاري المكتب' : 'اختاري المنطقة' }}</option>
+                <option v-for="destination in options" :key="destination.key" :value="destination.key">{{ destination.area }}</option>
+              </select>
+            </label>
+            <p v-else-if="selectedDestination" class="text-sm text-purple-950">
+              {{ selectedDestination.isPickup ? 'مكتب الاستلام' : 'المنطقة' }} · {{ selectedDestination.area }}
+            </p>
+            <button v-if="selectedDestination && !busy && shippingFee == null" type="button"
+              class="min-h-11 rounded-xl border border-purple-300 px-4 font-semibold text-purple-950"
+              @click="send('shipping')">إعادة حساب التوصيل</button>
+          </template>
+          <label v-else class="block">مدينة التوصيل
+            <select v-model.number="fields.shippingRateId" required class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+              <option :value="0" disabled>اختاري المدينة</option>
+              <option v-for="shippingRate in state.shippingRates" :key="shippingRate.id" :value="shippingRate.id">
+                {{ shippingRate.city }} — {{ shippingRate.price }} د.ل
+              </option>
+            </select>
+          </label>
+        </fieldset>
+        <fieldset v-if="!state.destinations || shippingFee != null" :disabled="busy" class="mt-6 min-w-0 space-y-4 border-t border-purple-100 pt-4">
+          <legend class="pe-2 font-semibold text-purple-950">بيانات الطلب</legend>
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="block">الاسم الأول
               <input v-model="fields.firstName" required maxlength="50" autocomplete="given-name" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
@@ -103,27 +207,8 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
           <label class="block">رقم الواتساب
             <input v-model="fields.whatsAppNumber" required maxlength="20" type="tel" dir="ltr" autocomplete="tel" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
           </label>
-          <label class="block">العنوان بالتفصيل
+          <label v-if="!selectedDestination?.isPickup" class="block">العنوان بالتفصيل
             <textarea v-model="fields.shippingAddress" required maxlength="200" autocomplete="street-address" rows="3" class="mt-1 block w-full rounded-lg border p-3" />
-          </label>
-          <template v-if="state.destinations">
-            <label class="block">المدينة والمنطقة
-              <select v-model="fields.carrierDestination" required class="mt-1 block min-h-11 w-full rounded-lg border px-3">
-                <option value="" disabled>اختاري المنطقة</option>
-                <option v-for="destination in state.destinations" :key="destination.key" :value="destination.key">
-                  {{ destination.city }} — {{ destination.area }}
-                </option>
-              </select>
-            </label>
-            <button type="button" :disabled="!fields.carrierDestination" class="min-h-11 rounded-xl border border-purple-300 px-4 font-semibold text-purple-950 hover:bg-purple-50 disabled:opacity-50" @click="send('shipping')">احسبي التوصيل</button>
-          </template>
-          <label v-else class="block">مدينة التوصيل
-            <select v-model.number="fields.shippingRateId" required class="mt-1 block min-h-11 w-full rounded-lg border px-3">
-              <option :value="0" disabled>اختاري المدينة</option>
-              <option v-for="shippingRate in state.shippingRates" :key="shippingRate.id" :value="shippingRate.id">
-                {{ shippingRate.city }} — {{ shippingRate.price }} د.ل
-              </option>
-            </select>
           </label>
         </fieldset>
       </section>

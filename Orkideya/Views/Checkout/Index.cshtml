@@ -44,9 +44,10 @@
                         <label asp-for="Input.CarrierDestination" class="form-label">المدينة والمنطقة</label>
                         <select asp-for="Input.CarrierDestination" class="form-select" required>
                             <option value="">اختر منطقة التوصيل</option>
-                            @foreach (var destination in destinations)
+                            @foreach (var destination in destinations.Where(pair => !pair.Value.IsPickup))
                             {
-                                <option value="@destination.Key">@destination.Value.City — @destination.Value.Area</option>
+                                var service = destination.Value.Service switch { "women" => " — توصيل نسائي", "men" => " — توصيل رجالي", _ => "" };
+                                <option value="@destination.Key">@destination.Value.City — @destination.Value.Area@service</option>
                             }
                         </select>
                         <input asp-for="Input.QuoteToken" type="hidden" />

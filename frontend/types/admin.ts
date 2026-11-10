@@ -115,6 +115,7 @@ export interface AdminOrderDetails {
     reason: string | null; changedAtUtc: string; actorName: string | null }[]
   whatsAppNumber: string
   shippingAddress: string
+  carrierChoice?: { area: string; serviceKind: 'women' | 'men' | null; isPickup: boolean } | null
   paymentMethod: string | null
   productsTotal: string
   items: { id: number; productId: number; quantity: number; variantSize: string | null;

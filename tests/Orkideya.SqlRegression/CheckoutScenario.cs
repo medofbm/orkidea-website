@@ -134,6 +134,32 @@ internal static class CheckoutScenario
             await db.Orders.CountAsync(o => o.CheckoutToken == carrierToken) == 1,
             "Carrier checkout retry returns the original order without a fresh quote");
 
+        var pickup = destination with { Service = "women", ServiceId = new string('b', 24), IsPickup = true };
+        checkoutOptions.HomeDestinations.Add("test-office", pickup);
+        session.SetString("Cart", JsonSerializer.Serialize(cart));
+        var pickupModel = (CheckoutViewModel)((ViewResult)await carrierController.Index()).Model!;
+        var pickupInput = Customer(pickupModel);
+        pickupInput.ShippingRateId = 0;
+        pickupInput.CarrierDestination = "test-office";
+        pickupInput.ShippingAddress = "";
+        var pickupToken = pickupInput.CheckoutToken!.Value;
+        pickupInput.QuoteToken = quoteContext.Create(binding with { CheckoutToken = pickupToken }, 15m);
+        check(await carrierController.PlaceOrder(pickupInput) is ViewResult &&
+            !await db.Orders.AnyAsync(o => o.CheckoutToken == pickupToken),
+            "An address-delivery quote cannot be replayed as office pickup");
+        carrierController.ModelState.Clear();
+        pickupInput.ShippingAddress = "";
+        pickupInput.QuoteToken = quoteContext.Create(binding with
+        {
+            CheckoutToken = pickupToken, ServiceId = pickup.ServiceId!, Destination = pickup
+        }, 10m);
+        check(await carrierController.PlaceOrder(pickupInput) is RedirectToActionResult { ActionName: "Confirmation" },
+            "Office pickup saves without a personal delivery address");
+        var pickupOrder = await db.Orders.AsNoTracking().Include(o => o.ShippingQuote).SingleAsync(o => o.CheckoutToken == pickupToken);
+        check(pickupOrder.ShippingQuote is { IsPickup: true, ServiceKind: "women", HandoffMode: "OfficeDropoff", ShippingFee: 10m } &&
+            pickupOrder.ShippingAddress == "استلام من مكتب درب السبيل" && pickupOrder.TotalAmount == 70m,
+            "Stored office pickup, service and merchant handoff remain distinct with the exact total");
+
         var missingProduct=new Product{Name="Synthetic missing stock size"};
         var missingVariant=new ProductVariant{Product=missingProduct,Size="Unknown size",Price=10};
         db.ProductVariants.Add(missingVariant); await db.SaveChangesAsync();
