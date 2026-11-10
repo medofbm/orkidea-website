@@ -104,6 +104,22 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
     assert.equal(receipt.total, '20.95')
     assert.equal((await admin.request.get(origin + '/api/checkout/receipt')).status(), 404)
     console.log('PASS browser: mobile gallery, cart, guest checkout, exact totals and private receipt')
+
+    for (const destinations of [null, []]) {
+      await customer.route('**/api/checkout', route => route.fulfill({
+        json: { checkoutToken: 'fixture', quoteToken: null, productsTotal: '19.95', shippingFee: null,
+          total: null, cartRevision: 'fixture', shippingRates: destinations ? [
+            { id: 1, city: 'Synthetic fallback', price: '1.00', total: '20.95' }
+          ] : [], destinations, errors: [] }
+      }))
+      await customer.goto(origin + '/checkout')
+      await customer.getByText('التوصيل غير متاح حاليًا.', { exact: true }).waitFor()
+      assert.equal(await customer.getByLabel('رقم الواتساب').count(), 0)
+      assert.equal(await customer.getByRole('button', { name: 'تأكيد الطلب والدفع عند الاستلام' }).count(), 0)
+      assert.equal(await customer.getByRole('button', { name: 'إعادة المحاولة' }).isEnabled(), true)
+      await customer.unroute('**/api/checkout')
+    }
+    console.log('PASS browser: empty delivery coverage blocks checkout in both modes')
   } finally {
     await browser?.close()
     gateway.closeAllConnections()
