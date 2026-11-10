@@ -35,14 +35,25 @@ const hasDeliveryOptions = computed(() => (state.value?.destinations?.length ?? 
 const shippingFee = computed(() => state.value?.destinations ? state.value.shippingFee : rate.value?.price)
 const total = computed(() => state.value?.destinations ? state.value.total : rate.value?.total)
 
-function resetCity() {
+function chooseService(kind: keyof typeof serviceLabels) {
   city.value = ''
   resetMethod()
+  service.value = kind
 }
 
 function resetMethod() {
   method.value = ''
   destinationKey.value = ''
+}
+
+function chooseCity(event: Event) {
+  resetMethod()
+  city.value = (event.target as HTMLSelectElement).value
+}
+
+function chooseMethod(kind: 'home' | 'office') {
+  destinationKey.value = ''
+  method.value = kind
 }
 
 watch(() => selectedDestination.value?.key ?? '', key => {
@@ -133,14 +144,15 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
               <div class="grid gap-2 min-[360px]:grid-cols-2">
                 <label v-for="kind in services" :key="kind"
                   class="flex min-h-11 items-center gap-2 rounded-xl border border-purple-200 px-3 py-2 has-checked:border-purple-800 has-checked:bg-purple-50">
-                  <input v-model="service" name="carrierService" type="radio" :value="kind" class="accent-purple-800" @change="resetCity">
+                  <input :checked="service === kind" name="carrierService" type="radio" :value="kind"
+                    class="accent-purple-800" @change="chooseService(kind)">
                   {{ serviceLabels[kind] }}
                 </label>
               </div>
             </fieldset>
             <p v-else-if="selectedService" class="font-semibold text-purple-950">{{ serviceLabels[selectedService] }}</p>
             <label v-if="cities.length" class="block">مدينة التوصيل
-              <select v-model="city" class="mt-1 block min-h-11 w-full rounded-lg border px-3" @change="resetMethod">
+              <select :value="city" class="mt-1 block min-h-11 w-full rounded-lg border px-3" @change="chooseCity">
                 <option value="" disabled>اختاري المدينة</option>
                 <option v-for="name in cities" :key="name" :value="name">{{ name }}</option>
               </select>
@@ -149,11 +161,13 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
               <legend class="mb-2 font-semibold">كيف تبي تستلمي الطلب؟</legend>
               <div class="grid gap-2 sm:grid-cols-2">
                 <label class="flex min-h-11 items-center gap-2 rounded-xl border border-purple-200 px-3 py-2 has-checked:border-purple-800 has-checked:bg-purple-50">
-                  <input v-model="method" name="deliveryMethod" type="radio" value="home" class="accent-purple-800" @change="destinationKey = ''">
+                  <input :checked="method === 'home'" name="deliveryMethod" type="radio" value="home"
+                    class="accent-purple-800" @change="chooseMethod('home')">
                   توصيل للعنوان
                 </label>
                 <label class="flex min-h-11 items-center gap-2 rounded-xl border border-purple-200 px-3 py-2 has-checked:border-purple-800 has-checked:bg-purple-50">
-                  <input v-model="method" name="deliveryMethod" type="radio" value="office" class="accent-purple-800" @change="destinationKey = ''">
+                  <input :checked="method === 'office'" name="deliveryMethod" type="radio" value="office"
+                    class="accent-purple-800" @change="chooseMethod('office')">
                   استلام من المكتب
                 </label>
               </div>
