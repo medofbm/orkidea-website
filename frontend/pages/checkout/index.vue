@@ -10,6 +10,7 @@ const errors = ref<string[]>([])
 const fields = reactive({ firstName: '', lastName: '', whatsAppNumber: '', shippingAddress: '',
   shippingRateId: 0, carrierDestination: '' })
 const rate = computed(() => state.value?.shippingRates.find(item => item.id === fields.shippingRateId))
+const hasDeliveryOptions = computed(() => (state.value?.destinations?.length ?? state.value?.shippingRates.length ?? 0) > 0)
 const shippingFee = computed(() => state.value?.destinations ? state.value.shippingFee : rate.value?.price)
 const total = computed(() => state.value?.destinations ? state.value.total : rate.value?.total)
 
@@ -80,9 +81,13 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
     <ul v-if="errors.length" role="alert" class="mb-4 list-inside list-disc rounded-xl bg-red-50 p-4 text-red-800">
       <li v-for="(error, index) in errors" :key="index">{{ error }}</li>
     </ul>
-    <button v-if="!state && !loading && errors.length" type="button"
+    <div v-if="state && !loading && !hasDeliveryOptions" role="status" class="mb-4 rounded-2xl border border-purple-100 bg-white p-5">
+      <p class="font-semibold text-purple-950">التوصيل غير متاح حاليًا.</p>
+      <p class="mt-2 text-sm text-purple-900">منتجاتك ما زالت في السلة. تقدري تعيدي التحقق من خيارات التوصيل.</p>
+    </div>
+    <button v-if="!loading && !hasDeliveryOptions && (state || errors.length)" type="button"
       class="min-h-11 rounded-xl bg-purple-900 px-4 font-semibold text-white" @click="load">إعادة المحاولة</button>
-    <form v-if="state" class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.65fr)]"
+    <form v-if="state && hasDeliveryOptions" class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.65fr)]"
       @submit.prevent="send('orders')">
       <section aria-labelledby="delivery-heading" class="min-w-0 rounded-2xl border border-purple-100 bg-white p-4 sm:p-6">
         <h2 id="delivery-heading" class="mb-4 text-lg font-bold text-purple-950">بيانات التوصيل</h2>
