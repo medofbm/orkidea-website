@@ -100,8 +100,12 @@ async function updateOrder(action: 'status' | 'stock' | 'delivery', input: Recor
         <div><dt class="font-semibold">الحالة</dt><dd>{{ adminOrderStatus(data.order.status) }}</dd></div>
         <div><dt class="font-semibold">الهاتف</dt><dd><bdi>{{ data.whatsAppNumber }}</bdi></dd></div>
         <div><dt class="font-semibold">المصدر</dt><dd>{{ data.order.source }}</dd></div>
-        <div class="sm:col-span-2"><dt class="font-semibold">عنوان التوصيل</dt>
+        <div class="sm:col-span-2"><dt class="font-semibold">وجهة التسليم</dt>
           <dd class="whitespace-pre-line">{{ data.order.city }} — {{ data.shippingAddress }}</dd>
+          <dd v-if="data.carrierChoice" class="mt-1 text-sm">
+            {{ data.carrierChoice.area }}
+            <template v-if="data.carrierChoice.serviceKind"> · {{ data.carrierChoice.serviceKind === 'women' ? 'توصيل نسائي' : 'توصيل رجالي' }}</template>
+          </dd>
         </div>
       </dl>
       <h2 class="mb-3 mt-6 text-xl font-bold">المنتجات</h2>

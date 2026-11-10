@@ -82,7 +82,14 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
             where candidate.OrderId == id
             join shipment in context.OrderDeliveries.AsNoTracking() on candidate.OrderId equals shipment.OrderId into shipments
             from shipment in shipments.DefaultIfEmpty()
-            select new { candidate, shipment }).SingleOrDefaultAsync(cancellationToken);
+            select new
+            {
+                candidate, shipment,
+                carrierChoice = candidate.ShippingQuote == null ? null : new
+                {
+                    candidate.ShippingQuote.Area, candidate.ShippingQuote.ServiceKind, candidate.ShippingQuote.IsPickup
+                }
+            }).SingleOrDefaultAsync(cancellationToken);
         if (snapshot is null) return NotFound();
         var order = snapshot.candidate;
         var delivery = snapshot.shipment is { } currentShipment
@@ -127,7 +134,7 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
 
         return Ok(new
         {
-            order = Summary(order), order.WhatsAppNumber, order.ShippingAddress, order.PaymentMethod,
+            order = Summary(order), order.WhatsAppNumber, order.ShippingAddress, order.PaymentMethod, snapshot.carrierChoice,
             order.StatusRevision, order.StockState, hasDelivery = delivery is not null, delivery,
             deliveryHistory = deliveryHistory.Select(entry => new
             {

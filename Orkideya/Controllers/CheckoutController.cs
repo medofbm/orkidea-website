@@ -80,6 +80,11 @@ public partial class CheckoutController : Controller
         if (input.CheckoutToken is null || input.CheckoutToken == Guid.Empty ||
             HttpContext.Session.GetString("CheckoutToken") != input.CheckoutToken.Value.ToString("D"))
             return BadRequest("انتهت صلاحية تأكيد الطلب. افتح صفحة إتمام الطلب من جديد.");
+        if (_quotes?.CheckoutEnabled == true && input.CarrierDestination is { Length: > 0 and <= 128 } selected &&
+            _quotes.HomeDestinations.TryGetValue(selected, out var destination) && destination.IsPickup)
+            input.ShippingAddress = "استلام من مكتب درب السبيل";
+        else if (string.IsNullOrWhiteSpace(input.ShippingAddress))
+            ModelState.AddModelError("Input.ShippingAddress", "الرجاء إدخال عنوان الشحن");
         var requestHash = ModelState.IsValid ? OrderService.RequestHash(input) : null;
         if (requestHash != null)
         {

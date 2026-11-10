@@ -11,7 +11,8 @@ public sealed class SabilQuoteClient(HttpClient http, IOptions<SabilReadOptions>
         cancellationToken.ThrowIfCancellationRequested();
         var options = configuration.Value;
         if (!options.QuoteEnabled) return new(CarrierReadState.Disabled);
-        if (options.QuoteServiceId is not { Length: 24 } || !options.QuoteServiceId.All(char.IsAsciiHexDigit))
+        var serviceId = request?.ServiceId ?? options.QuoteServiceId;
+        if (serviceId is not { Length: 24 } || !serviceId.All(char.IsAsciiHexDigit))
             return new(CarrierReadState.Misconfigured);
         if (request is null || !Name(request.City) || !Name(request.Area) || request.Products is null ||
             request.Products.Count is < 1 or > 100 || request.Products.Any(p => p is null ||
@@ -21,8 +22,9 @@ public sealed class SabilQuoteClient(HttpClient http, IOptions<SabilReadOptions>
         // Account default origin and receiver payment match the bounded accepted preview cases.
         using var body = JsonContent.Create(new
         {
-            service = options.QuoteServiceId, paymentBy = "receiver",
+            service = serviceId, paymentBy = "receiver",
             to = new { countryCode = "lby", city = request.City, area = request.Area },
+            isPickup = request.IsPickup,
             products = request.Products.Select(p => new { amount = p.Amount, quantity = p.Quantity, currency = "lyd", isChargeable = true }).ToArray()
         });
         var result = await new SabilTransport(http, configuration).SendAsync(HttpMethod.Post,

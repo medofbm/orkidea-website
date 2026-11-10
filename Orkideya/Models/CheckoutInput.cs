@@ -18,7 +18,6 @@ public sealed class CheckoutInput : IValidatableObject
     [StringLength(50, ErrorMessage = "اسم العائلة طويل جداً")]
     public string LastName { get; set; } = "";
 
-    [Required(ErrorMessage = "الرجاء إدخال عنوان الشحن")]
     [StringLength(200, ErrorMessage = "العنوان طويل جداً")]
     public string ShippingAddress { get; set; } = "";
 

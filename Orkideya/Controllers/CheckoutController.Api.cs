@@ -74,7 +74,7 @@ public partial class CheckoutController
             }),
             destinations = model.HomeDestinations?.Select(pair => new
             {
-                key = pair.Key, pair.Value.City, pair.Value.Area
+                key = pair.Key, pair.Value.City, pair.Value.Area, pair.Value.Service, pair.Value.IsPickup
             }),
             errors = ModelState.Values.SelectMany(value => value.Errors).Select(error =>
                 string.IsNullOrEmpty(error.ErrorMessage) ? "راجع بيانات الطلب وحاول مرة أخرى." : error.ErrorMessage).ToArray()

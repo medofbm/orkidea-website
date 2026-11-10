@@ -615,6 +615,9 @@ namespace Orkideya.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
+                    b.Property<bool>("IsPickup")
+                        .HasColumnType("bit");
+
                     b.Property<string>("OriginRevision")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -632,6 +635,10 @@ namespace Orkideya.Migrations
                         .IsRequired()
                         .HasMaxLength(24)
                         .HasColumnType("nvarchar(24)");
+
+                    b.Property<string>("ServiceKind")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
 
                     b.Property<decimal>("ShippingFee")
                         .HasColumnType("decimal(18,2)");
