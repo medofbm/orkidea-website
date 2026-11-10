@@ -9,6 +9,11 @@ const query = ref({ search: '', page: 1 })
 const { data, status, error } = useFetch<AdminProductsPage>('/api/admin/products', {
   query, server: false, cache: 'no-store'
 })
+
+function hasCover(imageUrl: string | null) {
+  const url = imageUrl?.trim()
+  return !!url && url !== '/images/logo.jpg'
+}
 </script>
 
 <template>
@@ -31,11 +36,25 @@ const { data, status, error } = useFetch<AdminProductsPage>('/api/admin/products
     <AdminReadError v-else-if="error" :status-code="error.statusCode" />
     <template v-else-if="data">
       <p class="mb-3" role="status">{{ data.total ? data.total + ' منتج' : 'ما فيش منتجات مطابقة.' }}</p>
+      <p v-if="data.items.length" class="mb-4 text-sm text-purple-950">
+        راجع الغلاف والوصف والفئة والأحجام والأسعار قبل تجهيز الكتالوج للبيع.
+      </p>
       <ul class="grid gap-3 sm:grid-cols-2">
         <li v-for="product in data.items" :key="product.productId" class="rounded-xl bg-white p-4">
           <NuxtLink :to="'/admin/products/' + product.productId"
             class="inline-flex min-h-11 items-center font-semibold text-purple-900 underline">{{ product.name }}</NuxtLink>
           <p class="text-sm">{{ product.category ?? 'بدون فئة' }} · {{ product.variants }} حجم</p>
+          <ul v-if="!hasCover(product.imageUrl) || product.hasDescription === false ||
+            (product.pricedVariants != null && (product.pricedVariants === 0 || product.pricedVariants < product.variants))"
+            class="mt-3 flex flex-wrap gap-2 text-xs" aria-label="بيانات ناقصة">
+            <li v-if="!hasCover(product.imageUrl)" class="rounded-full bg-amber-50 px-3 py-1 text-amber-900">ينقصه غلاف</li>
+            <li v-if="product.hasDescription === false" class="rounded-full bg-amber-50 px-3 py-1 text-amber-900">ينقصه وصف</li>
+            <li v-if="product.pricedVariants === 0" class="rounded-full bg-amber-50 px-3 py-1 text-amber-900">ما فيش أحجام بسعر</li>
+            <li v-else-if="product.pricedVariants != null && product.pricedVariants < product.variants"
+              class="rounded-full bg-amber-50 px-3 py-1 text-amber-900">
+              {{ product.pricedVariants }} من {{ product.variants }} أحجام مسعّرة
+            </li>
+          </ul>
         </li>
       </ul>
       <nav v-if="data.pages > 1" class="mt-4 flex items-center justify-between gap-3" aria-label="صفحات المنتجات">

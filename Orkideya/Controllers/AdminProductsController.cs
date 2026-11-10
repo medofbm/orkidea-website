@@ -34,7 +34,9 @@ public sealed class AdminProductsController(ApplicationDbContext db, ProductEdit
             {
                 product.ProductId, product.Name, product.ImageUrl,
                 category = product.Category == null ? null : product.Category.Name,
-                variants = product.ProductVariants.Count
+                variants = product.ProductVariants.Count,
+                pricedVariants = product.ProductVariants.Count(variant => variant.Price > 0),
+                hasDescription = product.Description != null && product.Description.Trim() != ""
             }).ToListAsync(ct);
         return Ok(new { items, page, pages, total });
     }

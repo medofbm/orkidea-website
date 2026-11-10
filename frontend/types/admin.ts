@@ -79,7 +79,15 @@ export interface AdminStockDetails extends AdminStockProduct {
 }
 
 export interface AdminProductsPage {
-  items: { productId: number; name: string; category: string | null; variants: number }[]
+  items: {
+    productId: number
+    name: string
+    category: string | null
+    imageUrl: string | null
+    variants: number
+    pricedVariants?: number
+    hasDescription?: boolean
+  }[]
   page: number
   pages: number
   total: number
