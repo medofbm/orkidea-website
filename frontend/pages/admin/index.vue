@@ -2,6 +2,13 @@
 import type { AdminDashboard } from '~/types/admin'
 definePageMeta({ layout: 'admin' })
 useSeoMeta({ title: 'لوحة إدارة أوركيديا' })
+const shortcuts = [
+  { to: '/admin/orders', label: 'مراجعة الطلبات' },
+  { to: '/admin/orders/manual', label: 'تسجيل طلب من فيسبوك' },
+  { to: '/admin/inventory', label: 'إدارة المخزون' },
+  { to: '/admin/delivery', label: 'التوصيل والرواجع' },
+  { to: '/admin/products', label: 'مراجعة المنتجات' }
+]
 const { data, error, status } = useFetch<AdminDashboard>('/api/admin/dashboard', { server: false, cache: 'no-store' })
 </script>
 
@@ -11,6 +18,17 @@ const { data, error, status } = useFetch<AdminDashboard>('/api/admin/dashboard',
     <p v-if="status === 'idle' || status === 'pending'" role="status">جاري تحميل الملخص…</p>
     <AdminReadError v-else-if="error" :status-code="error.statusCode" />
     <template v-else-if="data">
+      <nav aria-labelledby="dashboard-shortcuts" class="mb-6">
+        <h2 id="dashboard-shortcuts" class="mb-3 text-xl font-semibold">إجراءات الإدارة</h2>
+        <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <li v-for="shortcut in shortcuts" :key="shortcut.to">
+            <NuxtLink :to="shortcut.to"
+              class="flex min-h-11 items-center rounded-lg border border-purple-200 bg-white px-3 py-2 font-semibold text-purple-950 hover:bg-purple-50 focus-visible:bg-purple-50">
+              {{ shortcut.label }}
+            </NuxtLink>
+          </li>
+        </ul>
+      </nav>
       <dl class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-xl bg-white p-4">
           <dt>قيمة المنتجات المطلوبة خلال 30 يومًا</dt>
