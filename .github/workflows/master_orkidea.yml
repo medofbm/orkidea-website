@@ -126,7 +126,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build the immutable preview image from a clean checkout
-        run: docker build --label "org.opencontainers.image.revision=${GITHUB_SHA}" --tag "orkidea-preview:${GITHUB_SHA}" .
+        run: docker build --network=host --label "org.opencontainers.image.revision=${GITHUB_SHA}" --tag "orkidea-preview:${GITHUB_SHA}" .
       - name: Inspect the image and run the real web process safely
         shell: bash
         run: |
@@ -156,7 +156,7 @@ jobs:
         run: |
           set -euo pipefail
           image="orkidea-vue-preview:${GITHUB_SHA}"
-          docker build --label "org.opencontainers.image.revision=${GITHUB_SHA}" --tag "$image" frontend
+          docker build --network=host --label "org.opencontainers.image.revision=${GITHUB_SHA}" --tag "$image" frontend
           test "$(docker image inspect "$image" --format '{{.Config.User}}')" = node
           docker run --rm --entrypoint sh "$image" -c 'test ! -e /src && test ! -e /app/.env && test ! -e /app/tests'
           bash tests/check-vue-preview-compose.sh
