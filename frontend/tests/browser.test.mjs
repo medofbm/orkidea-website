@@ -50,6 +50,24 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
       cookie.secure && cookie.httpOnly), 'Identity cookie is Secure and HttpOnly')
     console.log('PASS browser: anonymous denial and real admin login over HTTPS')
 
+    await page.goto(origin + '/admin')
+    const dashboardShortcuts = page.getByRole('navigation', { name: 'إجراءات الإدارة' })
+    await dashboardShortcuts.waitFor()
+    const expectedShortcuts = [
+      ['مراجعة الطلبات', '/admin/orders'],
+      ['تسجيل طلب من فيسبوك', '/admin/orders/manual'],
+      ['إدارة المخزون', '/admin/inventory'],
+      ['التوصيل والرواجع', '/admin/delivery'],
+      ['مراجعة المنتجات', '/admin/products']
+    ]
+    assert.equal(await dashboardShortcuts.getByRole('link').count(), expectedShortcuts.length,
+      'dashboard exposes exactly the five expected shortcuts')
+    for (const [label, href] of expectedShortcuts) {
+      assert.equal(await dashboardShortcuts.getByRole('link', { name: label, exact: true }).getAttribute('href'), href,
+        `dashboard shortcut ${label} targets ${href}`)
+    }
+    console.log('PASS browser: authenticated dashboard shortcuts have accessible names and correct routes')
+
     await page.goto(origin + '/admin/categories')
     await page.getByLabel('اسم الفئة').fill('فئة اختبار المتصفح')
     await page.getByRole('button', { name: 'حفظ الفئة' }).click()
