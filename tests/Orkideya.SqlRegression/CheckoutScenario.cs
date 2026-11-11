@@ -87,6 +87,11 @@ internal static class CheckoutScenario
             "Checkout snapshots configured consumption and unit but does not reserve or consume");
         check(await controller.PlaceOrder(trackedInput) is RedirectToActionResult {ActionName:"Confirmation"} &&
             !await db.StockMovements.AnyAsync(m=>m.OrderId==tracked.OrderId),"Checkout retry does not create stock movements");
+        var carrierVariant = new ProductVariant { Product = product, Size = "100 ml", Price = 25m };
+        db.ProductVariants.Add(carrierVariant);
+        await db.SaveChangesAsync();
+        var carrierCart = new List<CartItem> { new() { ProductVariantId = carrierVariant.ProductVariantId,
+            ProductId = product.ProductId, ProductName = product.Name, Price = carrierVariant.Price, Quantity = 1 } };
         var destination = new QuoteDestination("test-branch", "Test city", "Test area");
         var quoteContext = new CheckoutQuoteContext(new EphemeralDataProtectionProvider(), TimeProvider.System);
         var carrierOptions = new SabilReadOptions
@@ -104,14 +109,14 @@ internal static class CheckoutScenario
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { Session = session } }
         };
-        session.SetString("Cart", JsonSerializer.Serialize(cart));
+        session.SetString("Cart", JsonSerializer.Serialize(carrierCart));
         var carrierModel = (CheckoutViewModel)((ViewResult)await carrierController.Index()).Model!;
         var carrierInput = Customer(carrierModel);
         carrierInput.ShippingRateId = 0;
         carrierInput.CarrierDestination = "test-area";
         var carrierToken = carrierInput.CheckoutToken!.Value;
         var binding = new QuoteBinding(carrierToken, carrierOptions.QuoteServiceId, checkoutOptions.OriginRevision,
-            checkoutOptions.HandoffMode, destination, [new QuoteCartLine(variant.ProductVariantId, 2, variant.Price)]);
+            checkoutOptions.HandoffMode, destination, [new QuoteCartLine(carrierVariant.ProductVariantId, 1, carrierVariant.Price)]);
         carrierInput.QuoteToken = "invalid";
         check(await carrierController.PlaceOrder(carrierInput) is ViewResult &&
             !await db.Orders.AnyAsync(o => o.CheckoutToken == carrierToken), "Carrier checkout rejects an invalid quote without saving an order");
@@ -127,8 +132,8 @@ internal static class CheckoutScenario
             "Carrier checkout saves an order with a matching protected quote");
         var carrierOrder = await db.Orders.AsNoTracking().Include(o => o.ShippingQuote).SingleAsync(o => o.CheckoutToken == carrierToken);
         check(carrierOrder.ShippingQuote is { ShippingFee: 15m, Area: "Test area" } &&
-            carrierOrder.TotalAmount == 75m && carrierOrder.ShippingCost == 15m,
-            "Carrier checkout persists the reviewed fee and destination with the total");
+            carrierOrder.TotalAmount == 40m && carrierOrder.ShippingCost == 15m,
+            "Carrier checkout persists 25 LYD products plus 15 LYD shipping as 40 LYD with the quote");
         carrierInput.QuoteToken = null;
         check(await carrierController.PlaceOrder(carrierInput) is RedirectToActionResult { ActionName: "Confirmation" } &&
             await db.Orders.CountAsync(o => o.CheckoutToken == carrierToken) == 1,
@@ -136,7 +141,7 @@ internal static class CheckoutScenario
 
         var pickup = destination with { Service = "women", ServiceId = new string('b', 24), IsPickup = true };
         checkoutOptions.HomeDestinations.Add("test-office", pickup);
-        session.SetString("Cart", JsonSerializer.Serialize(cart));
+        session.SetString("Cart", JsonSerializer.Serialize(carrierCart));
         var pickupModel = (CheckoutViewModel)((ViewResult)await carrierController.Index()).Model!;
         var pickupInput = Customer(pickupModel);
         pickupInput.ShippingRateId = 0;
@@ -157,7 +162,7 @@ internal static class CheckoutScenario
             "Office pickup saves without a personal delivery address");
         var pickupOrder = await db.Orders.AsNoTracking().Include(o => o.ShippingQuote).SingleAsync(o => o.CheckoutToken == pickupToken);
         check(pickupOrder.ShippingQuote is { IsPickup: true, ServiceKind: "women", HandoffMode: "OfficeDropoff", ShippingFee: 10m } &&
-            pickupOrder.ShippingAddress == "استلام من مكتب درب السبيل" && pickupOrder.TotalAmount == 70m,
+            pickupOrder.ShippingAddress == "استلام من مكتب درب السبيل" && pickupOrder.TotalAmount == 35m,
             "Stored office pickup, service and merchant handoff remain distinct with the exact total");
 
         var missingProduct=new Product{Name="Synthetic missing stock size"};
