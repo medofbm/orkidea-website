@@ -1,6 +1,10 @@
 <script setup lang="ts">
-const { cart } = useCart()
+const { cart, load } = useCart()
+const route = useRoute()
 const brandImage = '/images/logo.jpg'
+onMounted(() => {
+  if (!cart.value && route.path !== '/cart') void load().catch(() => undefined)
+})
 </script>
 
 <template>
