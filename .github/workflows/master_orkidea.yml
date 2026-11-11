@@ -109,7 +109,10 @@ jobs:
         run: |
           npm ci --registry=https://registry.npmjs.org
           npm run build
-          npm exec -- playwright install --with-deps --only-shell chromium
+          npm exec -- playwright install --only-shell chromium
+          if ! node --input-type=module -e 'import { chromium } from "playwright"; const browser = await chromium.launch(); await browser.close()'; then
+            npm exec -- playwright install-deps chromium
+          fi
       - name: Exercise the Vue and ASP.NET preview in Chromium over HTTPS
         run: bash tests/run-browser-preview.sh
       - name: Remove this run's disposable database container

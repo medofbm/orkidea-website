@@ -31,6 +31,21 @@ internal static class SabilShippingFeeRegression
             "{\"type\":\"product\",\"amount\":10,\"quantity\":1},{\"type\":\"product\",\"amount\":25,\"quantity\":2}");
         check(SabilShippingFeePolicy.TryGetShippingFee(Parse(two),[new(25,2),new(10,1)],out fee)&&fee==15,
             "Provider product order does not matter while all amount/quantity rows must match");
+        var men = new QuoteDestination("branch", "city", "area") { Service = "men" };
+        var women = men with { Service = "women" };
+        var office = men with { IsPickup = true };
+        var withCharge = json.Replace("""{"type":"shipping","amount":15}""",
+            """{"type":"shipping","amount":15},{"type":"charge","amount":10}""");
+        var officeQuote = json.Replace("""{"type":"shipping","amount":15}""",
+            """{"type":"shipping","amount":10},{"type":"shipping","amount":-5}""");
+        check(SabilShippingFeePolicy.TryGetShippingFee(Parse(withCharge),cart,out fee,women) && fee == 25m,
+            "Women's home delivery includes the explicit 10 LYD carrier charge");
+        check(SabilShippingFeePolicy.TryGetShippingFee(Parse(officeQuote),cart,out fee,office) && fee == 5m,
+            "Office pickup uses the verified 5 LYD net shipping");
+        check(!SabilShippingFeePolicy.TryGetShippingFee(Parse(withCharge),cart,out fee,men) &&
+            !SabilShippingFeePolicy.TryGetShippingFee(Parse(json),cart,out fee,women) &&
+            !SabilShippingFeePolicy.TryGetShippingFee(Parse(officeQuote),cart,out fee,women with { IsPickup = true }),
+            "Unexpected charges, missing surcharge and women's pickup cannot issue a quote");
         var invoice=Parse(json).GetProperty("invoices")[0].GetRawText();
         check(!SabilShippingFeePolicy.TryGetShippingFee(Parse("{\"invoices\":["+invoice+","+invoice+"]}"),cart,out fee)&&fee is null,
             "Multiple invoices require explicit reconciliation rather than automatic fee summation");

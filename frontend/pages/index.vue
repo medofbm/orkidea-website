@@ -2,11 +2,22 @@
 import type { CataloguePage } from '~/types/catalogue'
 const brandImage = '/images/logo.jpg'
 const route = useRoute()
-const page = computed(() => Math.max(1, Number(route.query.page) || 1))
+function positiveInteger(value: unknown, max: number) {
+  if (typeof value !== 'string' || !/^[0-9]+$/.test(value)) return undefined
+  const number = Number(value)
+  return Number.isSafeInteger(number) && number >= 1 && number <= max ? number : undefined
+}
+const page = computed(() => positiveInteger(route.query.page, 10000) ?? 1)
+const categoryId = computed(() => positiveInteger(route.query.categoryId, 2147483647))
 const { data, status, error, refresh } = await useFetch<CataloguePage>(
   () => useRuntimeConfig().public.apiBase + '/products',
-  { query: { page } }
+  { query: { page, categoryId } }
 )
+const products = computed(() => (data.value?.items ?? []).map(product => ({
+  ...product,
+  startingPrice: product.variants.reduce<string | undefined>((lowest, variant) =>
+    lowest === undefined || Number(variant.price) < Number(lowest) ? variant.price : lowest, undefined)
+})))
 useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح منتجات أوركيديا والأحجام المتاحة.' })
 </script>
 
@@ -26,7 +37,7 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
         تصفّحي المنتجات وشوفي الأحجام والأسعار قبل ما تختاري اللي يناسبك.
       </p>
       <a href="#catalogue-heading"
-        class="mt-5 inline-flex min-h-11 items-center gap-3 rounded-full bg-purple-900 px-5 text-sm font-bold text-white hover:bg-purple-800">
+        class="mt-5 inline-flex min-h-11 items-center gap-3 rounded-full bg-purple-900 px-5 text-sm font-bold text-white hover:bg-purple-800 motion-safe:transition motion-safe:active:scale-95">
         تصفّحي المنتجات
         <span aria-hidden="true">↓</span>
       </a>
@@ -41,6 +52,15 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
       <h2 id="catalogue-heading" tabindex="-1" class="scroll-mt-4 text-2xl font-bold text-purple-950 sm:text-3xl">منتجات أوركيديا</h2>
       <p v-if="data?.items.length && !error" class="text-sm text-purple-900">عدد المنتجات <bdi class="font-bold">{{ data.total }}</bdi></p>
     </div>
+    <nav v-if="data?.categories?.length" aria-label="فئات المنتجات" class="mb-5 flex flex-wrap gap-2">
+      <NuxtLink :to="{ query: {}, hash: '#catalogue-heading' }"
+        :aria-current="categoryId === undefined ? 'page' : undefined"
+        class="inline-flex min-h-11 items-center rounded-full border border-purple-200 px-4 text-sm font-semibold text-purple-950 aria-[current=page]:bg-purple-900 aria-[current=page]:text-white">كل المنتجات</NuxtLink>
+      <NuxtLink v-for="category in data.categories" :key="category.id"
+        :to="{ query: { categoryId: category.id }, hash: '#catalogue-heading' }"
+        :aria-current="categoryId === category.id ? 'page' : undefined"
+        class="inline-flex min-h-11 items-center rounded-full border border-purple-200 px-4 text-sm font-semibold text-purple-950 aria-[current=page]:bg-purple-900 aria-[current=page]:text-white">{{ category.name }}</NuxtLink>
+    </nav>
     <p v-if="status === 'pending'" role="status">جاري تحميل المنتجات…</p>
     <div v-else-if="error" role="alert" class="rounded-xl border border-red-200 p-4">
       <p>تعذر تحميل المنتجات.</p>
@@ -49,8 +69,8 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
     <template v-else>
       <p v-if="!data?.items.length">لا توجد منتجات لعرضها حاليًا.</p>
       <div class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-        <NuxtLink v-for="product in data?.items" :key="product.id" :to="'/products/' + product.id"
-          class="group flex min-w-0 flex-col rounded-2xl border border-purple-100 bg-white p-2 shadow-sm motion-safe:transition-shadow hover:border-purple-300 hover:shadow-md sm:p-3">
+        <NuxtLink v-for="product in products" :key="product.id" :to="'/products/' + product.id"
+          class="group flex min-w-0 flex-col rounded-2xl border border-purple-100 bg-white p-2 shadow-sm motion-safe:transition motion-safe:hover:-translate-y-0.5 motion-safe:focus-visible:-translate-y-0.5 hover:border-purple-300 hover:shadow-md sm:p-3">
           <div class="grid aspect-square place-items-center overflow-hidden rounded-xl bg-purple-50">
             <img v-if="product.images[0] && product.images[0] !== brandImage"
               :src="product.images[0]" alt="" class="size-full object-contain" loading="lazy" width="320" height="320">
@@ -65,8 +85,8 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
           <div class="flex flex-1 flex-col px-1 pt-3 pb-1">
             <p v-if="product.category" class="mb-1 text-xs wrap-anywhere text-purple-800">{{ product.category }}</p>
             <h3 class="text-sm leading-relaxed font-bold wrap-anywhere text-purple-950 sm:text-base">{{ product.name }}</h3>
-            <p v-if="product.variants[0]" class="mt-1 pb-3 text-sm text-purple-900">
-              <span v-if="product.variants.length > 1">من </span><bdi class="font-bold">{{ product.variants[0].price }}</bdi> د.ل
+            <p v-if="product.startingPrice !== undefined" class="mt-1 pb-3 text-sm text-purple-900">
+              <span v-if="product.variants.length > 1">من </span><bdi class="font-bold">{{ product.startingPrice }}</bdi> د.ل
             </p>
             <span aria-hidden="true" class="mt-auto flex min-h-9 items-center justify-between gap-1 border-t border-purple-100 pt-1 text-xs font-bold text-purple-900 sm:text-sm">
               عرض التفاصيل <span class="group-hover:text-purple-700">←</span>
@@ -75,9 +95,16 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
         </NuxtLink>
       </div>
       <nav v-if="data && data.total > data.pageSize" class="mt-8 flex justify-between" aria-label="صفحات المنتجات">
-        <NuxtLink v-if="page > 1" :to="{ query: { page: page - 1 } }">السابق</NuxtLink>
-        <NuxtLink v-if="page * data.pageSize < data.total" :to="{ query: { page: page + 1 } }">التالي</NuxtLink>
+        <NuxtLink v-if="page > 1" :to="{ query: { page: page - 1, categoryId }, hash: '#catalogue-heading' }">السابق</NuxtLink>
+        <NuxtLink v-if="page * data.pageSize < data.total" :to="{ query: { page: page + 1, categoryId }, hash: '#catalogue-heading' }">التالي</NuxtLink>
       </nav>
     </template>
+  </section>
+  <section id="about-orkidea" tabindex="-1" aria-labelledby="about-heading"
+    class="mt-10 scroll-mt-4 rounded-3xl border border-purple-100 bg-white p-5 sm:p-8">
+    <h2 id="about-heading" class="text-2xl font-bold text-purple-950">عن أوركيديا</h2>
+    <p class="mt-2 max-w-prose leading-relaxed text-purple-900">
+      أوركيديا متجر ليبي للزيوت والصابون للعناية اليومية. اختاري المنتج والحجم، وشوفي تكلفة التوصيل والإجمالي قبل تأكيد الطلب.
+    </p>
   </section>
 </template>

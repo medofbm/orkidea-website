@@ -94,6 +94,21 @@ try
             "Catalogue API includes the legacy cover");
         Check(!payload.TryGetProperty("GalleryJson", out _) && !payload.TryGetProperty("StockAccounts", out _),
             "Catalogue API exposes only its public contract");
+        var category = new Category { Name = "Catalogue filter fixture" };
+        for (var index = 0; index < 25; index++)
+        {
+            var listedProduct = new Product { Name = $"Catalogue fixture {index}", Category = category };
+            db.ProductVariants.Add(new ProductVariant { Product = listedProduct, Size = "100 ml", Price = 25m });
+        }
+        db.Products.Add(new Product { Name = "Unpriced catalogue fixture", Category = category });
+        await db.SaveChangesAsync();
+        var categoryResponse = (Microsoft.AspNetCore.Mvc.OkObjectResult)await catalogue.Products(2, categoryId: category.CategoryId);
+        var categoryPage = System.Text.Json.JsonSerializer.SerializeToElement(categoryResponse.Value);
+        Check(categoryPage.GetProperty("total").GetInt32() == 25 &&
+            categoryPage.GetProperty("items").GetArrayLength() == 1 &&
+            categoryPage.GetProperty("items")[0].GetProperty("category").GetString() == category.Name &&
+            categoryPage.GetProperty("categories").EnumerateArray().Any(item => item.GetProperty("id").GetInt32() == category.CategoryId),
+            "Catalogue filters priced products before pagination and returns available categories");
         Check(await catalogue.Products(0) is Microsoft.AspNetCore.Mvc.BadRequestObjectResult,
             "Catalogue API rejects invalid pagination");
         Check(await catalogue.Product(int.MaxValue, default) is Microsoft.AspNetCore.Mvc.NotFoundObjectResult,

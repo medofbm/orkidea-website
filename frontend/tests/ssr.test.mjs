@@ -103,7 +103,10 @@ test('built storefront renders catalogue data and the product gallery on the ser
       return res.end(JSON.stringify({ ...product, id: 2, images: ['/images/logo.jpg'], variants: [] }))
     }
     if (req.url?.startsWith('/api/v1/catalogue/products?')) {
-      return res.end(JSON.stringify({ items: [product], page: 1, pageSize: 24, total: 1 }))
+      const query = new URL(req.url, 'http://localhost').searchParams
+      const items = query.has('categoryId') && query.get('categoryId') !== '1' ? [] : [product]
+      return res.end(JSON.stringify({ items, page: 1, pageSize: 24, total: items.length,
+        categories: [{ id: 1, name: product.category }] }))
     }
     res.statusCode = 404
     res.end('{}')
@@ -127,6 +130,12 @@ test('built storefront renders catalogue data and the product gallery on the ser
     assert.ok(ready, 'built frontend starts')
     const listing = await (await fetch(origin)).text()
     assert.ok(listing.includes(product.name), 'catalogue is present in initial HTML')
+    const filtered = await (await fetch(origin + '/?categoryId=1')).text()
+    assert.ok(filtered.includes(product.name), 'matching category retains its product')
+    assert.match(filtered, /aria-current="page"[^>]*>زيوت</, 'active category is announced')
+    const emptyCategory = await (await fetch(origin + '/?categoryId=2')).text()
+    assert.ok(!emptyCategory.includes(product.name), 'category filter is forwarded to the backend')
+    assert.ok(emptyCategory.includes('لا توجد منتجات'), 'empty category has an explicit state')
     const detail = await (await fetch(origin + '/products/1')).text()
     assert.ok(detail.includes(product.description), 'detail renders backend data')
     assert.ok(detail.includes('25.00'), 'decimal price remains exact')

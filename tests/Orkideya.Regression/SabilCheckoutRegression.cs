@@ -20,7 +20,7 @@ internal static class SabilCheckoutRegression
         check(result.State==CheckoutQuoteState.Success && result.ShippingFee==15 && result.Token is not null && fake.Reads==1 && fake.Quotes==1,
             "Orchestration validates destination, accepts fee and protects matching cart context");
         check(service.TryValidate(result.Token,id,dest,lines,out var fee)&&fee==15,"Prepared quote validates against current server context");
-        var office = dest with { Service = "women", ServiceId = new string('b', 24), IsPickup = true };
+        var office = dest with { Service = "men", ServiceId = new string('b', 24), IsPickup = true };
         var quotesBeforeOffice = fake.Quotes;
         check((await service.PrepareAsync(id,office,lines)).State == CheckoutQuoteState.DestinationUnavailable &&
             fake.Quotes == quotesBeforeOffice, "A destination without an office pickup rate cannot be quoted for pickup");
@@ -28,10 +28,10 @@ internal static class SabilCheckoutRegression
         var officeQuote = await service.PrepareAsync(id,office,lines);
         check(officeQuote.State == CheckoutQuoteState.Success &&
             fake.LastQuote is { IsPickup: true } sent && sent.ServiceId == office.ServiceId &&
-            service.ReadSnapshot(officeQuote.Token,id,office,lines) is { IsPickup: true, ServiceKind: "women" },
+            service.ReadSnapshot(officeQuote.Token,id,office,lines) is { IsPickup: true, ServiceKind: "men", ShippingFee: 5m },
             "Office quote uses the approved service and preserves recipient pickup separately");
         check(!service.TryValidate(officeQuote.Token,id,office with { IsPickup = false },lines,out _) &&
-            !service.TryValidate(officeQuote.Token,id,office with { Service = "men", ServiceId = new string('c', 24) },lines,out _),
+            !service.TryValidate(officeQuote.Token,id,office with { Service = "women", ServiceId = new string('c', 24) },lines,out _),
             "A quote cannot be reused with a different pickup choice or service");
         check(!service.TryValidate(result.Token,id,dest,[new(1,2,25)],out fee)&&fee is null,"Changed server cart invalidates prepared quote without network");
         settings.OriginRevision="v2";
@@ -72,7 +72,7 @@ internal static class SabilCheckoutRegression
         public Task<CarrierReadResult> CalculateAsync(CarrierQuoteRequest request,CancellationToken cancellationToken=default)
         {
             Quotes++;LastQuote=request;OnQuote?.Invoke();return Task.FromResult(Fail?new CarrierReadResult(CarrierReadState.PermissionDenied):new(CarrierReadState.Success,
-                Parse("{\"invoices\":[{\"currency\":\"lyd\",\"items\":[{\"type\":\"product\",\"amount\":25,\"quantity\":1},{\"type\":\"shipping\",\"amount\":15}"+(ExtraFee?",{\"type\":\"tax\",\"amount\":1}":"")+"]}]}")));
+                Parse("{\"invoices\":[{\"currency\":\"lyd\",\"items\":[{\"type\":\"product\",\"amount\":25,\"quantity\":1},{\"type\":\"shipping\",\"amount\":"+(request.IsPickup?"5":"15")+"}"+(ExtraFee?",{\"type\":\"tax\",\"amount\":1}":"")+"]}]}")));
         }
         public Task<CarrierReadResult> ListServicePackagesAsync(CancellationToken c=default)=>throw new NotSupportedException();
         public Task<CarrierReadResult> GetShipmentAsync(string r,CancellationToken c=default)=>throw new NotSupportedException();
