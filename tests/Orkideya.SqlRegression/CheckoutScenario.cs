@@ -87,11 +87,12 @@ internal static class CheckoutScenario
             "Checkout snapshots configured consumption and unit but does not reserve or consume");
         check(await controller.PlaceOrder(trackedInput) is RedirectToActionResult {ActionName:"Confirmation"} &&
             !await db.StockMovements.AnyAsync(m=>m.OrderId==tracked.OrderId),"Checkout retry does not create stock movements");
-        var carrierVariant = new ProductVariant { Product = product, Size = "100 ml", Price = 25m };
+        var carrierProduct = new Product { Name = "Synthetic carrier checkout product" };
+        var carrierVariant = new ProductVariant { Product = carrierProduct, Size = "100 ml", Price = 25m };
         db.ProductVariants.Add(carrierVariant);
         await db.SaveChangesAsync();
         var carrierCart = new List<CartItem> { new() { ProductVariantId = carrierVariant.ProductVariantId,
-            ProductId = product.ProductId, ProductName = product.Name, Price = carrierVariant.Price, Quantity = 1 } };
+            ProductId = carrierProduct.ProductId, ProductName = carrierProduct.Name, Price = carrierVariant.Price, Quantity = 1 } };
         var destination = new QuoteDestination("test-branch", "Test city", "Test area");
         var quoteContext = new CheckoutQuoteContext(new EphemeralDataProtectionProvider(), TimeProvider.System);
         var carrierOptions = new SabilReadOptions
