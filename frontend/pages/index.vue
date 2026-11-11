@@ -37,7 +37,7 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
         تصفّحي المنتجات وشوفي الأحجام والأسعار قبل ما تختاري اللي يناسبك.
       </p>
       <a href="#catalogue-heading"
-        class="mt-5 inline-flex min-h-11 items-center gap-3 rounded-full bg-purple-900 px-5 text-sm font-bold text-white hover:bg-purple-800">
+        class="mt-5 inline-flex min-h-11 items-center gap-3 rounded-full bg-purple-900 px-5 text-sm font-bold text-white hover:bg-purple-800 motion-safe:transition motion-safe:active:scale-95">
         تصفّحي المنتجات
         <span aria-hidden="true">↓</span>
       </a>
@@ -70,7 +70,7 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
       <p v-if="!data?.items.length">لا توجد منتجات لعرضها حاليًا.</p>
       <div class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
         <NuxtLink v-for="product in products" :key="product.id" :to="'/products/' + product.id"
-          class="group flex min-w-0 flex-col rounded-2xl border border-purple-100 bg-white p-2 shadow-sm motion-safe:transition-shadow hover:border-purple-300 hover:shadow-md sm:p-3">
+          class="group flex min-w-0 flex-col rounded-2xl border border-purple-100 bg-white p-2 shadow-sm motion-safe:transition motion-safe:hover:-translate-y-0.5 motion-safe:focus-visible:-translate-y-0.5 hover:border-purple-300 hover:shadow-md sm:p-3">
           <div class="grid aspect-square place-items-center overflow-hidden rounded-xl bg-purple-50">
             <img v-if="product.images[0] && product.images[0] !== brandImage"
               :src="product.images[0]" alt="" class="size-full object-contain" loading="lazy" width="320" height="320">
@@ -99,5 +99,12 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
         <NuxtLink v-if="page * data.pageSize < data.total" :to="{ query: { page: page + 1, categoryId }, hash: '#catalogue-heading' }">التالي</NuxtLink>
       </nav>
     </template>
+  </section>
+  <section id="about-orkidea" tabindex="-1" aria-labelledby="about-heading"
+    class="mt-10 scroll-mt-4 rounded-3xl border border-purple-100 bg-white p-5 sm:p-8">
+    <h2 id="about-heading" class="text-2xl font-bold text-purple-950">عن أوركيديا</h2>
+    <p class="mt-2 max-w-prose leading-relaxed text-purple-900">
+      أوركيديا متجر ليبي للزيوت والصابون للعناية اليومية. اختاري المنتج والحجم، وشوفي تكلفة التوصيل والإجمالي قبل تأكيد الطلب.
+    </p>
   </section>
 </template>
