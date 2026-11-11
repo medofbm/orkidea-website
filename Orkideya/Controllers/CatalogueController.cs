@@ -11,15 +11,20 @@ namespace Orkideya.Controllers;
 public sealed class CatalogueController(ApplicationDbContext context) : ControllerBase
 {
     [HttpGet("products")]
-    public async Task<IActionResult> Products(int page = 1, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Products(int page = 1, CancellationToken cancellationToken = default, int? categoryId = null)
     {
         if (page < 1 || page > 10000) return BadRequest(new ProblemDetails { Title = "رقم الصفحة غير صالح." });
         const int pageSize = 24;
         var query = context.Products.AsNoTracking().Where(product => product.ProductVariants.Any(variant => variant.Price > 0));
+        var categories = await query.Where(product => product.Category != null)
+            .Select(product => new { id = product.Category!.CategoryId, name = product.Category.Name })
+            .Distinct().OrderBy(category => category.name).ThenBy(category => category.id).ToListAsync(cancellationToken);
+        if (categoryId.HasValue)
+            query = query.Where(product => product.CategoryId == categoryId);
         var total = await query.CountAsync(cancellationToken);
         var products = await query.Include(product => product.ProductVariants).Include(product => product.Category)
             .OrderBy(product => product.ProductId).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
-        return Ok(new { items = products.Select(ToResponse), page, pageSize, total });
+        return Ok(new { items = products.Select(ToResponse), page, pageSize, total, categories });
     }
 
     [HttpGet("products/{id:int}")]

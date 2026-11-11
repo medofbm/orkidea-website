@@ -11,4 +11,5 @@ export interface CataloguePage {
   page: number
   pageSize: number
   total: number
+  categories: { id: number; name: string }[]
 }
