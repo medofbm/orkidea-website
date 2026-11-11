@@ -67,7 +67,15 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
       <button class="mt-3 min-h-11 rounded-lg bg-purple-800 px-4 text-white" @click="refresh()">إعادة المحاولة</button>
     </div>
     <template v-else>
-      <p v-if="!data?.items.length">لا توجد منتجات لعرضها حاليًا.</p>
+      <div v-if="!data?.items.length" class="rounded-2xl border border-purple-100 bg-purple-50 p-5 text-center sm:p-8">
+        <p class="font-semibold text-purple-950">
+          {{ categoryId ? 'ما فيش منتجات ضمن الفئة المختارة حاليًا.' : 'لا توجد منتجات لعرضها حاليًا.' }}
+        </p>
+        <NuxtLink v-if="categoryId" :to="{ query: {}, hash: '#catalogue-heading' }"
+          class="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-purple-900 px-5 font-bold text-white hover:bg-purple-800 motion-safe:transition-colors motion-safe:duration-200">
+          عرض كل المنتجات
+        </NuxtLink>
+      </div>
       <div class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
         <NuxtLink v-for="product in products" :key="product.id" :to="'/products/' + product.id"
           class="group flex min-w-0 flex-col rounded-2xl border border-purple-100 bg-white p-2 shadow-sm motion-safe:transition motion-safe:hover:-translate-y-0.5 motion-safe:focus-visible:-translate-y-0.5 hover:border-purple-300 hover:shadow-md sm:p-3">
