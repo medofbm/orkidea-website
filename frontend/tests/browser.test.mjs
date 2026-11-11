@@ -133,7 +133,7 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
         total: null, cartRevision: 'fixture', shippingRates: [], errors: [],
         destinations: [
           { key: 'women-home', city: 'طرابلس', area: 'عين زارة', service: 'women', isPickup: false },
-          { key: 'women-office', city: 'طرابلس', area: 'مكتب الاختبار', service: 'women', isPickup: true },
+          { key: 'men-office', city: 'طرابلس', area: 'مكتب الاختبار', service: 'men', isPickup: true },
           { key: 'men-home', city: 'طرابلس', area: 'عين زارة', service: 'men', isPickup: false }
         ]
       }
@@ -142,15 +142,15 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
       await customer.route('**/api/checkout/shipping', route => {
         const selection = route.request().postDataJSON()
         quotedChoices.push(selection)
-        const office = selection.carrierDestination === 'women-office'
+        const office = selection.carrierDestination === 'men-office'
         return route.fulfill({ json: { ...deliveryChoices, quoteToken: 'fixture-quote',
           shippingFee: office ? '5.00' : '15.00', total: office ? '30.00' : '40.00' } })
       })
       await customer.goto(origin + '/checkout')
       await customer.getByRole('radio', { name: 'توصيل نسائي' }).check()
       assert.equal(await customer.getByLabel('رقم الواتساب').count(), 0)
-      await customer.getByLabel('مدينة التوصيل').selectOption('طرابلس')
       await customer.getByRole('radio', { name: 'استلام من المكتب' }).check()
+      await customer.getByLabel('مدينة التوصيل').selectOption('طرابلس')
       await customer.getByText('30.00', { exact: true }).waitFor()
       assert.equal(await customer.getByLabel('العنوان بالتفصيل').count(), 0)
       await customer.getByLabel('الاسم الأول').waitFor()
@@ -159,9 +159,9 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
       await customer.getByLabel('مدينة التوصيل').selectOption('طرابلس')
       await customer.getByText('40.00', { exact: true }).waitFor()
       await customer.getByLabel('العنوان بالتفصيل').waitFor()
-      assert.equal(await customer.getByRole('radio', { name: 'استلام من المكتب' }).count(), 0)
+      assert.equal(await customer.getByRole('radio', { name: 'استلام من المكتب' }).count(), 1)
       assert.deepEqual(quotedChoices, [
-        { checkoutToken: 'fixture', carrierDestination: 'women-office' },
+        { checkoutToken: 'fixture', carrierDestination: 'men-office' },
         { checkoutToken: 'fixture', carrierDestination: 'men-home' }
       ])
       await context.close()

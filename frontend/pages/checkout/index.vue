@@ -9,29 +9,27 @@ const busy = ref(false)
 const errors = ref<string[]>([])
 const fields = reactive({ firstName: '', lastName: '', whatsAppNumber: '', shippingAddress: '',
   shippingRateId: 0, carrierDestination: '' })
-const serviceLabels = { women: 'توصيل نسائي', men: 'توصيل رجالي' }
+const serviceLabels = { women: 'توصيل نسائي', men: 'توصيل رجالي', office: 'استلام من المكتب' }
 const service = ref<keyof typeof serviceLabels | ''>('')
 const city = ref('')
-const method = ref<'home' | 'office' | ''>('')
 const destinationKey = ref('')
 const destinations = computed(() => state.value?.destinations ?? [])
-const services = computed(() => (['women', 'men'] as const)
-  .filter(kind => destinations.value.some(destination => destination.service === kind)))
+function choice(destination: NonNullable<CheckoutState['destinations']>[number]) {
+  return destination.isPickup ? (destination.service === 'men' ? 'office' : undefined) : destination.service
+}
+const services = computed(() => (['women', 'men', 'office'] as const)
+  .filter(kind => destinations.value.some(destination => choice(destination) === kind)))
 const selectedService = computed(() => services.value.length === 1 ? services.value[0] : service.value)
 const serviceDestinations = computed(() => destinations.value.filter(destination =>
-  services.value.length ? destination.service === selectedService.value : !destination.service))
+  services.value.length ? choice(destination) === selectedService.value : !destination.service && !destination.isPickup))
 const cities = computed(() => [...new Set(serviceDestinations.value.map(destination => destination.city))])
-const cityDestinations = computed(() => serviceDestinations.value.filter(destination => destination.city === city.value))
-const canDeliver = computed(() => cityDestinations.value.some(destination => !destination.isPickup))
-const canCollect = computed(() => cityDestinations.value.some(destination => destination.isPickup))
-const selectedMethod = computed(() => canDeliver.value && canCollect.value ? method.value :
-  canCollect.value ? 'office' : canDeliver.value ? 'home' : '')
-const options = computed(() => selectedMethod.value ? cityDestinations.value.filter(destination =>
-  !!destination.isPickup === (selectedMethod.value === 'office')) : [])
+const options = computed(() => serviceDestinations.value.filter(destination => destination.city === city.value))
 const selectedDestination = computed(() => options.value.length === 1 ? options.value[0] :
   options.value.find(destination => destination.key === destinationKey.value))
 const rate = computed(() => state.value?.shippingRates.find(item => item.id === fields.shippingRateId))
-const hasDeliveryOptions = computed(() => (state.value?.destinations?.length ?? state.value?.shippingRates.length ?? 0) > 0)
+const hasDeliveryOptions = computed(() => state.value?.destinations
+  ? services.value.length > 0 || serviceDestinations.value.length > 0
+  : (state.value?.shippingRates.length ?? 0) > 0)
 const shippingFee = computed(() => state.value?.destinations ? state.value.shippingFee : rate.value?.price)
 const total = computed(() => state.value?.destinations ? state.value.total : rate.value?.total)
 
@@ -42,18 +40,12 @@ function chooseService(kind: keyof typeof serviceLabels) {
 }
 
 function resetMethod() {
-  method.value = ''
   destinationKey.value = ''
 }
 
 function chooseCity(event: Event) {
   resetMethod()
   city.value = (event.target as HTMLSelectElement).value
-}
-
-function chooseMethod(kind: 'home' | 'office') {
-  destinationKey.value = ''
-  method.value = kind
 }
 
 watch(() => selectedDestination.value?.key ?? '', key => {
@@ -157,24 +149,9 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
                 <option v-for="name in cities" :key="name" :value="name">{{ name }}</option>
               </select>
             </label>
-            <fieldset v-if="canDeliver && canCollect">
-              <legend class="mb-2 font-semibold">كيف تبي تستلمي الطلب؟</legend>
-              <div class="grid gap-2 sm:grid-cols-2">
-                <label class="flex min-h-11 items-center gap-2 rounded-xl border border-purple-200 px-3 py-2 has-checked:border-purple-800 has-checked:bg-purple-50">
-                  <input :checked="method === 'home'" name="deliveryMethod" type="radio" value="home"
-                    class="accent-purple-800" @change="chooseMethod('home')">
-                  توصيل للعنوان
-                </label>
-                <label class="flex min-h-11 items-center gap-2 rounded-xl border border-purple-200 px-3 py-2 has-checked:border-purple-800 has-checked:bg-purple-50">
-                  <input :checked="method === 'office'" name="deliveryMethod" type="radio" value="office"
-                    class="accent-purple-800" @change="chooseMethod('office')">
-                  استلام من المكتب
-                </label>
-              </div>
-            </fieldset>
-            <label v-if="options.length > 1" class="block">{{ selectedMethod === 'office' ? 'مكتب الاستلام' : 'المنطقة' }}
+            <label v-if="options.length > 1" class="block">{{ selectedService === 'office' ? 'مكتب الاستلام' : 'المنطقة' }}
               <select v-model="destinationKey" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
-                <option value="" disabled>{{ selectedMethod === 'office' ? 'اختاري المكتب' : 'اختاري المنطقة' }}</option>
+                <option value="" disabled>{{ selectedService === 'office' ? 'اختاري المكتب' : 'اختاري المنطقة' }}</option>
                 <option v-for="destination in options" :key="destination.key" :value="destination.key">{{ destination.area }}</option>
               </select>
             </label>

@@ -54,7 +54,7 @@ public sealed class SabilCheckoutQuotes(ICarrierReadGateway catalogue, ICarrierQ
         response = await quotes.CalculateAsync(new(destination.City, destination.Area, products, binding.ServiceId,
             destination.IsPickup), cancellationToken);
         if (response.State != CarrierReadState.Success) return new(CheckoutQuoteState.ProviderUnavailable);
-        if (!SabilShippingFeePolicy.TryGetShippingFee(response.Data!.Value,products,out var fee)) return new(CheckoutQuoteState.UnsupportedQuote);
+        if (!SabilShippingFeePolicy.TryGetShippingFee(response.Data!.Value,products,out var fee,binding.Destination)) return new(CheckoutQuoteState.UnsupportedQuote);
         // Changed administrative configuration during a provider call cannot sign a mismatched context.
         var current = Binding(checkoutToken,destination,binding.Lines);
         if (!Enabled || current != binding) return new(CheckoutQuoteState.InvalidContext);
