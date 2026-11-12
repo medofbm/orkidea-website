@@ -55,6 +55,8 @@ onMounted(() => {
           <NuxtLink :to="{ path: '/', hash: '#how-to-order' }" class="inline-flex min-h-11 items-center hover:underline">طريقة الطلب والتوصيل</NuxtLink>
           <NuxtLink to="/cart" class="inline-flex min-h-11 items-center hover:underline">السلة</NuxtLink>
           <NuxtLink to="/account" class="inline-flex min-h-11 items-center hover:underline">الحساب</NuxtLink>
+          <a href="https://www.facebook.com/ORKIDEALY/" class="inline-flex min-h-11 items-center hover:underline">فيسبوك</a>
+          <a href="https://www.instagram.com/_orkidea_1/" class="inline-flex min-h-11 items-center hover:underline">إنستغرام</a>
         </nav>
       </div>
     </footer>
