@@ -6,6 +6,7 @@ const { data: product, status, error, refresh } = await useFetch<CatalogueProduc
   () => useRuntimeConfig().public.apiBase + '/products/' + route.params.id
 )
 const selectedImage = ref(0)
+const imageSelectedByUser = ref(false)
 const selectedVariant = ref(0)
 const failedImages = ref<string[]>([])
 const images = computed(() => product.value?.images.filter(image => image !== '/images/logo.jpg') ?? [])
@@ -20,6 +21,7 @@ function checkLoadedImage(element: unknown, image: string) {
 }
 watch(() => product.value?.id, () => {
   selectedImage.value = 0
+  imageSelectedByUser.value = false
   selectedVariant.value = 0
   failedImages.value = []
 })
@@ -46,6 +48,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
       <div class="relative grid aspect-square max-h-120 place-items-center overflow-hidden rounded-2xl border border-purple-100 bg-white shadow-sm">
         <img v-if="currentImage && !failedImages.includes(currentImage)" :key="currentImage"
           :src="currentImage" :alt="product.name" class="absolute inset-0 size-full object-contain"
+          :class="{ 'gallery-image-selected': imageSelectedByUser }"
           width="480" height="480" @vue:mounted="checkLoadedImage($event.el, currentImage)"
           @error="markFailedImage(currentImage)">
         <div v-else class="grid place-items-center gap-2 p-4 text-center text-sm text-purple-900">
@@ -61,7 +64,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
           :aria-label="'عرض الصورة ' + (index + 1)" :aria-pressed="selectedImage === index"
           class="grid size-14 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 hover:border-purple-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-800 motion-safe:transition-colors motion-safe:duration-200 sm:size-16"
           :class="selectedImage === index ? 'border-purple-800 ring-2 ring-purple-200' : 'border-purple-100'"
-          @click="selectedImage = index">
+          @click="selectedImage = index; imageSelectedByUser = true">
           <img v-if="!failedImages.includes(image)" :src="image" alt="" class="size-full object-contain"
             width="56" height="56" loading="lazy" @vue:mounted="checkLoadedImage($event.el, image)"
             @error="markFailedImage(image)">
@@ -103,3 +106,16 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
     </div>
   </article>
 </template>
+
+<style scoped>
+@media (prefers-reduced-motion: no-preference) {
+  .gallery-image-selected {
+    animation: gallery-image-fade 180ms ease-out;
+  }
+
+  @keyframes gallery-image-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+</style>
