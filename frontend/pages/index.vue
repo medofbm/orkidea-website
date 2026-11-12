@@ -102,9 +102,14 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
           </div>
         </NuxtLink>
       </div>
-      <nav v-if="data && data.total > data.pageSize" class="mt-8 flex justify-between" aria-label="صفحات المنتجات">
-        <NuxtLink v-if="page > 1" :to="{ query: { page: page - 1, categoryId }, hash: '#catalogue-heading' }">السابق</NuxtLink>
-        <NuxtLink v-if="page * data.pageSize < data.total" :to="{ query: { page: page + 1, categoryId }, hash: '#catalogue-heading' }">التالي</NuxtLink>
+      <nav v-if="data && data.total > data.pageSize" class="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-purple-100 pt-5" aria-label="صفحات المنتجات">
+        <NuxtLink v-if="page > 1" :to="{ query: { page: page - 1, categoryId }, hash: '#catalogue-heading' }"
+          class="inline-flex min-h-11 items-center justify-center rounded-full border border-purple-200 bg-white px-5 font-semibold text-purple-900 hover:border-purple-400 hover:bg-purple-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-800 motion-safe:transition-colors motion-safe:duration-200">السابق</NuxtLink>
+        <p aria-live="polite" aria-atomic="true" class="text-sm text-purple-900">
+          صفحة <bdi class="font-bold">{{ page }}</bdi> من <bdi class="font-bold">{{ Math.ceil(data.total / data.pageSize) }}</bdi>
+        </p>
+        <NuxtLink v-if="page * data.pageSize < data.total" :to="{ query: { page: page + 1, categoryId }, hash: '#catalogue-heading' }"
+          class="inline-flex min-h-11 items-center justify-center rounded-full border border-purple-200 bg-white px-5 font-semibold text-purple-900 hover:border-purple-400 hover:bg-purple-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-800 motion-safe:transition-colors motion-safe:duration-200">التالي</NuxtLink>
       </nav>
     </template>
   </section>

@@ -105,7 +105,9 @@ test('built storefront renders catalogue data and the product gallery on the ser
     if (req.url?.startsWith('/api/v1/catalogue/products?')) {
       const query = new URL(req.url, 'http://localhost').searchParams
       const items = query.has('categoryId') && query.get('categoryId') !== '1' ? [] : [product]
-      return res.end(JSON.stringify({ items, page: 1, pageSize: 24, total: items.length,
+      const page = Number(query.get('page') ?? '1')
+      const total = query.get('categoryId') === '1' && page === 2 ? 49 : items.length
+      return res.end(JSON.stringify({ items, page, pageSize: 24, total,
         categories: [{ id: 1, name: product.category }] }))
     }
     res.statusCode = 404
@@ -133,6 +135,10 @@ test('built storefront renders catalogue data and the product gallery on the ser
     const filtered = await (await fetch(origin + '/?categoryId=1')).text()
     assert.ok(filtered.includes(product.name), 'matching category retains its product')
     assert.match(filtered, /aria-current="page"[^>]*>زيوت</, 'active category is announced')
+    const paginated = await (await fetch(origin + '/?page=2&categoryId=1')).text()
+    assert.match(paginated, /صفحة <bdi[^>]*>2<\/bdi> من <bdi[^>]*>3<\/bdi>/, 'current page and page count are announced')
+    assert.match(paginated, /href="\/?\?page=1&(?:amp;)?categoryId=1#catalogue-heading"[^>]*>السابق/, 'previous page keeps the selected category')
+    assert.match(paginated, /href="\/?\?page=3&(?:amp;)?categoryId=1#catalogue-heading"[^>]*>التالي/, 'next page keeps the selected category')
     const emptyCategory = await (await fetch(origin + '/?categoryId=2')).text()
     assert.ok(!emptyCategory.includes(product.name), 'category filter is forwarded to the backend')
     assert.ok(emptyCategory.includes('ما فيش منتجات ضمن الفئة المختارة حاليًا.'), 'empty category explains the active filter')
