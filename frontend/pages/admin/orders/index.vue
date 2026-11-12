@@ -3,8 +3,33 @@ import type { AdminOrdersPage } from '~/types/admin'
 definePageMeta({ layout: 'admin' })
 useSeoMeta({ title: 'طلبات أوركيديا' })
 
-const fields = reactive({ status: 'all', search: '', source: 'all' })
-const filters = ref({ ...fields, page: 1 })
+const route = useRoute()
+const router = useRouter()
+const statuses = {
+  all: 'كل الحالات', pending: 'جديد', processing: 'قيد التجهيز',
+  shipped: 'قيد التوصيل', delivered: 'مسلّم', cancelled: 'ملغي'
+}
+const sources = { all: 'كل المصادر', Website: 'الموقع', FacebookManual: 'فيسبوك', LegacyUnknown: 'طلب قديم' }
+
+function filterValue(value: unknown, choices: Record<string, string>) {
+  return typeof value === 'string' && Object.hasOwn(choices, value) ? value : 'all'
+}
+
+const routeFilters = computed(() => {
+  const value = route.query.page
+  const page = typeof value === 'string' && /^[1-9][0-9]*$/.test(value) ? Number(value) : 1
+  return {
+    status: filterValue(route.query.status, statuses),
+    source: filterValue(route.query.source, sources),
+    page: Number.isSafeInteger(page) && page <= 2147483647 ? page : 1
+  }
+})
+const fields = reactive({ status: routeFilters.value.status, search: '', source: routeFilters.value.source })
+// Customer names and phone numbers stay out of navigational URLs and browser history.
+const appliedSearch = ref('')
+watch(() => routeFilters.value.status, value => { fields.status = value })
+watch(() => routeFilters.value.source, value => { fields.source = value })
+const filters = computed(() => ({ ...routeFilters.value, search: appliedSearch.value }))
 const { data, error, status } = useFetch<AdminOrdersPage>('/api/admin/orders', {
   query: filters, server: false, cache: 'no-store'
 })
@@ -12,11 +37,22 @@ const exportUrl = computed(() => {
   const { status, search, source } = filters.value
   return '/api/admin/orders/export?' + new URLSearchParams({ status, search, source })
 })
-function apply() {
-  filters.value = { ...fields, search: fields.search.trim(), page: 1 }
+function goTo(status: string, source: string, page: number) {
+  return router.push({
+    query: {
+      status: status === 'all' ? undefined : status,
+      source: source === 'all' ? undefined : source,
+      page: page > 1 ? String(page) : undefined
+    }
+  })
+}
+async function apply() {
+  await goTo(fields.status, fields.source, 1)
+  appliedSearch.value = fields.search.trim()
 }
 function changePage(page: number) {
-  filters.value = { ...filters.value, page }
+  const { status, source } = routeFilters.value
+  return goTo(status, source, page)
 }
 </script>
 
@@ -35,20 +71,12 @@ function changePage(page: number) {
       </label>
       <label>الحالة
         <select v-model="fields.status" class="mt-1 block min-h-11 rounded-lg border px-3">
-          <option value="all">كل الحالات</option>
-          <option value="pending">جديد</option>
-          <option value="processing">قيد التجهيز</option>
-          <option value="shipped">قيد التوصيل</option>
-          <option value="delivered">مسلّم</option>
-          <option value="cancelled">ملغي</option>
+          <option v-for="(label, value) in statuses" :key="value" :value="value">{{ label }}</option>
         </select>
       </label>
       <label>المصدر
         <select v-model="fields.source" class="mt-1 block min-h-11 rounded-lg border px-3">
-          <option value="all">كل المصادر</option>
-          <option value="Website">الموقع</option>
-          <option value="FacebookManual">فيسبوك</option>
-          <option value="LegacyUnknown">طلب قديم</option>
+          <option v-for="(label, value) in sources" :key="value" :value="value">{{ label }}</option>
         </select>
       </label>
       <button type="submit" class="min-h-11 rounded-lg bg-purple-800 px-4 text-white">بحث</button>
