@@ -29,6 +29,11 @@ const fields = reactive({ status: routeFilters.value.status, search: '', source:
 const appliedSearch = ref('')
 watch(() => routeFilters.value.status, value => { fields.status = value })
 watch(() => routeFilters.value.source, value => { fields.source = value })
+const returnQuery = computed(() => ({
+  status: routeFilters.value.status === 'all' ? undefined : routeFilters.value.status,
+  source: routeFilters.value.source === 'all' ? undefined : routeFilters.value.source,
+  page: routeFilters.value.page > 1 ? String(routeFilters.value.page) : undefined
+}))
 const filters = computed(() => ({ ...routeFilters.value, search: appliedSearch.value }))
 const { data, error, status } = useFetch<AdminOrdersPage>('/api/admin/orders', {
   query: filters, server: false, cache: 'no-store'
@@ -90,7 +95,7 @@ function changePage(page: number) {
           تصدير نتائج البحث إلى Excel
         </a>
       </div>
-      <AdminOrderList :orders="data.items" />
+      <AdminOrderList :orders="data.items" :return-query="returnQuery" />
       <nav v-if="data.pages > 1" class="mt-5 flex flex-wrap items-center justify-between gap-3" aria-label="صفحات الطلبات">
         <button type="button" :disabled="data.page <= 1" class="min-h-11 rounded-lg border px-4 disabled:opacity-50"
           @click="changePage(data.page - 1)">السابق</button>
