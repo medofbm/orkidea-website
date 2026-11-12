@@ -43,7 +43,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
       <h1 id="product-heading" class="text-3xl leading-tight font-bold wrap-anywhere text-purple-950 lg:text-4xl">{{ product.name }}</h1>
     </header>
     <section aria-label="صور المنتج" class="min-w-0 md:col-start-1 md:row-span-2 md:row-start-1">
-      <div class="relative grid aspect-square max-h-120 place-items-center overflow-hidden rounded-2xl border border-purple-100 bg-purple-50">
+      <div class="relative grid aspect-square max-h-120 place-items-center overflow-hidden rounded-2xl border border-purple-100 bg-white shadow-sm">
         <img v-if="currentImage && !failedImages.includes(currentImage)" :key="currentImage"
           :src="currentImage" :alt="product.name" class="absolute inset-0 size-full object-contain"
           width="480" height="480" @vue:mounted="checkLoadedImage($event.el, currentImage)"
@@ -56,11 +56,11 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
           <span>صورة غير متاحة</span>
         </div>
       </div>
-      <div v-if="images.length > 1" class="mt-3 flex flex-wrap gap-2">
+      <div v-if="images.length > 1" class="mt-3 flex flex-wrap gap-2" role="group" aria-label="اختيار صورة المنتج">
         <button v-for="(image, index) in images" :key="image" type="button"
           :aria-label="'عرض الصورة ' + (index + 1)" :aria-pressed="selectedImage === index"
-          class="grid size-14 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 hover:border-purple-400 motion-safe:transition-colors motion-safe:duration-200 sm:size-16"
-          :class="selectedImage === index ? 'border-purple-800' : 'border-purple-100'"
+          class="grid size-14 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 hover:border-purple-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-800 motion-safe:transition-colors motion-safe:duration-200 sm:size-16"
+          :class="selectedImage === index ? 'border-purple-800 ring-2 ring-purple-200' : 'border-purple-100'"
           @click="selectedImage = index">
           <img v-if="!failedImages.includes(image)" :src="image" alt="" class="size-full object-contain"
             width="56" height="56" loading="lazy" @vue:mounted="checkLoadedImage($event.el, image)"
@@ -72,21 +72,24 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
     <div class="min-w-0 md:col-start-2 md:row-start-2">
       <section aria-label="خيارات الشراء" class="rounded-2xl border border-purple-100 bg-white p-4 sm:p-6">
         <template v-if="currentVariant">
-          <p aria-live="polite" class="mb-4 text-2xl font-bold text-purple-950">
-            <bdi>{{ currentVariant.price }}</bdi> <span class="text-base">د.ل</span>
-          </p>
+          <div aria-live="polite" aria-atomic="true" class="mb-5">
+            <p class="mb-1 text-sm font-medium text-purple-800">السعر للحجم المختار: <bdi>{{ currentVariant.size }}</bdi></p>
+            <p class="text-3xl font-bold text-purple-950">
+              <bdi>{{ currentVariant.price }}</bdi> <span class="text-base">د.ل</span>
+            </p>
+          </div>
           <fieldset class="mb-5 min-w-0" :disabled="busy">
             <legend class="mb-2 text-sm font-semibold text-purple-950">اختاري الحجم</legend>
             <div class="flex flex-wrap gap-2">
               <label v-for="(variant, index) in product.variants" :key="variant.id"
-                class="flex min-h-11 max-w-full items-center gap-2 rounded-xl border border-purple-200 px-3 py-2 text-sm wrap-anywhere hover:border-purple-400 motion-safe:transition-colors motion-safe:duration-200 has-checked:border-purple-800 has-checked:bg-purple-50 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-purple-800">
+                class="flex min-h-11 max-w-full items-center gap-2 rounded-xl border border-purple-200 px-3 py-2 text-sm wrap-anywhere hover:border-purple-400 motion-safe:transition-colors motion-safe:duration-200 has-checked:border-purple-800 has-checked:bg-purple-50 has-checked:font-semibold has-checked:ring-1 has-checked:ring-purple-800 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-purple-800">
                 <input v-model="selectedVariant" type="radio" name="variant" :value="index" class="shrink-0 accent-purple-800">
                 <span>{{ variant.size }}</span>
               </label>
             </div>
           </fieldset>
           <button type="button" :disabled="busy"
-            class="min-h-12 w-full rounded-xl bg-purple-900 px-5 py-3 font-bold text-white hover:bg-purple-800 motion-safe:transition motion-safe:duration-200 motion-safe:active:scale-[0.98] disabled:opacity-60"
+            class="storefront-action min-h-12 w-full rounded-xl bg-purple-900 px-5 py-3 font-bold text-white shadow-sm hover:bg-purple-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-800 motion-safe:transition-colors motion-safe:duration-200 disabled:opacity-60"
             @click="mutate('POST', currentVariant.id)">أضيفي للسلة</button>
         </template>
         <p v-else class="font-semibold text-purple-950">المنتج غير متاح للطلب حاليًا.</p>

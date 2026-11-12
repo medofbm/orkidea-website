@@ -1,4 +1,22 @@
 @import "tailwindcss";
-:root { font-family: system-ui, sans-serif; color: #251333; background: #faf8fc; }
+
+@theme {
+  --font-sans: system-ui, "Segoe UI", Tahoma, Arial, sans-serif;
+}
+
+:root {
+  font-family: var(--font-sans);
+  color: var(--color-purple-950);
+  background: #faf8fc;
+}
+
 button, a { -webkit-tap-highlight-color: transparent; }
-:focus-visible { outline: 3px solid #7e22ce; outline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--color-purple-700); outline-offset: 3px; }
+
+@utility storefront-action {
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-color 160ms ease-out, border-color 160ms ease-out, transform 160ms ease-out;
+
+    &:active:not(:disabled) { transform: scale(0.98); }
+  }
+}

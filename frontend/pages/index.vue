@@ -37,7 +37,7 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
         تصفّحي المنتجات وشوفي الأحجام والأسعار قبل ما تختاري اللي يناسبك.
       </p>
       <a href="#catalogue-heading"
-        class="mt-5 inline-flex min-h-11 items-center gap-3 rounded-full bg-purple-900 px-5 text-sm font-bold text-white hover:bg-purple-800 motion-safe:transition motion-safe:active:scale-95">
+        class="storefront-action mt-5 inline-flex min-h-11 items-center gap-3 rounded-full bg-purple-900 px-5 text-sm font-bold text-white hover:bg-purple-800">
         تصفّحي المنتجات
         <span aria-hidden="true">↓</span>
       </a>
@@ -52,6 +52,7 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
       <h2 id="catalogue-heading" tabindex="-1" class="scroll-mt-4 text-2xl font-bold text-purple-950 sm:text-3xl">منتجات أوركيديا</h2>
       <p v-if="data?.items.length && !error" class="text-sm text-purple-900">عدد المنتجات <bdi class="font-bold">{{ data.total }}</bdi></p>
     </div>
+    <div id="categories" tabindex="-1" class="scroll-mt-4">
     <nav v-if="data?.categories?.length" aria-label="فئات المنتجات" class="mb-5 flex flex-wrap gap-2">
       <NuxtLink :to="{ query: {}, hash: '#catalogue-heading' }"
         :aria-current="categoryId === undefined ? 'page' : undefined"
@@ -61,6 +62,8 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
         :aria-current="categoryId === category.id ? 'page' : undefined"
         class="inline-flex min-h-11 items-center rounded-full border border-purple-200 px-4 text-sm font-semibold text-purple-950 aria-[current=page]:bg-purple-900 aria-[current=page]:text-white">{{ category.name }}</NuxtLink>
     </nav>
+    <p v-else-if="status !== 'pending' && !error" class="mb-5 text-sm text-purple-900">تصفّحي جميع المنتجات المتاحة أدناه.</p>
+    </div>
     <p v-if="status === 'pending'" role="status">جاري تحميل المنتجات…</p>
     <div v-else-if="error" role="alert" class="rounded-xl border border-red-200 p-4">
       <p>تعذر تحميل المنتجات.</p>
@@ -89,6 +92,14 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
           class="inline-flex min-h-11 items-center justify-center rounded-full border border-purple-200 bg-white px-5 font-semibold text-purple-900 hover:border-purple-400 hover:bg-purple-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-800 motion-safe:transition-colors motion-safe:duration-200">التالي</NuxtLink>
       </nav>
     </template>
+  </section>
+  <section id="how-to-order" tabindex="-1" aria-labelledby="order-heading" class="mt-10 scroll-mt-4 rounded-3xl bg-purple-50 p-5 sm:p-8">
+    <h2 id="order-heading" class="text-2xl font-bold text-purple-950">كيف تطلبي؟</h2>
+    <ol class="mt-4 grid gap-4 text-purple-900 sm:grid-cols-3">
+      <li><strong>١. اختاري منتجاتك</strong><p class="mt-1 leading-relaxed">تصفّحي المنتجات واختاري الحجم المناسب وأضيفيه للسلة.</p></li>
+      <li><strong>٢. راجعي السلة</strong><p class="mt-1 leading-relaxed">راجعي الكميات والأسعار قبل الانتقال لإتمام الطلب.</p></li>
+      <li><strong>٣. أكملي الطلب</strong><p class="mt-1 leading-relaxed">أدخلي بيانات التوصيل وراجعي الخيارات والتكلفة والإجمالي قبل التأكيد.</p></li>
+    </ol>
   </section>
   <section id="about-orkidea" tabindex="-1" aria-labelledby="about-heading"
     class="mt-10 scroll-mt-4 rounded-3xl border border-purple-100 bg-white p-5 sm:p-8">
