@@ -77,30 +77,7 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
         </NuxtLink>
       </div>
       <div class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-        <NuxtLink v-for="product in products" :key="product.id" :to="'/products/' + product.id"
-          class="group flex min-w-0 flex-col rounded-2xl border border-purple-100 bg-white p-2 shadow-sm motion-safe:transition motion-safe:hover:-translate-y-0.5 motion-safe:focus-visible:-translate-y-0.5 hover:border-purple-300 hover:shadow-md sm:p-3">
-          <div class="grid aspect-square place-items-center overflow-hidden rounded-xl bg-purple-50">
-            <img v-if="product.images[0] && product.images[0] !== brandImage"
-              :src="product.images[0]" alt="" class="size-full object-contain" loading="lazy" width="320" height="320">
-            <div v-else class="grid place-items-center gap-2 p-2 text-center text-xs text-purple-900">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-8">
-                <rect x="3" y="4" width="18" height="16" rx="3" />
-                <path d="m3 16 5-5 4 4 3-3 6 6M15 8h.01" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <span>صورة غير متاحة</span>
-            </div>
-          </div>
-          <div class="flex flex-1 flex-col px-1 pt-3 pb-1">
-            <p v-if="product.category" class="mb-1 text-xs wrap-anywhere text-purple-800">{{ product.category }}</p>
-            <h3 class="text-sm leading-relaxed font-bold wrap-anywhere text-purple-950 sm:text-base">{{ product.name }}</h3>
-            <p v-if="product.startingPrice !== undefined" class="mt-1 pb-3 text-sm text-purple-900">
-              <span v-if="product.variants.length > 1">من </span><bdi class="font-bold">{{ product.startingPrice }}</bdi> د.ل
-            </p>
-            <span aria-hidden="true" class="mt-auto flex min-h-9 items-center justify-between gap-1 border-t border-purple-100 pt-1 text-xs font-bold text-purple-900 sm:text-sm">
-              عرض التفاصيل <span class="group-hover:text-purple-700">←</span>
-            </span>
-          </div>
-        </NuxtLink>
+        <ProductCard v-for="product in products" :key="product.id" :product="product" />
       </div>
       <nav v-if="data && data.total > data.pageSize" class="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-purple-100 pt-5" aria-label="صفحات المنتجات">
         <NuxtLink v-if="page > 1" :to="{ query: { page: page - 1, categoryId }, hash: '#catalogue-heading' }"
