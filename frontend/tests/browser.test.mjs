@@ -68,6 +68,28 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
     }
     console.log('PASS browser: authenticated dashboard shortcuts have accessible names and correct routes')
 
+    await page.route('**/api/admin/orders?*', route => route.fulfill({ json: {
+      items: [{ id: 99, customerName: 'Test', city: 'Test', orderDate: '2026-01-01',
+        status: 'Pending', source: 'Website', total: '25.00', shippingFee: '5.00' }],
+      page: 2, pages: 3, pageSize: 25, total: 51
+    } }))
+    await page.route('**/api/admin/orders/99', route => route.fulfill({ status: 404, json: {} }))
+    await page.goto(origin + '/admin/orders?status=pending&source=Website&page=2')
+    await page.getByRole('link', { name: /طلب #99/ }).click()
+    await page.waitForURL(/\/admin\/orders\/99\?/)
+    const detailUrl = new URL(page.url())
+    assert.equal(detailUrl.searchParams.get('status'), 'pending')
+    assert.equal(detailUrl.searchParams.get('source'), 'Website')
+    assert.equal(detailUrl.searchParams.get('page'), '2')
+    await page.getByRole('navigation', { name: 'تنقل الطلب' }).getByRole('link', { name: 'الطلبات', exact: true }).click()
+    await page.waitForURL(/\/admin\/orders\?/)
+    assert.equal(new URL(page.url()).searchParams.get('page'), '2')
+    await page.goto(origin + '/admin/orders/99?status=pending&search=private&source=Website&page=2')
+    const returnHref = await page.getByRole('navigation', { name: 'تنقل الطلب' }).getByRole('link', { name: 'الطلبات', exact: true }).getAttribute('href')
+    assert.ok(!returnHref.includes('search'), 'details return excludes personal search input')
+    await page.unroute('**/api/admin/orders?*')
+    await page.unroute('**/api/admin/orders/99')
+
     await page.goto(origin + '/admin/categories')
     await page.getByLabel('اسم الفئة').fill('فئة اختبار المتصفح')
     await page.getByRole('button', { name: 'حفظ الفئة' }).click()

@@ -5,6 +5,15 @@ definePageMeta({ layout: 'admin', key: route => route.path })
 useSeoMeta({ title: 'تفاصيل الطلب' })
 
 const route = useRoute()
+const returnQuery = computed(() => {
+  const { status, source, page } = route.query
+  return {
+    status: typeof status === 'string' && ['pending', 'processing', 'shipped', 'delivered', 'cancelled'].includes(status) ? status : undefined,
+    source: typeof source === 'string' && ['Website', 'FacebookManual', 'LegacyUnknown'].includes(source) ? source : undefined,
+    page: typeof page === 'string' && /^[1-9][0-9]*$/.test(page) && Number.isSafeInteger(Number(page)) &&
+      Number(page) <= 2147483647 ? page : undefined
+  }
+})
 const orderUrl = '/api/admin/orders/' + route.params.id
 const { data, error, status, refresh } = useFetch<AdminOrderDetails>(orderUrl, {
   server: false, cache: 'no-store'
@@ -82,7 +91,7 @@ async function updateOrder(action: 'status' | 'stock' | 'delivery', input: Recor
 <template>
   <section aria-labelledby="order-title" class="mx-auto max-w-3xl">
     <nav class="mb-3 flex flex-wrap gap-4" aria-label="تنقل الطلب">
-      <NuxtLink to="/admin/orders" class="inline-flex min-h-11 items-center text-purple-900 underline">الطلبات</NuxtLink>
+      <NuxtLink :to="{ path: '/admin/orders', query: returnQuery }" class="inline-flex min-h-11 items-center text-purple-900 underline">الطلبات</NuxtLink>
       <NuxtLink to="/admin/delivery" class="inline-flex min-h-11 items-center text-purple-900 underline">التوصيل والرواجع</NuxtLink>
     </nav>
     <h1 id="order-title" class="mb-6 text-3xl font-bold">تفاصيل الطلب <span v-if="data">#{{ data.order.id }}</span></h1>
