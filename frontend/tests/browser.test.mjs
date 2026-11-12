@@ -104,6 +104,11 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
       'product fits the mobile viewport without horizontal scrolling')
     await customer.getByRole('button', { name: 'أضيفي للسلة' }).click()
     await customer.getByText('تمت الإضافة للسلة.', { exact: true }).waitFor()
+    const cartLink = customer.getByRole('navigation', { name: 'القائمة الرئيسية' }).locator('a[href="/cart"]')
+    const cartCount = cartLink.getByText('1', { exact: true })
+    await cartCount.waitFor({ state: 'visible' })
+    await customer.reload()
+    await cartCount.waitFor({ state: 'visible' })
     await customer.getByRole('link', { name: 'عرض السلة' }).click()
     await customer.getByRole('link', { name: 'إتمام الطلب' }).click()
     await customer.getByLabel('الاسم الأول').fill('اختبار')
@@ -120,6 +125,14 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
     assert.equal(receipt.productsTotal, '19.95')
     assert.equal(receipt.shippingFee, '1.00')
     assert.equal(receipt.total, '20.95')
+    assert.equal(await cartLink.locator('bdi').count(), 0, 'cart badge clears on the receipt')
+    const [clearedCart] = await Promise.all([
+      customer.waitForResponse(response => response.url() === origin + '/api/cart' && response.request().method() === 'GET'),
+      customer.reload()
+    ])
+    assert.equal(clearedCart.status(), 200)
+    assert.equal((await clearedCart.json()).count, 0, 'checkout clears the persisted cart')
+    assert.equal(await cartLink.locator('bdi').count(), 0, 'cart badge stays clear after receipt reload')
     assert.equal((await admin.request.get(origin + '/api/checkout/receipt')).status(), 404)
     console.log('PASS browser: mobile gallery, cart, guest checkout, exact totals and private receipt')
 
