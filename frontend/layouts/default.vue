@@ -58,6 +58,7 @@ onMounted(() => {
           <a href="https://www.facebook.com/ORKIDEALY/" class="inline-flex min-h-11 items-center hover:underline">فيسبوك</a>
           <a href="https://www.instagram.com/_orkidea_1/" class="inline-flex min-h-11 items-center hover:underline">إنستغرام</a>
           <NuxtLink to="/order-and-delivery" class="inline-flex min-h-11 items-center hover:underline">سياسة الطلب والتوصيل</NuxtLink>
+          <NuxtLink to="/privacy" class="inline-flex min-h-11 items-center hover:underline">سياسة الخصوصية</NuxtLink>
         </nav>
       </div>
     </footer>
