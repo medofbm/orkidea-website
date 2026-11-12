@@ -25,9 +25,9 @@ useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchi
 <template>
   <section aria-labelledby="receipt-heading" class="mx-auto max-w-3xl">
     <h1 id="receipt-heading" class="mb-5 text-3xl font-bold text-purple-950 sm:text-4xl">إيصال الطلب</h1>
-    <p v-if="loading" role="status">جاري تحميل الإيصال…</p>
+    <p v-if="loading" role="status" class="rounded-2xl border border-purple-100 bg-white p-5 text-purple-900">جاري تحميل الإيصال…</p>
     <template v-else-if="receipt">
-      <div class="rounded-2xl border border-purple-100 bg-white p-4 sm:p-6">
+      <div class="rounded-2xl border border-purple-100 bg-white p-4 shadow-sm sm:p-6">
         <p role="status" class="mb-4 font-semibold text-purple-800">تم استلام طلبك</p>
         <div class="grid gap-4 sm:grid-cols-2">
           <section aria-label="بيانات الطلب" class="min-w-0 rounded-xl bg-purple-50 p-4 text-purple-950">
@@ -53,11 +53,11 @@ useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchi
     </template>
     <div v-else-if="failed" class="rounded-2xl border border-red-200 bg-white p-5">
       <p role="alert">تعذر تحميل الإيصال. حاولي فتحه مرة أخرى.</p>
-      <button type="button" class="mt-3 min-h-11 rounded-xl border border-purple-300 px-4 font-semibold text-purple-950"
+      <button type="button" class="mt-3 min-h-11 rounded-xl border border-purple-300 bg-white px-4 font-semibold text-purple-950 hover:bg-purple-50"
         @click="loadReceipt">إعادة المحاولة</button>
     </div>
     <p v-else role="status" class="rounded-2xl border border-purple-100 bg-white p-5">الإيصال غير متاح في الجلسة الحالية.</p>
-    <NuxtLink to="/" class="mt-5 inline-flex min-h-11 items-center rounded-xl bg-purple-900 px-5 font-bold text-white hover:bg-purple-800">
+    <NuxtLink to="/" class="storefront-action mt-5 inline-flex min-h-11 items-center rounded-xl bg-purple-900 px-5 font-bold text-white hover:bg-purple-800">
       متابعة التسوق
     </NuxtLink>
   </section>
