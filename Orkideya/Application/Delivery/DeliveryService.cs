@@ -27,6 +27,7 @@ public sealed class DeliveryService(ApplicationDbContext db, TimeProvider clock)
         var carrier = Clean(input.CarrierName);
         var reference = Clean(input.ShipmentReference);
         var mode = Clean(input.Mode);
+        var handoffMode = Clean(input.HandoffMode);
         var target = Clean(input.TargetState);
         var metadata = action is "HandOver" or "Redispatch" or "CorrectDetails";
         if (orderId <= 0 || !ActorValid(actor) || input.ExpectedRevision is null or < 0 or int.MaxValue ||
@@ -37,9 +38,10 @@ public sealed class DeliveryService(ApplicationDbContext db, TimeProvider clock)
         if (metadata)
         {
             if (mode is not ("Company" or "Self") || mode == "Company" && carrier is null) return DeliveryResult.Invalid;
+            if (handoffMode is not (null or "OfficeDropoff" or "CarrierCollection") || mode == "Self" && handoffMode is not null) return DeliveryResult.Invalid;
             if (mode == "Self") carrier = null;
         }
-        else if (mode is not null || carrier is not null || reference is not null) return DeliveryResult.Invalid;
+        else if (mode is not null || carrier is not null || reference is not null || handoffMode is not null) return DeliveryResult.Invalid;
         if ((action is "MarkReturning" or "Resume" or "Redispatch" or "CorrectDetails" or "CorrectState") && reason is null)
             return DeliveryResult.Invalid;
         if (action != "HandOver" && input.ConfirmLegacyPrepared ||
@@ -51,11 +53,14 @@ public sealed class DeliveryService(ApplicationDbContext db, TimeProvider clock)
             action == "CorrectState" && target is not ("HandedOver" or "Returning")) return DeliveryResult.Invalid;
 
         // Bind replay to the full normalized request, expected version, order and authenticated actor.
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
+        var legacyHashPayload = JsonSerializer.Serialize(new
         {
             orderId, action, mode, carrier, reference, reason, target, input.ExpectedRevision, actor,
             input.ConfirmLegacyPrepared, input.ConfirmReturnReceived, input.ConfirmSamePackageReusable
-        }))));
+        });
+        // Preserve replay hashes from requests created before handoff tracking existed.
+        var hashPayload = !input.HandoffModeProvided ? legacyHashPayload : legacyHashPayload + "|handoff:" + (handoffMode ?? "null");
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(hashPayload)));
         var replay = await db.OrderDeliveryEvents.AsNoTracking().SingleOrDefaultAsync(e => e.RequestId == input.RequestId, ct);
         if (replay is not null) return replay.RequestHash == hash ? DeliveryResult.Unchanged : DeliveryResult.Conflict;
         var order = await db.Orders.SingleOrDefaultAsync(o => o.OrderId == orderId, ct);
@@ -99,14 +104,21 @@ public sealed class DeliveryService(ApplicationDbContext db, TimeProvider clock)
             delivery = new OrderDelivery { OrderId = orderId, Mode = mode!, State = next, CreatedAtUtc = now };
             db.OrderDeliveries.Add(delivery);
         }
-        if (metadata) { delivery.Mode = mode!; delivery.CarrierName = carrier; delivery.ShipmentReference = reference; }
+        if (metadata)
+        {
+            var preserveHandoff = action == "CorrectDetails" && !input.HandoffModeProvided &&
+                mode == "Company" && delivery.Mode == mode && delivery.CarrierName == carrier;
+            delivery.Mode = mode!;
+            if (!preserveHandoff) delivery.HandoffMode = handoffMode;
+            delivery.CarrierName = carrier; delivery.ShipmentReference = reference;
+        }
         delivery.State = next;
         delivery.Revision = order.StatusRevision;
         delivery.UpdatedAtUtc = now;
         db.OrderDeliveryEvents.Add(new OrderDeliveryEvent
         {
             RequestId = input.RequestId.Value, OrderId = orderId, Revision = order.StatusRevision,
-            Action = action!, PreviousState = previousState, NewState = next, Mode = delivery.Mode,
+            Action = action!, PreviousState = previousState, NewState = next, Mode = delivery.Mode, HandoffMode = delivery.HandoffMode,
             CarrierName = delivery.CarrierName, ShipmentReference = delivery.ShipmentReference,
             Reason = reason, ActorUserId = actor, RequestHash = hash, ChangedAtUtc = now,
             LegacyPreparationConfirmed = input.ConfirmLegacyPrepared, ReturnReceiptConfirmed = input.ConfirmReturnReceived,

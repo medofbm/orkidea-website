@@ -62,6 +62,28 @@ internal static class DeliveryScenario
         var pending = await Place(filled: false);
         check(await Act(pending, Handoff(0)) == DeliveryResult.RequiresPreparation,
             "Tracked delivery cannot bypass confirmation and filling");
+        var handoffOrder = await Place();
+        var withHandoff = Handoff(2); withHandoff.HandoffMode = "OfficeDropoff";
+        check(await Act(handoffOrder, withHandoff) == DeliveryResult.Changed, "Office handoff is accepted");
+        check(await Act(handoffOrder, withHandoff) == DeliveryResult.Unchanged, "Handoff replay is idempotent");
+        withHandoff.HandoffMode = "CarrierCollection";
+        check(await Act(handoffOrder, withHandoff) == DeliveryResult.Conflict, "Handoff mode is bound to replay hash");
+        var legacyCorrection = new DeliveryInput { Action = "CorrectDetails", ExpectedRevision = 3, RequestId = Guid.NewGuid(),
+            Mode = "Company", CarrierName = "Synthetic courier", Reason = "Legacy correction" };
+        check(await Act(handoffOrder, legacyCorrection) == DeliveryResult.Changed, "Legacy correction remains accepted");
+        await using (var db = open())
+            check((await db.OrderDeliveries.AsNoTracking().SingleAsync(x => x.OrderId == handoffOrder)).HandoffMode == "OfficeDropoff" &&
+                await db.OrderDeliveryEvents.AnyAsync(x => x.OrderId == handoffOrder && x.Revision == 4 && x.HandoffMode == "OfficeDropoff"),
+                "Legacy correction preserves same carrier handoff in current row and event");
+        var invalidSelf = new DeliveryInput { Action = "CorrectDetails", ExpectedRevision = 4, RequestId = Guid.NewGuid(),
+            Mode = "Self", HandoffMode = "CarrierCollection", Reason = "Invalid self" };
+        check(await Act(handoffOrder, invalidSelf) == DeliveryResult.Invalid, "Self delivery rejects company handoff mode");
+        var clearHandoff = new DeliveryInput { Action = "CorrectDetails", ExpectedRevision = 4, RequestId = Guid.NewGuid(),
+            Mode = "Company", CarrierName = "Synthetic courier", HandoffMode = null, Reason = "Clear uncertain handoff" };
+        check(await Act(handoffOrder, clearHandoff) == DeliveryResult.Changed, "Explicit null clears handoff");
+        await using (var db = open())
+            check((await db.OrderDeliveries.AsNoTracking().SingleAsync(x => x.OrderId == handoffOrder)).HandoffMode is null,
+                "Explicitly cleared handoff remains unknown");
         var id = await Place();
         decimal balance;
         await using (var db = open()) balance = (await db.StockAccounts.AsNoTracking().SingleAsync(s => s.ProductId == product)).OnHand;
@@ -217,7 +239,7 @@ internal static class DeliveryScenario
             check(!await db.OrderNotifications.AnyAsync(n=>db.OrderDeliveries.Any(d=>d.OrderId==n.OrderId) && (n.Attempts!=0 || n.ProviderMessageId!=null)),
                 "Delivery operations never attempt a provider notification");
             var blocked=false;
-            try{await db.GetService<IMigrator>().MigrateAsync("20261031155358_BulkStockReservations");}catch(SqlException ex)when(ex.Number==51004){blocked=true;}
+            try{await db.GetService<IMigrator>().MigrateAsync("20261031155358_BulkStockReservations");}catch(SqlException ex)when(ex.Number is 51004 or 51006){blocked=true;}
             await db.Database.MigrateAsync(); // Reapply later empty additive migrations after the delivery guard refused downgrade.
             check(blocked && await db.OrderDeliveryEvents.AnyAsync() && !(await db.Database.GetPendingMigrationsAsync()).Any(),
                 "Delivery downgrade refuses to erase shipment state or immutable event history");

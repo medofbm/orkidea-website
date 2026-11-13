@@ -8,6 +8,9 @@ public sealed class DeliveryInput
     [Required, Range(0, int.MaxValue)] public int? ExpectedRevision { get; set; }
     [Required] public Guid? RequestId { get; set; }
     [StringLength(16)] public string? Mode { get; set; }
+    private string? handoffMode;
+    [StringLength(32)] public string? HandoffMode { get => handoffMode; set { handoffMode = value; HandoffModeProvided = true; } }
+    [System.Text.Json.Serialization.JsonIgnore] public bool HandoffModeProvided { get; private set; }
     [StringLength(120)] public string? CarrierName { get; set; }
     [StringLength(100)] public string? ShipmentReference { get; set; }
     [StringLength(16)] public string? TargetState { get; set; }

@@ -20,7 +20,7 @@ public sealed class DeliveryListQuery(ApplicationDbContext db)
                     select new DeliveryListRow
                     {
                         OrderId = order.OrderId, CustomerName = order.CustomerName, City = order.City,
-                        Mode = shipment.Mode, CarrierName = shipment.CarrierName, ShipmentReference = shipment.ShipmentReference,
+                        Mode = shipment.Mode, HandoffMode = shipment.HandoffMode, CarrierName = shipment.CarrierName, ShipmentReference = shipment.ShipmentReference,
                         State = shipment.State, UpdatedAtUtc = shipment.UpdatedAtUtc
                     };
         if (canonical == "active") query = query.Where(row => row.State == "HandedOver" || row.State == "Returning");

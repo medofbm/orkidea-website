@@ -67,7 +67,7 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
         {
             items = result.Rows.Select(row => new
             {
-                row.OrderId, row.CustomerName, row.City, row.Mode, row.CarrierName, row.ShipmentReference,
+                row.OrderId, row.CustomerName, row.City, row.Mode, row.HandoffMode, row.CarrierName, row.ShipmentReference,
                 row.State, UpdatedAtUtc = DateTime.SpecifyKind(row.UpdatedAtUtc, DateTimeKind.Utc)
             }),
             result.Page, result.Pages, result.Total
@@ -93,7 +93,7 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
         if (snapshot is null) return NotFound();
         var order = snapshot.candidate;
         var delivery = snapshot.shipment is { } currentShipment
-            ? new { currentShipment.State, currentShipment.Mode, currentShipment.CarrierName, currentShipment.ShipmentReference }
+            ? new { currentShipment.State, currentShipment.Mode, currentShipment.HandoffMode, currentShipment.CarrierName, currentShipment.ShipmentReference }
             : null;
 
         var items = await (
@@ -116,7 +116,7 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
             orderby entry.Revision descending
             select new
             {
-                entry.Revision, entry.Action, entry.NewState, entry.Mode, entry.CarrierName,
+                entry.Revision, entry.Action, entry.NewState, entry.Mode, entry.HandoffMode, entry.CarrierName,
                 entry.ShipmentReference, entry.Reason, entry.ChangedAtUtc,
                 actorName = actor == null ? null : actor.UserName
             }).Take(50).ToListAsync(cancellationToken);
@@ -138,7 +138,7 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
             order.StatusRevision, order.StockState, hasDelivery = delivery is not null, delivery,
             deliveryHistory = deliveryHistory.Select(entry => new
             {
-                entry.Revision, entry.Action, entry.NewState, entry.Mode, entry.CarrierName,
+                entry.Revision, entry.Action, entry.NewState, entry.Mode, entry.HandoffMode, entry.CarrierName,
                 entry.ShipmentReference, entry.Reason, entry.actorName,
                 ChangedAtUtc = DateTime.SpecifyKind(entry.ChangedAtUtc, DateTimeKind.Utc)
             }),

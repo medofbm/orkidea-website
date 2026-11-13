@@ -28,6 +28,7 @@ export interface AdminOrdersPage {
 export interface AdminDelivery {
   state: string
   mode: 'Company' | 'Self'
+  handoffMode: 'OfficeDropoff' | 'CarrierCollection' | null
   carrierName: string | null
   shipmentReference: string | null
 }

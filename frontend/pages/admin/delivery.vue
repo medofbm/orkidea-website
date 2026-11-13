@@ -80,6 +80,8 @@ function changePage(page: number) {
               <dd class="break-words">{{ shipment.customerName }} · {{ shipment.city }}</dd></div>
             <div class="flex flex-wrap gap-x-2"><dt class="font-semibold">جهة التوصيل</dt>
               <dd class="break-words">{{ shipment.mode === 'Self' ? 'توصيل ذاتي' : shipment.carrierName }}</dd></div>
+            <div v-if="shipment.mode === 'Company'" class="flex flex-wrap gap-x-2"><dt class="font-semibold">تسليم الطلب للشركة</dt>
+              <dd>{{ adminHandoffMode(shipment.handoffMode) }}</dd></div>
             <div v-if="shipment.shipmentReference" class="flex flex-wrap gap-x-2"><dt class="font-semibold">مرجع الشحنة</dt>
               <dd class="break-all"><bdi>{{ shipment.shipmentReference }}</bdi></dd></div>
             <div class="flex flex-wrap gap-x-2"><dt class="font-semibold">آخر تحديث</dt>
