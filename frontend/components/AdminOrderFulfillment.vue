@@ -46,6 +46,7 @@ const deliveryActions = computed<DeliveryAction[]>(() => {
 
 const action = ref<DeliveryAction | ''>('')
 const mode = ref<'Company' | 'Self'>('Company')
+const handoffMode = ref<'OfficeDropoff' | 'CarrierCollection' | ''>('')
 const carrierName = ref('')
 const reference = ref('')
 const reason = ref('')
@@ -62,6 +63,7 @@ const confirmationLabel = computed(() => {
 })
 watch(action, value => {
   mode.value = props.order.delivery?.mode ?? 'Company'
+  handoffMode.value = value === 'CorrectDetails' ? props.order.delivery?.handoffMode ?? '' : ''
   carrierName.value = props.order.delivery?.carrierName ?? (value === 'CorrectDetails' ? '' : 'درب السبيل')
   reference.value = value === 'CorrectDetails' ? props.order.delivery?.shipmentReference ?? '' : ''
   reason.value = ''
@@ -73,12 +75,14 @@ function submitDelivery() {
   if (!current || props.disabled || !deliveryActions.value.includes(current) ||
       (confirmationLabel.value && !confirmed.value) ||
       (requiresReason.value && !reason.value.trim()) ||
+      (['HandOver', 'Redispatch'].includes(current) && mode.value === 'Company' && !handoffMode.value) ||
       (metadata.value && mode.value === 'Company' && !carrierName.value.trim())) return
 
   emit('delivery', {
     action: current,
     requestId: crypto.randomUUID(),
     mode: metadata.value ? mode.value : null,
+    handoffMode: metadata.value && mode.value === 'Company' ? handoffMode.value || null : null,
     carrierName: metadata.value && mode.value === 'Company' ? carrierName.value.trim() : null,
     shipmentReference: metadata.value ? reference.value.trim() || null : null,
     reason: requiresReason.value ? reason.value.trim() : null,
@@ -106,6 +110,7 @@ function submitDelivery() {
     <p v-if="order.delivery">
       {{ adminDeliveryState(order.delivery.state) }}
       · {{ order.delivery.mode === 'Self' ? 'توصيل ذاتي' : order.delivery.carrierName }}
+      <template v-if="order.delivery.mode === 'Company'"> · {{ adminHandoffMode(order.delivery.handoffMode) }}</template>
       <bdi v-if="order.delivery.shipmentReference"> · {{ order.delivery.shipmentReference }}</bdi>
     </p>
     <p v-else-if="deliveryActions.length">سجّل التسليم بعد ما تعطي الطلب لشركة التوصيل أو تبدأ توصله بنفسك.</p>
@@ -134,6 +139,14 @@ function submitDelivery() {
             <span class="block font-semibold">شركة التوصيل</span>
             <input v-model="carrierName" required maxlength="120" class="min-h-11 w-full rounded-lg border border-slate-400 p-2">
           </label>
+          <label v-if="mode === 'Company'" class="block">
+            <span class="block font-semibold">كيف سُلّم الطلب لشركة التوصيل؟</span>
+            <select v-model="handoffMode" :required="action !== 'CorrectDetails'" class="min-h-11 w-full rounded-lg border border-slate-400 p-2">
+              <option value="">{{ action === 'CorrectDetails' ? 'غير مسجل' : 'اختر طريقة التسليم' }}</option>
+              <option value="OfficeDropoff">تسليم إلى مكتب الشركة</option>
+              <option value="CarrierCollection">استلام مندوب الشركة</option>
+            </select>
+          </label>
           <label class="block">
             <span class="block font-semibold">مرجع الشحنة (اختياري)</span>
             <input v-model="reference" maxlength="100" class="min-h-11 w-full rounded-lg border border-slate-400 p-2">
@@ -160,6 +173,7 @@ function submitDelivery() {
           <p>{{ actions[entry.action as DeliveryAction] ?? entry.action }} · {{ adminDeliveryState(entry.newState) }}</p>
           <p>
             {{ entry.mode === 'Self' ? 'توصيل ذاتي' : entry.carrierName }}
+            <template v-if="entry.mode === 'Company'"> · {{ adminHandoffMode(entry.handoffMode) }}</template>
             <bdi v-if="entry.shipmentReference"> · {{ entry.shipmentReference }}</bdi>
           </p>
           <p class="text-sm text-slate-700">

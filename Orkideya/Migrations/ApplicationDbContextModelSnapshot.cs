@@ -372,6 +372,10 @@ namespace Orkideya.Migrations
                     b.Property<int>("OrderId")
                         .HasColumnType("int");
 
+                    b.Property<string>("HandoffMode")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
                     b.Property<string>("CarrierName")
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
@@ -406,6 +410,8 @@ namespace Orkideya.Migrations
 
                     b.ToTable("OrderDeliveries", t =>
                         {
+                            t.HasCheckConstraint("CK_OrderDelivery_Handoff", "[HandoffMode] IS NULL OR ([Mode]='Company' AND [HandoffMode] IN ('OfficeDropoff','CarrierCollection'))");
+
                             t.HasCheckConstraint("CK_OrderDelivery_State", "[Mode] IN ('Company','Self') AND (([Mode]='Company' AND [CarrierName] IS NOT NULL AND LEN(LTRIM(RTRIM([CarrierName])))>0) OR ([Mode]='Self' AND [CarrierName] IS NULL)) AND ([ShipmentReference] IS NULL OR LEN(LTRIM(RTRIM([ShipmentReference])))>0) AND [State] IN ('HandedOver','Delivered','Returning','Returned') AND [Revision]>0 AND [UpdatedAtUtc]>=[CreatedAtUtc]");
                         });
                 });
@@ -424,6 +430,10 @@ namespace Orkideya.Migrations
                         .IsRequired()
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("HandoffMode")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
                     b.Property<string>("CarrierName")
                         .HasMaxLength(120)
@@ -481,6 +491,8 @@ namespace Orkideya.Migrations
 
                     b.ToTable("OrderDeliveryEvents", t =>
                         {
+                            t.HasCheckConstraint("CK_OrderDeliveryEvent_Handoff", "[HandoffMode] IS NULL OR ([Mode]='Company' AND [HandoffMode] IN ('OfficeDropoff','CarrierCollection'))");
+
                             t.HasCheckConstraint("CK_OrderDeliveryEvent_Data", "[Mode] IN ('Company','Self') AND (([Mode]='Company' AND [CarrierName] IS NOT NULL AND LEN(LTRIM(RTRIM([CarrierName])))>0) OR ([Mode]='Self' AND [CarrierName] IS NULL)) AND ([ShipmentReference] IS NULL OR LEN(LTRIM(RTRIM([ShipmentReference])))>0) AND [Revision]>0 AND LEN(LTRIM(RTRIM([ActorUserId])))>0 AND LEN([RequestHash])=64 AND [RequestId]<>'00000000-0000-0000-0000-000000000000' AND ([LegacyPreparationConfirmed]=0 OR [Action]='HandOver') AND [ReturnReceiptConfirmed]=CASE WHEN [Action]='ReceiveReturn' THEN 1 ELSE 0 END AND [SamePackageReuseConfirmed]=CASE WHEN [Action]='Redispatch' THEN 1 ELSE 0 END AND ([Action] NOT IN ('MarkReturning','Resume','Redispatch','CorrectDetails','CorrectState') OR ([Reason] IS NOT NULL AND LEN(LTRIM(RTRIM([Reason])))>0))");
 
                             t.HasCheckConstraint("CK_OrderDeliveryEvent_Transition", "([Action]='HandOver' AND [PreviousState] IS NULL AND [NewState]='HandedOver') OR ([PreviousState] IS NOT NULL AND (([Action]='Deliver' AND [PreviousState]='HandedOver' AND [NewState]='Delivered') OR ([Action]='MarkReturning' AND [PreviousState]='HandedOver' AND [NewState]='Returning') OR ([Action]='ReceiveReturn' AND [PreviousState]='Returning' AND [NewState]='Returned') OR ([Action]='Resume' AND [PreviousState]='Returning' AND [NewState]='HandedOver') OR ([Action]='Redispatch' AND [PreviousState]='Returned' AND [NewState]='HandedOver') OR ([Action]='CorrectDetails' AND [PreviousState]=[NewState] AND [NewState] IN ('HandedOver','Delivered','Returning','Returned')) OR ([Action]='CorrectState' AND (([PreviousState]='Delivered' AND [NewState]='HandedOver') OR ([PreviousState]='Returned' AND [NewState]='Returning')))))");

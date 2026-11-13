@@ -16,6 +16,7 @@ public sealed class DeliveryListRow
     public required string CustomerName { get; init; }
     public required string City { get; init; }
     public required string Mode { get; init; }
+    public string? HandoffMode { get; init; }
     public string? CarrierName { get; init; }
     public string? ShipmentReference { get; init; }
     public required string State { get; init; }

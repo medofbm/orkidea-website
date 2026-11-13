@@ -46,6 +46,9 @@ namespace Orkideya.Data
             builder.Entity<OrderCreation>().ToTable(t=>t.HasCheckConstraint("CK_OrderCreation_Source",
                 "([Source]='Website' AND [ActorUserId] IS NULL) OR ([Source]='FacebookManual' AND [ActorUserId] IS NOT NULL AND LEN(LTRIM(RTRIM([ActorUserId])))>0)"));
             const string deliveryMetadata = "[Mode] IN ('Company','Self') AND (([Mode]='Company' AND [CarrierName] IS NOT NULL AND LEN(LTRIM(RTRIM([CarrierName])))>0) OR ([Mode]='Self' AND [CarrierName] IS NULL)) AND ([ShipmentReference] IS NULL OR LEN(LTRIM(RTRIM([ShipmentReference])))>0)";
+            const string handoffConstraint = "[HandoffMode] IS NULL OR ([Mode]='Company' AND [HandoffMode] IN ('OfficeDropoff','CarrierCollection'))";
+            builder.Entity<OrderDelivery>().ToTable(t => t.HasCheckConstraint("CK_OrderDelivery_Handoff", handoffConstraint));
+            builder.Entity<OrderDeliveryEvent>().ToTable(t => t.HasCheckConstraint("CK_OrderDeliveryEvent_Handoff", handoffConstraint));
             builder.Entity<OrderDelivery>().Property(d => d.OrderId).ValueGeneratedNever();
             builder.Entity<OrderDeliveryEvent>().Property(e => e.RequestId).ValueGeneratedNever();
             builder.Entity<OrderDelivery>().HasOne<Order>().WithOne().HasForeignKey<OrderDelivery>(d => d.OrderId).OnDelete(DeleteBehavior.Restrict);
