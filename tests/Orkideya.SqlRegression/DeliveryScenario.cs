@@ -239,7 +239,7 @@ internal static class DeliveryScenario
             check(!await db.OrderNotifications.AnyAsync(n=>db.OrderDeliveries.Any(d=>d.OrderId==n.OrderId) && (n.Attempts!=0 || n.ProviderMessageId!=null)),
                 "Delivery operations never attempt a provider notification");
             var blocked=false;
-            try{await db.GetService<IMigrator>().MigrateAsync("20261031155358_BulkStockReservations");}catch(SqlException ex)when(ex.Number is 51004 or 51006){blocked=true;}
+            try{await db.GetService<IMigrator>().MigrateAsync("20261031155358_BulkStockReservations");}catch(SqlException ex)when(ex.Number == 51007){blocked=true;}
             await db.Database.MigrateAsync(); // Reapply later empty additive migrations after the delivery guard refused downgrade.
             check(blocked && await db.OrderDeliveryEvents.AnyAsync() && !(await db.Database.GetPendingMigrationsAsync()).Any(),
                 "Delivery downgrade refuses to erase shipment state or immutable event history");

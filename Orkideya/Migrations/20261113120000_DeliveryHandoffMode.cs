@@ -21,7 +21,7 @@ public partial class DeliveryHandoffMode : Migration
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         // Refuse silent loss of recorded operational evidence.
-        migrationBuilder.Sql("IF EXISTS (SELECT 1 FROM [OrderDeliveries] WHERE [HandoffMode] IS NOT NULL) OR EXISTS (SELECT 1 FROM [OrderDeliveryEvents] WHERE [HandoffMode] IS NOT NULL) THROW 51006, 'Cannot discard recorded delivery handoff evidence.', 1;");
+        migrationBuilder.Sql("IF EXISTS (SELECT 1 FROM [OrderDeliveries] WHERE [HandoffMode] IS NOT NULL) OR EXISTS (SELECT 1 FROM [OrderDeliveryEvents] WHERE [HandoffMode] IS NOT NULL) THROW 51007, 'Cannot discard recorded delivery handoff evidence.', 1;");
         foreach (var table in new[] { "OrderDeliveries", "OrderDeliveryEvents" })
         {
             migrationBuilder.DropCheckConstraint(name: table == "OrderDeliveries" ? "CK_OrderDelivery_Handoff" : "CK_OrderDeliveryEvent_Handoff", table: table);
