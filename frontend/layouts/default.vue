@@ -4,7 +4,28 @@ const route = useRoute()
 const brandImage = '/images/logo.jpg'
 const menuOpen = ref(false)
 const menuButton = ref<HTMLButtonElement>()
+const nuxtApp = useNuxtApp()
+let pendingFocus: string | undefined
+async function focusPendingTarget() {
+  await nextTick()
+  if (!pendingFocus || route.path !== '/' || route.hash !== pendingFocus) return
+  const target = document.getElementById(pendingFocus.slice(1))
+  if (target) {
+    target.focus()
+    pendingFocus = undefined
+  }
+}
+const removePageFinishHook = nuxtApp.hook('page:finish', focusPendingTarget)
+onUnmounted(removePageFinishHook)
 watch(() => route.fullPath, () => { menuOpen.value = false })
+async function navigateFromMenu(event: MouseEvent, hash: string) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+  event.preventDefault()
+  menuOpen.value = false
+  pendingFocus = hash
+  await navigateTo({ path: '/', hash })
+  await focusPendingTarget()
+}
 function closeMenu() {
   if (!menuOpen.value) return
   menuOpen.value = false
@@ -39,9 +60,9 @@ onMounted(() => {
           </button>
         </div>
         <div id="store-navigation" :class="menuOpen ? 'flex' : 'hidden'" class="w-full flex-col gap-1 border-t border-purple-100 pt-2 text-sm font-semibold text-purple-950 sm:flex sm:w-auto sm:flex-row sm:items-center sm:border-0 sm:pt-0" @keydown.esc="closeMenu">
-          <NuxtLink :to="{ path: '/', hash: '#catalogue-heading' }" class="inline-flex min-h-11 items-center rounded-lg px-3 hover:bg-purple-50" @click="menuOpen = false">المنتجات</NuxtLink>
-          <NuxtLink :to="{ path: '/', hash: '#categories' }" class="inline-flex min-h-11 items-center rounded-lg px-3 hover:bg-purple-50" @click="menuOpen = false">الفئات</NuxtLink>
-          <NuxtLink :to="{ path: '/', hash: '#how-to-order' }" class="inline-flex min-h-11 items-center rounded-lg px-3 hover:bg-purple-50" @click="menuOpen = false">طريقة الطلب</NuxtLink>
+          <NuxtLink :to="{ path: '/', hash: '#catalogue-heading' }" class="inline-flex min-h-11 items-center rounded-lg px-3 hover:bg-purple-50" @click="navigateFromMenu($event, '#catalogue-heading')">المنتجات</NuxtLink>
+          <NuxtLink :to="{ path: '/', hash: '#categories' }" class="inline-flex min-h-11 items-center rounded-lg px-3 hover:bg-purple-50" @click="navigateFromMenu($event, '#categories')">الفئات</NuxtLink>
+          <NuxtLink :to="{ path: '/', hash: '#how-to-order' }" class="inline-flex min-h-11 items-center rounded-lg px-3 hover:bg-purple-50" @click="navigateFromMenu($event, '#how-to-order')">طريقة الطلب</NuxtLink>
           <NuxtLink to="/account" class="inline-flex min-h-11 items-center rounded-lg px-3 hover:bg-purple-50" @click="menuOpen = false">الحساب</NuxtLink>
         </div>
       </nav>
