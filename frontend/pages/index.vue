@@ -23,32 +23,32 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
 
 <template>
   <section aria-labelledby="store-heading"
-    class="relative isolate grid gap-5 overflow-hidden rounded-3xl border border-purple-200 bg-purple-50 px-5 py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-10 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
-    <div class="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_left,#e9d5ff,transparent_66%)]" aria-hidden="true"></div>
+    class="relative isolate grid gap-4 overflow-hidden rounded-3xl border border-purple-200/70 bg-[#f6f1f8] px-5 py-7 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-x-12 sm:gap-y-5 sm:px-10 sm:py-11 lg:px-14 lg:py-14">
+    <div class="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_left,#e5d7ed,transparent_65%)]" aria-hidden="true"></div>
     <div class="flex items-center gap-3 sm:col-start-1 sm:row-start-1">
       <img :src="brandImage" alt="" width="48" height="48" class="size-12 rounded-full ring-2 ring-white sm:hidden">
-      <p class="text-sm font-bold text-purple-900">متجر أوركيديا</p>
+      <p class="rounded-full border border-purple-200 bg-white/70 px-3 py-1.5 text-xs font-bold text-purple-800">متجر أوركيديا</p>
     </div>
     <div class="min-w-0 sm:col-start-1 sm:row-start-2">
-      <h1 id="store-heading" class="max-w-lg text-3xl leading-tight font-bold text-purple-950 sm:text-4xl lg:text-5xl">
+      <h1 id="store-heading" class="max-w-lg text-3xl leading-[1.3] font-bold tracking-tight text-purple-950 sm:text-4xl lg:text-5xl">
         زيوت وصابون للعناية اليومية
       </h1>
       <p class="mt-3 max-w-md text-sm leading-relaxed text-purple-900 sm:text-base">
         تصفّحي المنتجات وشوفي الأحجام والأسعار قبل ما تختاري اللي يناسبك.
       </p>
       <a href="#catalogue-heading"
-        class="storefront-action mt-5 inline-flex min-h-11 items-center gap-3 rounded-full bg-purple-900 px-5 text-sm font-bold text-white hover:bg-purple-800">
+        class="storefront-action mt-5 inline-flex min-h-12 items-center gap-3 rounded-full bg-purple-900 px-6 shadow-sm text-sm font-bold text-white hover:bg-purple-800">
         تصفّحي المنتجات
         <span aria-hidden="true">↓</span>
       </a>
     </div>
-    <div class="hidden place-items-center rounded-full border border-white/80 p-4 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:grid lg:p-6" aria-hidden="true">
+    <div class="hidden place-items-center rounded-full border border-purple-200/70 bg-white/30 p-5 shadow-xl shadow-purple-900/5 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:grid lg:p-7" aria-hidden="true">
       <img :src="brandImage" alt="" width="208" height="208"
         class="size-36 rounded-full border-4 border-white shadow-lg shadow-purple-900/15 lg:size-52">
     </div>
   </section>
-  <section class="mt-8 sm:mt-12" aria-labelledby="catalogue-heading">
-    <div class="mb-4 flex flex-wrap items-end justify-between gap-2 sm:mb-6">
+  <section class="mt-10 sm:mt-14" aria-labelledby="catalogue-heading">
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-2 border-b border-purple-100 pb-4 sm:mb-6">
       <h2 id="catalogue-heading" tabindex="-1" class="scroll-mt-4 text-2xl font-bold text-purple-950 sm:text-3xl">منتجات أوركيديا</h2>
       <p v-if="data?.items.length && !error" class="text-sm text-purple-900">عدد المنتجات <bdi class="font-bold">{{ data.total }}</bdi></p>
     </div>
@@ -93,7 +93,7 @@ useSeoMeta({ title: 'منتجات أوركيديا', description: 'تصفّح م
       </nav>
     </template>
   </section>
-  <section id="how-to-order" tabindex="-1" aria-labelledby="order-heading" class="mt-10 scroll-mt-4 rounded-3xl bg-purple-50 p-5 sm:p-8">
+  <section id="how-to-order" tabindex="-1" aria-labelledby="order-heading" class="mt-12 scroll-mt-4 rounded-3xl bg-[#f6f1f8] p-5 sm:p-8">
     <h2 id="order-heading" class="text-2xl font-bold text-purple-950">كيف تطلبي؟</h2>
     <ol class="mt-4 grid gap-4 text-purple-900 sm:grid-cols-3">
       <li><strong>١. اختاري منتجاتك</strong><p class="mt-1 leading-relaxed">تصفّحي المنتجات واختاري الحجم المناسب وأضيفيه للسلة.</p></li>
