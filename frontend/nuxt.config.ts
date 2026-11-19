@@ -8,7 +8,8 @@ export default defineNuxtConfig({
   vite: { plugins: [tailwindcss()] },
   runtimeConfig: {
     backendOrigin: 'http://127.0.0.1:5000',
-    public: { apiBase: '/api/v1/catalogue', preview: false }
+    // Contact and social links stay empty until the owner approves them; set via NUXT_PUBLIC_* env vars. UI hides empty links.
+    public: { apiBase: '/api/v1/catalogue', preview: false, whatsappNumber: '', facebookUrl: '', instagramUrl: '' }
   },
   app: {
     head: {

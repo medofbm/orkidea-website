@@ -2,32 +2,56 @@
 import type { CatalogueProduct } from '~/types/catalogue'
 
 const props = defineProps<{ product: CatalogueProduct & { startingPrice?: string } }>()
+const { busy, mutate } = useCart()
 const imageFailed = ref(false)
 watch(() => props.product.images[0], () => { imageFailed.value = false })
 const brandImage = '/images/logo.jpg'
+const showImage = computed(() => !!props.product.images[0] && props.product.images[0] !== brandImage && !imageFailed.value)
+const sizes = computed(() => [...new Set(props.product.variants.map(v => v.size).filter(Boolean))])
+const single = computed(() => props.product.variants.length === 1)
+const target = computed(() => '/products/' + props.product.id)
+const justAdded = ref(false)
+async function add() {
+  const variant = props.product.variants[0]
+  if (!variant) return
+  await mutate('POST', variant.id, 1)
+  justAdded.value = true
+  setTimeout(() => { justAdded.value = false }, 2000)
+}
 </script>
 
 <template>
-  <NuxtLink :to="'/products/' + product.id"
-    class="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-purple-100 bg-white shadow-sm shadow-purple-950/5 hover:border-purple-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-800 motion-safe:transition motion-safe:duration-200 motion-safe:hover:-translate-y-0.5">
-    <div class="grid aspect-square place-items-center overflow-hidden bg-[#f8f5f9] p-2 sm:p-3">
-      <img v-if="product.images[0] && product.images[0] !== brandImage && !imageFailed"
-        :src="product.images[0]" @error="imageFailed = true" alt="" class="size-full object-contain" loading="lazy" width="320" height="320">
-      <div v-else class="grid place-items-center gap-2 p-2 text-center text-xs text-purple-900">
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-8">
-          <rect x="3" y="4" width="18" height="16" rx="3" />
-          <path d="m3 16 5-5 4 4 3-3 6 6M15 8h.01" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-        <span>صورة غير متاحة</span>
+  <article class="product-card card relative flex min-w-0 flex-col">
+    <div class="relative grid aspect-[4/5] place-items-center overflow-hidden bg-lavender/60 p-2 sm:p-3">
+      <img v-if="showImage" :src="product.images[0]" :alt="'عبوة ' + product.name" loading="lazy" decoding="async"
+        width="320" height="400" class="size-full object-contain" @error="imageFailed = true">
+      <div v-else class="grid size-full place-items-center bg-lavender" role="img" :aria-label="'صورة ' + product.name + ' غير متاحة حالياً'">
+        <img src="/brand/flower-icon.webp" alt="" aria-hidden="true" width="96" height="96" loading="lazy" class="size-16 rounded-2xl opacity-90 sm:size-24">
       </div>
     </div>
-    <div class="flex flex-1 flex-col gap-1 p-3 sm:p-5">
-      <h3 class="text-sm leading-relaxed font-bold wrap-anywhere text-purple-950 sm:text-base">{{ product.name }}</h3>
-      <p v-if="product.category" class="text-xs wrap-anywhere text-purple-800">{{ product.category }}</p>
-      <p v-if="product.startingPrice !== undefined" class="mt-auto pt-2 text-sm text-purple-900">
-        <span v-if="product.variants.length > 1">من </span><bdi class="font-bold">{{ product.startingPrice }}</bdi> د.ل
+    <div class="flex flex-1 flex-col gap-1.5 p-3 sm:p-4">
+      <h3 class="line-clamp-2 min-h-[3.4em] text-sm leading-snug font-bold text-ink sm:text-base">
+        <NuxtLink :to="target" class="stretched rounded-md focus-visible:outline-offset-4">{{ product.name }}</NuxtLink>
+      </h3>
+      <ul v-if="sizes.length" class="flex flex-wrap gap-1" aria-label="الأحجام">
+        <li v-for="s in sizes" :key="s" class="rounded-full bg-lavender px-2.5 py-0.5 text-xs font-semibold text-brand">{{ s }}</li>
+      </ul>
+      <p v-if="product.startingPrice !== undefined" class="price mt-auto pt-1 text-base sm:text-lg">
+        <span v-if="product.variants.length > 1" class="text-sm font-semibold text-ink-soft">من </span><bdi>{{ product.startingPrice }}</bdi> د.ل
       </p>
-      <span aria-hidden="true" class="mt-3 border-t border-purple-100 pt-3 text-xs font-bold text-purple-900 group-hover:text-purple-700">عرض التفاصيل ←</span>
+      <button v-if="single" type="button" class="btn-primary relative z-10 mt-2 w-full text-sm" :disabled="busy" @click="add">
+        {{ justAdded ? 'تمت الإضافة ✓' : 'أضف للسلة' }}
+      </button>
+      <NuxtLink v-else :to="target" tabindex="-1" aria-hidden="true" class="btn-secondary relative z-10 mt-2 w-full text-sm">اختار الحجم</NuxtLink>
     </div>
-  </NuxtLink>
+  </article>
 </template>
+
+<style scoped>
+.stretched::after { content: ''; position: absolute; inset: 0; z-index: 0; }
+.product-card:focus-within { border-color: var(--color-brand); }
+@media (prefers-reduced-motion: no-preference) {
+  .product-card { transition: transform 160ms ease-out, box-shadow 160ms ease-out; }
+  .product-card:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgb(48 8 26 / 0.16); }
+}
+</style>
