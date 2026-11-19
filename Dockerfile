@@ -6,7 +6,7 @@ RUN dotnet restore Orkideya/Orkideya.csproj -p:NuGetAudit=true -p:NuGetAuditMode
 COPY Orkideya/ Orkideya/
 RUN dotnet publish Orkideya/Orkideya.csproj -c Release --no-restore --no-self-contained -p:UseAppHost=false --warnaserror -o /out
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.14 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0 AS runtime
 WORKDIR /app
 COPY --from=build /out/ ./
 RUN mkdir -p /var/orkidea/keys /app/wwwroot/images/products && chown -R "$APP_UID" /var/orkidea /app/wwwroot/images/products && chmod 700 /var/orkidea/keys
