@@ -52,11 +52,11 @@ async function add() {
         <span v-if="product.variants.length > 1" class="text-sm font-semibold text-ink-soft">من </span><bdi>{{ product.startingPrice }}</bdi> د.ل
       </p>
       <button v-if="single" type="button" class="btn-primary relative z-10 mt-2 w-full text-sm" :disabled="busy" @click="add">
-        {{ justAdded ? 'تمت الإضافة ✓' : 'أضف للسلة' }}
+        {{ justAdded ? 'تمت الإضافة ✓' : 'أضيفي للسلة' }}
       </button>
       <p v-if="single && failed" role="alert" class="relative z-10 text-xs font-semibold text-red-700">{{ errorText }}</p>
       <span v-else-if="!product.variants.length" class="mt-2 w-full cursor-not-allowed rounded-xl bg-lavender px-4 py-2.5 text-center text-sm font-semibold text-ink-soft opacity-70" aria-disabled="true">غير متاح حالياً</span>
-      <NuxtLink v-else-if="!single" :to="target" tabindex="-1" aria-hidden="true" class="btn-secondary relative z-10 mt-2 w-full text-sm">اختار الحجم</NuxtLink>
+      <NuxtLink v-else-if="!single" :to="target" tabindex="-1" aria-hidden="true" class="btn-secondary relative z-10 mt-2 w-full text-sm">اختاري الحجم</NuxtLink>
     </div>
   </article>
 </template>

@@ -17,29 +17,52 @@ const products = computed(() => (data.value?.items ?? []).map(product => ({
   startingPrice: product.variants.reduce<string | undefined>((lowest, variant) =>
     lowest === undefined || Number(variant.price) < Number(lowest) ? variant.price : lowest, undefined)
 })))
-const steps = ['اختار منتجك', 'أضفه للسلة', 'نوصلك الطلب']
+const steps = ['اختاري منتجك', 'أضيفيه للسلة', 'نوصلك الطلب']
+const { whatsappNumber, facebookUrl, instagramUrl } = useRuntimeConfig().public
+const whatsappHref = computed(() => {
+  const digits = String(whatsappNumber ?? '').replace(/\D/g, '')
+  return digits ? `https://wa.me/${digits}` : ''
+})
+const contactLinks = computed(() => [
+  { label: 'واتساب', href: whatsappHref.value },
+  { label: 'فيسبوك', href: facebookUrl ? String(facebookUrl) : '' },
+  { label: 'إنستغرام', href: instagramUrl ? String(instagramUrl) : '' }
+].filter(link => link.href))
 useSeoMeta({
   title: 'أوركيديا | زيوت ومنتجات طبيعية',
-  description: 'أوركيديا للزيوت والمنتجات الطبيعية. اختار منتجك واطلب بسهولة والدفع عند الاستلام.'
+  description: 'أوركيديا للزيوت والمنتجات الطبيعية. منتجات طبيعية وعضوية. اختاري منتجك واطلبي بسهولة والدفع عند الاستلام.'
 })
 </script>
 
 <template>
   <div class="overflow-x-clip">
     <!-- Hero -->
-    <section aria-labelledby="store-heading" class="grid gap-8 py-6 sm:py-10 lg:grid-cols-2 lg:items-center lg:gap-14 lg:py-14">
+    <section aria-labelledby="store-heading"
+      class="mt-4 grid gap-8 overflow-hidden rounded-[2rem] bg-linear-to-br from-lavender via-cream to-lavender/60 px-5 py-10 sm:px-10 sm:py-14 lg:grid-cols-2 lg:items-center lg:gap-14 lg:px-14 lg:py-16">
       <div class="order-2 min-w-0 text-center lg:order-1 lg:text-start">
-        <p class="text-sm font-semibold text-brand">للزيوت والمنتجات الطبيعية</p>
-        <h1 id="store-heading" class="mt-3 text-3xl leading-[1.35] font-bold text-ink sm:text-4xl lg:text-5xl">
-          زيوت وصابون طبيعي، حلو في العين وسهل تطلبه
+        <p class="inline-flex items-center rounded-full border border-lavender-deep bg-white/70 px-4 py-1 text-sm font-semibold text-brand">100% طبيعي • مصنوع يدويًا</p>
+        <h1 id="store-heading" class="mt-4 text-3xl leading-[1.4] font-bold text-ink sm:text-4xl lg:text-5xl">
+          اكتشفي <span class="bg-linear-to-l from-brand to-accent bg-clip-text text-transparent">جمال الطبيعة</span> مع أوركيديا
         </h1>
-        <p class="mx-auto mt-4 max-w-md text-base text-ink-soft lg:mx-0">أوركيديا للزيوت والمنتجات الطبيعية.</p>
-        <a href="#catalogue-heading" class="btn-primary mt-7 w-full sm:w-auto sm:min-w-48">تسوّق الحين</a>
+        <p class="mx-auto mt-4 max-w-md text-base text-ink-soft lg:mx-0">زيوت وصابون طبيعي من ليبيا. اختاري منتجك واطلبيه بسهولة.</p>
+        <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
+          <a href="#catalogue-heading" class="btn-primary sm:min-w-44">تسوقي الآن</a>
+          <a href="#contact" class="btn-secondary sm:min-w-44">تواصلي معنا</a>
+        </div>
+        <dl class="mt-8 flex items-center justify-center gap-6 lg:justify-start">
+          <div><dt class="sr-only">طبيعي</dt><dd class="text-lg font-bold text-brand">100% طبيعي</dd></div>
+          <span class="h-8 w-px bg-lavender-deep" aria-hidden="true"></span>
+          <div><dt class="sr-only">طريقة الصنع</dt><dd class="text-lg font-bold text-brand">صنع يدوي</dd></div>
+          <span class="h-8 w-px bg-lavender-deep" aria-hidden="true"></span>
+          <div><dt class="sr-only">التقييم</dt><dd class="flex items-center gap-1 text-lg font-bold text-brand">5 <span class="text-gold" aria-hidden="true">★</span> <span class="text-sm font-semibold text-ink-soft">تقييم</span></dd></div>
+        </dl>
       </div>
-      <div class="order-1 lg:order-2">
-        <img src="/brand/hero-oils.webp" width="1122" height="1402" fetchpriority="high" decoding="async"
-          alt="عبوتا زيت أوركيديا بجانب بعض"
-          class="mx-auto aspect-[4/3] w-full max-w-md rounded-[var(--radius-card)] object-cover object-[50%_60%] shadow-[var(--shadow-soft)] sm:aspect-[4/5] lg:max-w-lg">
+      <div class="order-1 flex justify-center lg:order-2">
+        <div class="grid size-56 place-items-center rounded-full bg-white/60 p-3 shadow-[var(--shadow-soft)] ring-8 ring-white/70 sm:size-72 lg:size-96">
+          <div class="grid size-full place-items-center rounded-full bg-linear-to-br from-brand-soft to-brand">
+            <img src="/brand/flower-white.png" alt="شعار أوركيديا" width="160" height="160" decoding="async" fetchpriority="high" class="h-auto w-1/2">
+          </div>
+        </div>
       </div>
     </section>
 
@@ -79,7 +102,7 @@ useSeoMeta({
       <template v-else>
         <div v-if="!data?.items.length" class="rounded-[var(--radius-card)] bg-lavender p-6 text-center sm:p-10">
           <p class="font-semibold text-ink">
-            {{ categoryId ? 'ما فيش منتجات ضمن الفئة المختارة حاليًا.' : 'المنتجات جاية قريب، ارجع لنا بعد شوية 🌿' }}
+            {{ categoryId ? 'لا توجد منتجات ضمن الفئة المختارة حاليًا.' : 'المنتجات قريبًا، راجعينا بعد قليل 🌿' }}
           </p>
           <NuxtLink v-if="categoryId" :to="{ query: {}, hash: '#catalogue-heading' }" class="btn-primary mt-4">
             عرض كل المنتجات
@@ -100,7 +123,7 @@ useSeoMeta({
 
     <!-- How to order -->
     <section id="how-to-order" tabindex="-1" aria-labelledby="order-heading" class="mt-14 scroll-mt-4 rounded-[var(--radius-card)] bg-lavender px-5 py-8 sm:px-10 sm:py-12">
-      <h2 id="order-heading" class="text-center text-2xl font-bold text-ink sm:text-3xl">كيف تطلب</h2>
+      <h2 id="order-heading" class="text-center text-2xl font-bold text-ink sm:text-3xl">كيف تطلبي؟</h2>
       <ol class="mt-6 grid gap-4 sm:grid-cols-3 sm:gap-6">
         <li v-for="(step, i) in steps" :key="step" class="flex items-center gap-4 rounded-[var(--radius-card)] bg-white p-4 sm:flex-col sm:p-6 sm:text-center">
           <span class="grid size-11 shrink-0 place-items-center rounded-full bg-brand text-lg font-bold text-white" aria-hidden="true">{{ i + 1 }}</span>
@@ -110,19 +133,19 @@ useSeoMeta({
       <p class="mt-5 text-center text-sm font-semibold text-brand">الدفع عند الاستلام</p>
     </section>
 
-    <!-- Lifestyle band -->
-    <section id="about-orkidea" tabindex="-1" aria-labelledby="about-heading"
-      class="mt-10 scroll-mt-4 overflow-hidden rounded-[var(--radius-card)] bg-plum text-white">
-      <div class="grid items-center lg:grid-cols-2">
-        <img src="/brand/blackseed-oil.webp" loading="lazy" decoding="async" width="1122" height="1402"
-          alt="زيت الحبة السوداء من أوركيديا"
-          class="aspect-[4/3] w-full object-cover object-center lg:aspect-auto lg:h-full lg:max-h-[28rem]">
-        <div class="px-6 py-8 sm:px-10 lg:py-12">
-          <h2 id="about-heading" class="text-2xl font-bold sm:text-3xl">أوركيديا</h2>
-          <p class="mt-3 max-w-md text-lavender">زيت الحبة السوداء، زيت السمسم، زيت جوز الهند وصابون الحبة السوداء. شوف المنتجات واختار اللي يعجبك.</p>
-          <a href="#catalogue-heading" class="mt-6 inline-flex min-h-12 items-center justify-center rounded-full bg-white px-6 font-bold text-brand hover:bg-lavender">شوف المنتجات</a>
-        </div>
+    <!-- About -->
+    <section id="about-orkidea" tabindex="-1" aria-labelledby="about-heading" class="mt-10 scroll-mt-4 px-1 text-center">
+      <h2 id="about-heading" class="text-2xl font-bold text-ink sm:text-3xl">أوركيديا</h2>
+      <p class="mx-auto mt-3 max-w-xl text-ink-soft">أوركيديا متجر ليبي للزيوت والصابون الطبيعية. منتجاتنا طبيعية وعضوية.</p>
+    </section>
+
+    <!-- Contact -->
+    <section id="contact" tabindex="-1" aria-labelledby="contact-heading" class="mt-10 mb-6 scroll-mt-4 rounded-[var(--radius-card)] bg-lavender px-5 py-8 text-center sm:px-10">
+      <h2 id="contact-heading" class="text-2xl font-bold text-ink sm:text-3xl">تواصلي معنا</h2>
+      <div v-if="contactLinks.length" class="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+        <a v-for="link in contactLinks" :key="link.label" :href="link.href" target="_blank" rel="noopener noreferrer" class="btn-secondary bg-white sm:min-w-40">{{ link.label }}</a>
       </div>
+      <p v-else class="mt-3 text-ink-soft">قنوات التواصل ستتوفر قريبًا.</p>
     </section>
   </div>
 </template>

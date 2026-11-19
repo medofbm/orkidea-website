@@ -34,7 +34,7 @@ const whatsappNumber = String(useRuntimeConfig().public.whatsappNumber ?? '').re
 const whatsappLink = computed(() => {
   if (!whatsappNumber || !product.value) return ''
   const size = currentVariant.value ? ' (' + currentVariant.value.size + ')' : ''
-  const text = 'السلام عليكم، حاب نطلب ' + product.value.name + size
+  const text = 'السلام عليكم، أرغب في طلب ' + product.value.name + size
   return 'https://wa.me/' + whatsappNumber + '?text=' + encodeURIComponent(text)
 })
 function addToCart() {
@@ -65,7 +65,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
         {{ error.statusCode === 404 ? 'ما لقينا المنتج هذا' : 'تعذر تحميل المنتج' }}
       </p>
       <p class="mt-1 text-sm text-ink-soft">
-        {{ error.statusCode === 404 ? 'يمكن اتشال أو الرابط غير صحيح. شوف باقي منتجاتنا.' : 'راجع اتصال الإنترنت وحاول مرة ثانية.' }}
+        {{ error.statusCode === 404 ? 'يمكن اتشال أو الرابط غير صحيح. شوفي باقي منتجاتنا.' : 'راجعي اتصال الإنترنت وحاولي مرة ثانية.' }}
       </p>
       <div class="mt-4 flex flex-wrap justify-center gap-3">
         <button v-if="error.statusCode !== 404" type="button" class="btn-primary" @click="refresh()">إعادة المحاولة</button>
@@ -139,10 +139,10 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
             </div>
 
             <div class="mt-6 hidden gap-3 md:grid">
-              <button type="button" :disabled="busy" class="btn-primary storefront-action w-full" @click="addToCart">أضف للسلة</button>
-              <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer" class="btn-secondary w-full">اطلب عبر واتساب</a>
+              <button type="button" :disabled="busy" class="btn-primary storefront-action w-full" @click="addToCart">أضيفي للسلة</button>
+              <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer" class="btn-secondary w-full">اطلبي عبر واتساب</a>
             </div>
-            <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer" class="btn-secondary mt-5 w-full md:hidden">اطلب عبر واتساب</a>
+            <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer" class="btn-secondary mt-5 w-full md:hidden">اطلبي عبر واتساب</a>
           </template>
           <p v-else class="font-semibold text-ink">المنتج غير متاح للطلب حاليًا.</p>
           <p role="status" :class="{ 'mt-3': message }" class="text-sm font-semibold text-brand">{{ message }}</p>
@@ -162,7 +162,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
       <div v-if="currentVariant" class="fixed inset-x-0 bottom-0 z-30 flex items-center gap-4 border-t border-lavender bg-cream/95 px-4 pt-3 shadow-[0_-6px_20px_rgb(48_8_26/0.10)] backdrop-blur md:hidden"
         style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))">
         <p class="price shrink-0 text-xl"><bdi>{{ currentVariant.price }}</bdi> <span class="text-sm">د.ل</span></p>
-        <button type="button" :disabled="busy" class="btn-primary storefront-action flex-1" @click="addToCart">أضف للسلة</button>
+        <button type="button" :disabled="busy" class="btn-primary storefront-action flex-1" @click="addToCart">أضيفي للسلة</button>
       </div>
     </article>
   </div>
