@@ -1,11 +1,11 @@
-FROM node:24-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9 AS build
+FROM node:26-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1 AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci --registry=https://registry.npmjs.org
 COPY . .
 RUN npm run build
 
-FROM node:24-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+FROM node:26-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 COPY --from=build --chown=node:node /src/.output/ ./
