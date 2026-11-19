@@ -120,8 +120,9 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
               <legend class="mb-2 text-sm font-semibold text-ink">الحجم</legend>
               <div class="flex flex-wrap gap-2">
                 <label v-for="(variant, index) in product.variants" :key="variant.id"
-                  class="chip cursor-pointer border-2 border-transparent bg-white text-ink ring-1 ring-lavender-deep has-checked:border-brand has-checked:bg-lavender has-checked:text-brand has-focus-visible:outline-3 has-focus-visible:outline-brand">
-                  <input v-model="selectedVariant" type="radio" name="variant" :value="index" class="sr-only">
+                  class="chip relative cursor-pointer border-2 border-transparent bg-white text-ink ring-1 ring-lavender-deep has-checked:border-brand has-checked:bg-lavender has-checked:text-brand has-focus-visible:outline-3 has-focus-visible:outline-brand">
+                  <input v-model="selectedVariant" type="radio" name="variant" :value="index"
+                    class="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed">
                   <span>{{ variant.size }}</span>
                 </label>
               </div>
@@ -161,7 +162,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
 
       <div v-if="currentVariant" class="fixed inset-x-0 bottom-0 z-30 flex items-center gap-4 border-t border-lavender bg-cream/95 px-4 pt-3 shadow-[0_-6px_20px_rgb(48_8_26/0.10)] backdrop-blur md:hidden"
         style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))">
-        <p class="price shrink-0 text-xl"><bdi>{{ currentVariant.price }}</bdi> <span class="text-sm">د.ل</span></p>
+        <p class="price shrink-0 text-xl"><span class="sr-only">السعر </span><bdi>{{ currentVariant.price }}</bdi> <span class="text-sm">د.ل</span></p>
         <button type="button" :disabled="busy" class="btn-primary storefront-action flex-1" @click="addToCart">أضيفي للسلة</button>
       </div>
     </article>
