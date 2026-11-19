@@ -5,9 +5,9 @@ useSeoMeta({ robots: 'noindex, nofollow, noarchive' })
 <template>
   <div class="min-h-screen">
     <a href="#admin-content" class="sr-only focus:not-sr-only">الانتقال إلى المحتوى</a>
-    <header class="border-b border-purple-100 bg-white">
+    <header class="border-b border-lavender bg-white">
       <nav class="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-4" aria-label="قائمة الإدارة">
-        <NuxtLink to="/admin" class="me-4 text-xl font-bold text-purple-900">إدارة أوركيديا</NuxtLink>
+        <NuxtLink to="/admin" class="me-4 text-xl font-bold text-brand">إدارة أوركيديا</NuxtLink>
         <NuxtLink to="/admin/orders" class="rounded-lg px-3 py-2">الطلبات</NuxtLink>
         <NuxtLink to="/admin/delivery" class="rounded-lg px-3 py-2">التوصيل والرواجع</NuxtLink>
         <NuxtLink to="/admin/inventory" class="rounded-lg px-3 py-2">المخزون</NuxtLink>

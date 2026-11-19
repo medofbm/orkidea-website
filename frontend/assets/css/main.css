@@ -1,17 +1,35 @@
+@import "@fontsource-variable/cairo/wght.css";
 @import "tailwindcss";
 
 @theme {
-  --font-sans: system-ui, "Segoe UI", Tahoma, Arial, sans-serif;
+  --color-brand: #751D82;
+  --color-brand-soft: #8B3689;
+  --color-accent: #A70A78;
+  --color-lavender: #E6D3E5;
+  --color-lavender-deep: #CFB3C8;
+  --color-cream: #F6F0EA;
+  --color-plum: #30081A;
+  --color-gold: #C9A24B;
+  --color-ink: #2A1530;
+  --color-ink-soft: #6B5A72;
+  --font-sans: "Cairo Variable", system-ui, "Segoe UI", Tahoma, Arial, sans-serif;
+  --radius-card: 16px;
+  --radius-field: 12px;
+  --shadow-soft: 0 6px 20px rgb(48 8 26 / 0.10);
 }
 
-:root {
+html { font-family: var(--font-sans); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
   font-family: var(--font-sans);
-  color: var(--color-purple-950);
-  background: #faf8fc;
+  line-height: 1.7;
 }
 
 button, a { -webkit-tap-highlight-color: transparent; }
-:focus-visible { outline: 3px solid var(--color-purple-700); outline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--color-brand); outline-offset: 3px; }
 
 @utility storefront-action {
   @media (prefers-reduced-motion: no-preference) {
@@ -19,4 +37,41 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
     &:active:not(:disabled) { transform: scale(0.98); }
   }
+}
+
+@utility btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  min-height: 48px; min-width: 44px; padding-inline: 1.5rem;
+  border-radius: 999px; border: 1px solid var(--color-brand);
+  background: var(--color-brand); color: #fff; font-weight: 700; cursor: pointer;
+  @media (prefers-reduced-motion: no-preference) { transition: background-color 160ms ease-out, transform 160ms ease-out; }
+  &:hover:not(:disabled) { background: var(--color-brand-soft); }
+  &:active:not(:disabled) { transform: scale(0.98); }
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+}
+
+@utility btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  min-height: 48px; min-width: 44px; padding-inline: 1.5rem;
+  border-radius: 999px; border: 1.5px solid var(--color-brand);
+  background: transparent; color: var(--color-brand); font-weight: 700; cursor: pointer;
+  @media (prefers-reduced-motion: no-preference) { transition: background-color 160ms ease-out, transform 160ms ease-out; }
+  &:hover:not(:disabled) { background: var(--color-lavender); }
+  &:active:not(:disabled) { transform: scale(0.98); }
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+}
+
+@utility card {
+  background: #fff; border-radius: 16px; box-shadow: var(--shadow-soft);
+  border: 1px solid var(--color-lavender); overflow: hidden;
+}
+
+@utility chip {
+  display: inline-flex; align-items: center; min-height: 44px; padding-inline: 1rem;
+  border-radius: 999px; background: var(--color-lavender); color: var(--color-brand);
+  font-size: 0.875rem; font-weight: 600;
+}
+
+@utility price {
+  color: var(--color-brand); font-weight: 700; font-variant-numeric: tabular-nums;
 }
