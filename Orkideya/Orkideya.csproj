@@ -8,17 +8,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ClosedXML" Version="0.105.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.14" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="10.0.14" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.14">
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="10.0.15" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.15" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.15">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Twilio" Version="7.13.1" />
+    <PackageReference Include="Twilio" Version="7.14.9" />
     <!-- Override the vulnerable transitive PKCS dependency until upstream updates its minimum. -->
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
   </ItemGroup>
 
   <ItemGroup>
