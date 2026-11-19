@@ -2,7 +2,7 @@
 import type { CatalogueProduct } from '~/types/catalogue'
 
 const props = defineProps<{ product: CatalogueProduct & { startingPrice?: string } }>()
-const { busy, mutate } = useCart()
+const { busy, mutate, message } = useCart()
 const imageFailed = ref(false)
 watch(() => props.product.images[0], () => { imageFailed.value = false })
 const brandImage = '/images/logo.jpg'
@@ -11,12 +11,24 @@ const sizes = computed(() => [...new Set(props.product.variants.map(v => v.size)
 const single = computed(() => props.product.variants.length === 1)
 const target = computed(() => '/products/' + props.product.id)
 const justAdded = ref(false)
+const failed = ref(false)
+const errorText = ref('')
+let resetTimer: ReturnType<typeof setTimeout> | undefined
+onBeforeUnmount(() => clearTimeout(resetTimer))
 async function add() {
   const variant = props.product.variants[0]
   if (!variant) return
-  await mutate('POST', variant.id, 1)
-  justAdded.value = true
-  setTimeout(() => { justAdded.value = false }, 2000)
+  clearTimeout(resetTimer)
+  justAdded.value = false
+  failed.value = false
+  const ok = await mutate('POST', variant.id, 1)
+  if (ok) {
+    justAdded.value = true
+  } else {
+    failed.value = true
+    errorText.value = message.value || 'تعذر تحديث السلة.'
+  }
+  resetTimer = setTimeout(() => { justAdded.value = false; failed.value = false }, ok ? 2000 : 4000)
 }
 </script>
 
@@ -42,7 +54,9 @@ async function add() {
       <button v-if="single" type="button" class="btn-primary relative z-10 mt-2 w-full text-sm" :disabled="busy" @click="add">
         {{ justAdded ? 'تمت الإضافة ✓' : 'أضف للسلة' }}
       </button>
-      <NuxtLink v-else :to="target" tabindex="-1" aria-hidden="true" class="btn-secondary relative z-10 mt-2 w-full text-sm">اختار الحجم</NuxtLink>
+      <p v-if="single && failed" role="alert" class="relative z-10 text-xs font-semibold text-red-700">{{ errorText }}</p>
+      <span v-else-if="!product.variants.length" class="mt-2 w-full cursor-not-allowed rounded-xl bg-lavender px-4 py-2.5 text-center text-sm font-semibold text-ink-soft opacity-70" aria-disabled="true">غير متاح حالياً</span>
+      <NuxtLink v-else-if="!single" :to="target" tabindex="-1" aria-hidden="true" class="btn-secondary relative z-10 mt-2 w-full text-sm">اختار الحجم</NuxtLink>
     </div>
   </article>
 </template>
