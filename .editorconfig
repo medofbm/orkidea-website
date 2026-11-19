@@ -1,0 +1,28 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{cs,cshtml,csproj}]
+indent_size = 4
+
+[*.{vue,ts,js,mjs,cjs,json,yml,yaml,css}]
+indent_size = 2
+
+[*.cs]
+# Conservative C# style: suggestions only, nothing enforced as warning/error.
+dotnet_sort_system_directives_first = true
+csharp_new_line_before_open_brace = all
+dotnet_style_qualification_for_field = false:silent
+dotnet_style_qualification_for_property = false:silent
+dotnet_style_qualification_for_method = false:silent
+csharp_prefer_braces = true:silent
+csharp_style_var_for_built_in_types = true:silent
+csharp_style_var_when_type_is_apparent = true:silent
