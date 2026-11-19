@@ -1,0 +1,68 @@
+# Dependabot: weekly on Monday, one grouped PR per ecosystem.
+version: 2
+updates:
+  # .NET API
+  - package-ecosystem: "nuget"
+    directory: "/Orkideya"
+    schedule: {interval: "weekly", day: "monday"}
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      minor-and-patch: {update-types: ["minor", "patch"]}
+    ignore: # EF Core and Identity follow the net10 runtime
+      - {dependency-name: "Microsoft.EntityFrameworkCore*", update-types: ["version-update:semver-major"]}
+      - {dependency-name: "Microsoft.AspNetCore.Identity*", update-types: ["version-update:semver-major"]}
+  # Regression tests
+  - package-ecosystem: "nuget"
+    directory: "/tests/Orkideya.Regression"
+    schedule: {interval: "weekly", day: "monday"}
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      minor-and-patch: {update-types: ["minor", "patch"]}
+    ignore:
+      - {dependency-name: "Microsoft.EntityFrameworkCore*", update-types: ["version-update:semver-major"]}
+      - {dependency-name: "Microsoft.AspNetCore.Identity*", update-types: ["version-update:semver-major"]}
+  # SQL regression tests
+  - package-ecosystem: "nuget"
+    directory: "/tests/Orkideya.SqlRegression"
+    schedule: {interval: "weekly", day: "monday"}
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      minor-and-patch: {update-types: ["minor", "patch"]}
+    ignore:
+      - {dependency-name: "Microsoft.EntityFrameworkCore*", update-types: ["version-update:semver-major"]}
+      - {dependency-name: "Microsoft.AspNetCore.Identity*", update-types: ["version-update:semver-major"]}
+  # Vue frontend
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule: {interval: "weekly", day: "monday"}
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      minor-and-patch: {update-types: ["minor", "patch"]}
+  # Root Dockerfile
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule: {interval: "weekly", day: "monday"}
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      minor-and-patch: {update-types: ["minor", "patch"]}
+  # Frontend Dockerfile
+  - package-ecosystem: "docker"
+    directory: "/frontend"
+    schedule: {interval: "weekly", day: "monday"}
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      minor-and-patch: {update-types: ["minor", "patch"]}
+  # GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule: {interval: "weekly", day: "monday"}
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      minor-and-patch: {update-types: ["minor", "patch"]}
