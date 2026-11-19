@@ -8,8 +8,15 @@ export default defineNuxtConfig({
   vite: { plugins: [tailwindcss()] },
   runtimeConfig: {
     backendOrigin: 'http://127.0.0.1:5000',
-    // Contact and social links stay empty until the owner approves them; set via NUXT_PUBLIC_* env vars. UI hides empty links.
-    public: { apiBase: '/api/v1/catalogue', preview: false, whatsappNumber: '', facebookUrl: '', instagramUrl: '' }
+    // Social links are the owner's public pages as recorded in the project Overview and already used in the Vue pages.
+    // The WhatsApp order number stays empty until the owner approves it; set NUXT_PUBLIC_WHATSAPP_NUMBER. UI hides empty links.
+    public: {
+      apiBase: '/api/v1/catalogue',
+      preview: false,
+      whatsappNumber: '',
+      facebookUrl: 'https://www.facebook.com/ORKIDEALY/',
+      instagramUrl: 'https://www.instagram.com/_orkidea_1/'
+    }
   },
   app: {
     head: {
