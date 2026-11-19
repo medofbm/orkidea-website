@@ -28,7 +28,7 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: npm
@@ -56,7 +56,7 @@ jobs:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'global.json') }}
           restore-keys: nuget-${{ runner.os }}-
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
       - uses: actions/setup-python@v5
@@ -111,7 +111,7 @@ jobs:
         run: dotnet build tests/Orkideya.SqlRegression/Orkideya.SqlRegression.csproj -c Release --no-restore --warnaserror
       - name: Verify migrations, rollback and concurrent retry protection
         run: dotnet run --project tests/Orkideya.SqlRegression/Orkideya.SqlRegression.csproj -c Release --no-build --no-restore
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: npm
