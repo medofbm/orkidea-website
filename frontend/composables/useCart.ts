@@ -15,8 +15,8 @@ export function useCart() {
   async function load() {
     cart.value = await $fetch<CartState>('/api/cart')
   }
-  async function mutate(method: 'POST' | 'PATCH' | 'DELETE', variantId: number, quantity = 1) {
-    if (busy.value) return
+  async function mutate(method: 'POST' | 'PATCH' | 'DELETE', variantId: number, quantity = 1): Promise<boolean> {
+    if (busy.value) return false
     busy.value = true
     message.value = ''
     try {
@@ -29,12 +29,14 @@ export function useCart() {
       })
       if (!result.success) {
         message.value = result.message ?? 'تعذر تحديث السلة.'
-        return
+        return false
       }
       await load()
       message.value = method === 'POST' ? 'تمت الإضافة للسلة.' : 'تم تحديث السلة.'
+      return true
     } catch {
       message.value = 'تعذر تحديث السلة. راجعي اتصال الإنترنت وحاولي مجددًا.'
+      return false
     } finally {
       busy.value = false
     }

@@ -141,7 +141,7 @@ test('built storefront renders catalogue data and the product gallery on the ser
     assert.match(paginated, /href="\/?\?page=3&(?:amp;)?categoryId=1#catalogue-heading"[^>]*>التالي/, 'next page keeps the selected category')
     const emptyCategory = await (await fetch(origin + '/?categoryId=2')).text()
     assert.ok(!emptyCategory.includes(product.name), 'category filter is forwarded to the backend')
-    assert.ok(emptyCategory.includes('ما فيش منتجات ضمن الفئة المختارة حاليًا.'), 'empty category explains the active filter')
+    assert.ok(emptyCategory.includes('لا توجد منتجات ضمن الفئة المختارة حاليًا.'), 'empty category explains the active filter')
     assert.match(emptyCategory, /href="\/#catalogue-heading"[^>]*>\s*عرض كل المنتجات/, 'empty category offers a link that clears the filter')
     const detail = await (await fetch(origin + '/products/1')).text()
     assert.ok(detail.includes(product.description), 'detail renders backend data')
