@@ -88,7 +88,7 @@ onMounted(() => {
       </nav>
     </header>
     <main id="content" class="mx-auto w-full max-w-6xl flex-1 px-4 py-8"><slot /></main>
-    <footer class="rounded-t-3xl bg-linear-to-b from-brand to-plum text-cream">
+    <footer class="rounded-t-3xl bg-gradient-brand text-white">
       <div class="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 sm:gap-10">
         <section aria-labelledby="footer-about">
           <NuxtLink to="/" class="inline-flex min-h-11 items-center gap-3 rounded-full text-lg font-bold text-white">

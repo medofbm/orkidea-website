@@ -1,9 +1,10 @@
 <script setup lang="ts">
+const { facebookUrl, instagramUrl } = useRuntimeConfig().public
 useSeoMeta({ title: 'سياسة الطلب والتوصيل | أوركيديا' })
 </script>
 
 <template>
-  <article class="mx-auto max-w-3xl space-y-6 rounded-2xl border border-purple-100 bg-white p-5 text-purple-950 sm:p-8">
+  <article class="mx-auto max-w-3xl space-y-6 card p-5 text-ink sm:p-8">
     <h1 class="text-3xl font-bold">سياسة الطلب والتوصيل</h1>
 
     <section aria-labelledby="policy-payment" class="space-y-2 leading-relaxed">
@@ -29,8 +30,8 @@ useSeoMeta({ title: 'سياسة الطلب والتوصيل | أوركيديا' 
     <section aria-labelledby="policy-contact" class="space-y-2">
       <h2 id="policy-contact" class="text-xl font-bold">التواصل</h2>
       <div class="flex flex-wrap gap-x-4">
-        <a href="https://www.facebook.com/ORKIDEALY/" class="inline-flex min-h-11 items-center underline">فيسبوك أوركيديا</a>
-        <a href="https://www.instagram.com/_orkidea_1/" class="inline-flex min-h-11 items-center underline">إنستغرام أوركيديا</a>
+        <a v-if="facebookUrl" :href="facebookUrl" class="inline-flex min-h-11 items-center underline">فيسبوك أوركيديا</a>
+        <a v-if="instagramUrl" :href="instagramUrl" class="inline-flex min-h-11 items-center underline">إنستغرام أوركيديا</a>
       </div>
     </section>
   </article>

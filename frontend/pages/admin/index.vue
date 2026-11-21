@@ -23,7 +23,7 @@ const { data, error, status } = useFetch<AdminDashboard>('/api/admin/dashboard',
         <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <li v-for="shortcut in shortcuts" :key="shortcut.to">
             <NuxtLink :to="shortcut.to"
-              class="flex min-h-11 items-center rounded-lg border border-purple-200 bg-white px-3 py-2 font-semibold text-purple-950 hover:bg-purple-50 focus-visible:bg-purple-50">
+              class="flex min-h-11 items-center rounded-lg border border-lavender-deep bg-white px-3 py-2 font-semibold text-brand-deep hover:bg-lavender focus-visible:bg-lavender">
               {{ shortcut.label }}
             </NuxtLink>
           </li>
@@ -46,7 +46,7 @@ const { data, error, status } = useFetch<AdminDashboard>('/api/admin/dashboard',
       </dl>
       <div class="mb-3 mt-8 flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-xl font-semibold">أحدث الطلبات</h2>
-        <NuxtLink to="/admin/orders" class="min-h-11 py-2 text-purple-900 underline">كل الطلبات</NuxtLink>
+        <NuxtLink to="/admin/orders" class="min-h-11 py-2 text-brand underline">كل الطلبات</NuxtLink>
       </div>
       <AdminOrderList :orders="data.recentOrders" />
     </template>

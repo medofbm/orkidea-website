@@ -74,22 +74,22 @@ async function edit() {
 
 <template>
   <section aria-labelledby="manual-order-title" class="mx-auto max-w-3xl">
-    <NuxtLink to="/admin/orders" class="mb-3 inline-flex min-h-11 items-center text-purple-800 underline">العودة للطلبات</NuxtLink>
+    <NuxtLink to="/admin/orders" class="mb-3 inline-flex min-h-11 items-center text-brand underline">العودة للطلبات</NuxtLink>
     <h1 id="manual-order-title" class="mb-4 text-3xl font-bold">تسجيل طلب من فيسبوك</h1>
     <p v-if="status === 'idle' || status === 'pending'" role="status">جاري تحميل المنتجات ومدن التوصيل…</p>
     <AdminReadError v-else-if="optionsError" :status-code="optionsError.statusCode" />
     <template v-else-if="options">
-      <p v-if="error" ref="feedback" role="alert" tabindex="-1" class="mb-4 rounded-lg bg-red-50 p-3 text-red-800">{{ error }}</p>
+      <p v-if="error" ref="feedback" role="alert" tabindex="-1" class="mb-4 rounded-lg bg-status-cancelled p-3 text-danger">{{ error }}</p>
       <div v-if="savedId" class="rounded-xl bg-white p-4">
         <h2 ref="feedback" tabindex="-1" class="mb-3 text-xl font-bold">تم تسجيل الطلب رقم {{ savedId }}</h2>
         <p>الطلب جديد وبانتظار مراجعته وتأكيد توفر المنتجات.</p>
-        <NuxtLink :to="`/admin/orders/${savedId}`" class="mt-4 inline-flex min-h-11 items-center text-purple-800 underline">
+        <NuxtLink :to="`/admin/orders/${savedId}`" class="mt-4 inline-flex min-h-11 items-center text-brand underline">
           فتح تفاصيل الطلب
         </NuxtLink>
       </div>
       <form v-else-if="review" class="space-y-4 rounded-xl bg-white p-4" @submit.prevent="submit">
         <h2 :ref="error ? undefined : 'feedback'" tabindex="-1" class="text-xl font-bold">مراجعة الطلب</h2>
-        <p v-if="review.message" role="status" class="rounded-lg bg-amber-50 p-3">{{ review.message }}</p>
+        <p v-if="review.message" role="status" class="rounded-lg bg-status-pending p-3">{{ review.message }}</p>
         <p>{{ fields.customerName }} · {{ review.city }}</p>
         <p>{{ fields.address }}</p>
         <p dir="ltr" class="text-right">{{ fields.phone }}</p>
@@ -104,7 +104,7 @@ async function edit() {
           <dt class="font-bold">الإجمالي</dt><dd class="font-bold">{{ review.total }} د.ل</dd>
         </dl>
         <div class="flex flex-wrap gap-3">
-          <button type="submit" :disabled="pending" class="min-h-11 rounded-lg bg-purple-800 px-4 text-white disabled:opacity-50">حفظ الطلب</button>
+          <button type="submit" :disabled="pending" class="min-h-11 btn-primary disabled:opacity-50">حفظ الطلب</button>
           <button type="button" :disabled="pending" class="min-h-11 rounded-lg border px-4" @click="edit">تعديل البيانات</button>
         </div>
       </form>
@@ -147,7 +147,7 @@ async function edit() {
             <button type="button" :disabled="lines.length >= 30" class="min-h-11 rounded-lg border px-4 disabled:opacity-50"
               @click="lines.push(newRow())">إضافة بند</button>
           </fieldset>
-          <button type="submit" class="min-h-11 rounded-lg bg-purple-800 px-4 text-white disabled:opacity-50">مراجعة الطلب</button>
+          <button type="submit" class="min-h-11 btn-primary disabled:opacity-50">مراجعة الطلب</button>
         </fieldset>
       </form>
     </template>

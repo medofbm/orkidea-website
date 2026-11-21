@@ -65,7 +65,7 @@ function changePage(page: number) {
   <section aria-labelledby="orders-title">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
       <h1 id="orders-title" class="text-3xl font-bold">الطلبات</h1>
-      <NuxtLink to="/admin/orders/manual" class="inline-flex min-h-11 items-center rounded-lg bg-purple-800 px-4 text-white">
+      <NuxtLink to="/admin/orders/manual" class="inline-flex min-h-11 items-center btn-primary">
         تسجيل طلب من فيسبوك
       </NuxtLink>
     </div>
@@ -84,7 +84,7 @@ function changePage(page: number) {
           <option v-for="(label, value) in sources" :key="value" :value="value">{{ label }}</option>
         </select>
       </label>
-      <button type="submit" class="min-h-11 rounded-lg bg-purple-800 px-4 text-white">بحث</button>
+      <button type="submit" class="min-h-11 btn-primary">بحث</button>
     </form>
     <p v-if="status === 'idle' || status === 'pending'" role="status">جاري تحميل الطلبات…</p>
     <AdminReadError v-else-if="error" :status-code="error.statusCode" />

@@ -52,12 +52,12 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
   <section class="mx-auto max-w-md rounded-xl bg-white p-5 md:p-8" aria-labelledby="account-title">
     <h1 id="account-title" class="mb-5 text-2xl font-bold">حساب أوركيديا</h1>
     <p v-if="loading" role="status">جاري التحقق من الجلسة…</p>
-    <p v-if="error" role="alert" class="mb-4 rounded-lg bg-red-50 p-3 text-red-800">{{ error }}</p>
+    <p v-if="error" role="alert" class="mb-4 rounded-lg bg-danger/10 p-3 text-danger">{{ error }}</p>
     <template v-if="account?.signedIn">
       <p>تم تسجيل الدخول</p>
       <p v-if="account.name" class="my-2 break-all" dir="ltr">{{ account.name }}</p>
       <button type="button" :disabled="pending" class="mt-4 min-h-11 rounded-lg border px-4" @click="submit('logout')">تسجيل الخروج</button>
-      <NuxtLink v-if="account.isAdmin" to="/admin" class="ms-4 inline-block min-h-11 text-purple-900 underline">لوحة الإدارة</NuxtLink>
+      <NuxtLink v-if="account.isAdmin" to="/admin" class="ms-4 inline-block min-h-11 text-brand-deep underline">لوحة الإدارة</NuxtLink>
       <AccountSettings :phone-number="account.phoneNumber" />
     </template>
     <form v-else-if="account && !loading" @submit.prevent="submit(verification ? 'verify' : 'login')">
@@ -82,14 +82,14 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
             <input v-model="fields.rememberMe" type="checkbox"> تذكّر تسجيل الدخول
           </label>
         </template>
-        <button type="submit" class="min-h-12 w-full rounded-xl bg-purple-800 px-4 font-semibold text-white disabled:opacity-50">
+        <button type="submit" class="min-h-12 w-full btn-primary disabled:opacity-50">
           {{ verification ? 'تأكيد الرمز' : 'تسجيل الدخول' }}
         </button>
       </fieldset>
     </form>
     <button v-else-if="!loading" class="min-h-11 underline" @click="load()">إعادة المحاولة</button>
     <NuxtLink v-if="account && !account.signedIn && !verification" to="/account/register"
-      class="mt-5 block min-h-11 text-purple-900 underline">إنشاء حساب</NuxtLink>
-    <NuxtLink to="/" class="mt-5 inline-block min-h-11 text-purple-900 underline">العودة للمتجر</NuxtLink>
+      class="mt-5 block min-h-11 text-brand-deep underline">إنشاء حساب</NuxtLink>
+    <NuxtLink to="/" class="mt-5 inline-block min-h-11 text-brand-deep underline">العودة للمتجر</NuxtLink>
   </section>
 </template>

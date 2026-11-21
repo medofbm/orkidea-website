@@ -22,7 +22,7 @@ function hasCover(imageUrl: string | null) {
       <h1 id="products-title" class="text-3xl font-bold">إدارة المنتجات</h1>
       <div class="flex flex-wrap gap-2">
         <NuxtLink to="/admin/categories" class="inline-flex min-h-11 items-center rounded-lg border px-4">إدارة الفئات</NuxtLink>
-        <NuxtLink to="/admin/products/new" class="inline-flex min-h-11 items-center rounded-lg bg-purple-900 px-4 text-white">إضافة منتج</NuxtLink>
+        <NuxtLink to="/admin/products/new" class="inline-flex min-h-11 items-center btn-primary">إضافة منتج</NuxtLink>
       </div>
     </div>
     <form class="mb-5 flex flex-wrap items-end gap-3 rounded-xl bg-white p-4"
@@ -30,28 +30,28 @@ function hasCover(imageUrl: string | null) {
       <label class="min-w-40 flex-1">اسم المنتج
         <input v-model="search" type="search" maxlength="100" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
       </label>
-      <button type="submit" class="min-h-11 rounded-lg bg-purple-900 px-4 text-white">بحث</button>
+      <button type="submit" class="min-h-11 btn-primary">بحث</button>
     </form>
     <p v-if="status === 'pending' || status === 'idle'" role="status">جاري تحميل المنتجات…</p>
     <AdminReadError v-else-if="error" :status-code="error.statusCode" />
     <template v-else-if="data">
       <p class="mb-3" role="status">{{ data.total ? data.total + ' منتج' : 'ما فيش منتجات مطابقة.' }}</p>
-      <p v-if="data.items.length" class="mb-4 text-sm text-purple-950">
+      <p v-if="data.items.length" class="mb-4 text-sm text-brand-deep">
         راجع الغلاف والوصف والفئة والأحجام والأسعار قبل تجهيز الكتالوج للبيع.
       </p>
       <ul class="grid gap-3 sm:grid-cols-2">
         <li v-for="product in data.items" :key="product.productId" class="rounded-xl bg-white p-4">
           <NuxtLink :to="'/admin/products/' + product.productId"
-            class="inline-flex min-h-11 items-center font-semibold text-purple-900 underline">{{ product.name }}</NuxtLink>
+            class="inline-flex min-h-11 items-center font-semibold text-brand underline">{{ product.name }}</NuxtLink>
           <p class="text-sm">{{ product.category ?? 'بدون فئة' }} · {{ product.variants }} حجم</p>
           <ul v-if="!hasCover(product.imageUrl) || product.hasDescription === false ||
             (product.pricedVariants != null && (product.pricedVariants === 0 || product.pricedVariants < product.variants))"
             class="mt-3 flex flex-wrap gap-2 text-xs" aria-label="بيانات ناقصة">
-            <li v-if="!hasCover(product.imageUrl)" class="rounded-full bg-amber-50 px-3 py-1 text-amber-900">ينقصه غلاف</li>
-            <li v-if="product.hasDescription === false" class="rounded-full bg-amber-50 px-3 py-1 text-amber-900">ينقصه وصف</li>
-            <li v-if="product.pricedVariants === 0" class="rounded-full bg-amber-50 px-3 py-1 text-amber-900">ما فيش أحجام بسعر</li>
+            <li v-if="!hasCover(product.imageUrl)" class="rounded-full bg-status-pending px-3 py-1 text-warning">ينقصه غلاف</li>
+            <li v-if="product.hasDescription === false" class="rounded-full bg-status-pending px-3 py-1 text-warning">ينقصه وصف</li>
+            <li v-if="product.pricedVariants === 0" class="rounded-full bg-status-pending px-3 py-1 text-warning">ما فيش أحجام بسعر</li>
             <li v-else-if="product.pricedVariants != null && product.pricedVariants < product.variants"
-              class="rounded-full bg-amber-50 px-3 py-1 text-amber-900">
+              class="rounded-full bg-status-pending px-3 py-1 text-warning">
               {{ product.pricedVariants }} من {{ product.variants }} أحجام مسعّرة
             </li>
           </ul>

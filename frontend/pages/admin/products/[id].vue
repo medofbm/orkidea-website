@@ -190,10 +190,10 @@ async function saveVariant() {
 
 <template>
   <section class="mx-auto max-w-3xl" aria-labelledby="product-editor-title">
-    <NuxtLink to="/admin/products" class="inline-flex min-h-11 items-center text-purple-900 underline">العودة للمنتجات</NuxtLink>
+    <NuxtLink to="/admin/products" class="inline-flex min-h-11 items-center text-brand underline">العودة للمنتجات</NuxtLink>
     <h1 id="product-editor-title" class="mb-5 text-3xl font-bold">{{ isNew ? 'إضافة منتج' : 'تعديل المنتج' }}</h1>
-    <p v-if="notice" class="mb-3 text-emerald-800" role="status">{{ notice }}</p>
-    <p v-if="failure" class="mb-3 text-red-800" role="alert">{{ failure }}</p>
+    <p v-if="notice" class="mb-3 text-success" role="status">{{ notice }}</p>
+    <p v-if="failure" class="mb-3 text-danger" role="alert">{{ failure }}</p>
     <button v-if="needsRefresh" type="button" :disabled="saving" class="mb-3 min-h-11 rounded-lg border px-4"
       @click="reloadProduct">تحديث التفاصيل وإعادة تحميل النموذج</button>
     <p v-if="categories.status.value !== 'success' && !categories.error.value ||
@@ -228,7 +228,7 @@ async function saveVariant() {
             </label>
             <img v-if="cover || imageSource(form.imageUrl)" :src="cover?.url ?? imageSource(form.imageUrl)"
               alt="معاينة الغلاف" referrerpolicy="no-referrer" class="mt-3 size-24 rounded-lg object-cover">
-            <button v-if="cover" type="button" class="min-h-11 text-purple-900 underline" @click="removeCover">إلغاء اختيار الغلاف الجديد</button>
+            <button v-if="cover" type="button" class="min-h-11 text-brand underline" @click="removeCover">إلغاء اختيار الغلاف الجديد</button>
           </div>
           <div class="border-t pt-4">
             <h2 class="text-xl font-bold">صور إضافية</h2>
@@ -236,12 +236,12 @@ async function saveVariant() {
             <label class="block">اختيار الصور
               <input type="file" multiple accept=".png,.jpg,.jpeg" class="mt-1 block max-w-full" @change="selectImages($event, false)">
             </label>
-            <p v-if="imageError" class="mt-2 text-red-800" role="alert">{{ imageError }}</p>
+            <p v-if="imageError" class="mt-2 text-danger" role="alert">{{ imageError }}</p>
             <ul class="mt-3 flex flex-wrap gap-3">
               <li v-for="(image, index) in stored" :key="image + index" class="relative w-24">
                 <img :src="imageSource(image)" :alt="'صورة محفوظة ' + (index + 1)" class="size-24 rounded-lg object-cover">
                 <button v-if="!removed.includes(image)" type="button" :aria-label="'إزالة الصورة المحفوظة ' + (index + 1)"
-                  class="absolute end-1 top-1 size-11 rounded-full bg-white text-xl text-red-800 shadow"
+                  class="absolute end-1 top-1 size-11 rounded-full bg-white text-xl text-danger shadow"
                   @click="removed.push(image)">×</button>
                 <button v-else type="button" class="min-h-11 text-sm underline"
                   @click="removed = removed.filter(item => item !== image)">تراجع عن الإزالة</button>
@@ -249,13 +249,13 @@ async function saveVariant() {
               <li v-for="image in gallery" :key="image.url" class="relative w-24">
                 <img :src="image.url" alt="" class="size-24 rounded-lg object-cover">
                 <button type="button" :aria-label="'إزالة ' + image.file.name"
-                  class="absolute end-1 top-1 size-11 rounded-full bg-white text-xl text-red-800 shadow"
+                  class="absolute end-1 top-1 size-11 rounded-full bg-white text-xl text-danger shadow"
                   @click="removePending(image)">×</button>
                 <p class="truncate text-xs" dir="auto">{{ image.file.name }}</p>
               </li>
             </ul>
           </div>
-          <button type="submit" class="min-h-11 rounded-lg bg-purple-900 px-4 text-white disabled:opacity-60">
+          <button type="submit" class="min-h-11 btn-primary disabled:opacity-60">
             {{ saving ? 'جاري الحفظ…' : 'حفظ المنتج' }}
           </button>
         </fieldset>
@@ -266,7 +266,7 @@ async function saveVariant() {
         <ul class="mb-3 divide-y">
           <li v-for="variant in data.variants" :key="variant.productVariantId" class="flex flex-wrap items-center justify-between gap-3 py-2">
             <span>{{ variant.size }} · <bdi>{{ variant.price }}</bdi> د.ل</span>
-            <button type="button" :disabled="disabled" class="min-h-11 px-2 text-purple-900 underline"
+            <button type="button" :disabled="disabled" class="min-h-11 px-2 text-brand underline"
               @click="chooseVariant(variant)">تعديل</button>
           </li>
         </ul>
@@ -280,7 +280,7 @@ async function saveVariant() {
               <input v-model.trim="price" inputmode="decimal" dir="ltr" required maxlength="19" pattern="[0-9]{1,16}([.][0-9]{1,2})?"
                 class="mt-1 block min-h-11 w-full rounded-lg border px-3">
             </label>
-            <button type="submit" class="min-h-11 rounded-lg bg-purple-900 px-4 text-white">حفظ الحجم</button>
+            <button type="submit" class="min-h-11 btn-primary">حفظ الحجم</button>
             <button v-if="selected" type="button" class="ms-3 min-h-11 underline" @click="chooseVariant()">إلغاء التعديل</button>
           </fieldset>
         </form>
