@@ -11,6 +11,8 @@ export function useCart() {
   const busy = useState('cart-busy', () => false)
   const message = useState('cart-message', () => '')
   const requestToken = useState('cart-token', () => '')
+  /** Increments after every successful add (POST) so the header badge can animate. */
+  const pulse = useState('cart-pulse', () => 0)
 
   async function load() {
     cart.value = await $fetch<CartState>('/api/cart')
@@ -33,6 +35,7 @@ export function useCart() {
       }
       await load()
       message.value = method === 'POST' ? 'تمت الإضافة للسلة.' : 'تم تحديث السلة.'
+      if (method === 'POST') pulse.value += 1
       return true
     } catch {
       message.value = 'تعذر تحديث السلة. راجعي اتصال الإنترنت وحاولي مجددًا.'
@@ -41,5 +44,5 @@ export function useCart() {
       busy.value = false
     }
   }
-  return { cart, busy, message, load, mutate }
+  return { cart, busy, message, pulse, load, mutate }
 }

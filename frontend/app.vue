@@ -8,4 +8,6 @@ useSeoMeta({ robots: preview ? 'noindex, nofollow, noarchive' : undefined })
     نسخة تجريبية. استخدم بيانات اختبار فقط.
   </div>
   <NuxtLayout><NuxtPage /></NuxtLayout>
+  <AppToastHost />
+  <AppConfirmHost />
 </template>
