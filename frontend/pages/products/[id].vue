@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CatalogueProduct } from '~/types/catalogue'
+import type { CatalogueProduct, CataloguePage } from '~/types/catalogue'
 const route = useRoute()
 const { busy, message, mutate } = useCart()
 const { data: product, status, error, refresh } = await useFetch<CatalogueProduct>(
@@ -37,9 +37,49 @@ const whatsappLink = computed(() => {
   const text = 'السلام عليكم، أرغب في طلب ' + product.value.name + size
   return 'https://wa.me/' + whatsappNumber + '?text=' + encodeURIComponent(text)
 })
-function addToCart() {
-  if (currentVariant.value) mutate('POST', currentVariant.value.id, quantity.value)
+const toast = useToast()
+const adding = ref(false)
+const justAdded = ref(false)
+let resetTimer: ReturnType<typeof setTimeout> | undefined
+onBeforeUnmount(() => clearTimeout(resetTimer))
+async function addToCart() {
+  const variant = currentVariant.value
+  if (!variant || adding.value) return
+  clearTimeout(resetTimer)
+  justAdded.value = false
+  adding.value = true
+  let ok = false
+  try {
+    ok = await mutate('POST', variant.id, quantity.value)
+  } finally {
+    adding.value = false
+  }
+  if (ok) {
+    justAdded.value = true
+    toast.success('تمت إضافة ' + (product.value?.name ?? 'المنتج') + ' للسلة', { action: { label: 'افتحي السلة', to: '/cart' } })
+    resetTimer = setTimeout(() => { justAdded.value = false }, 2000)
+  } else {
+    toast.error(message.value || 'تعذر تحديث السلة.')
+  }
 }
+const addLabel = computed(() => adding.value ? 'جاري الإضافة...' : justAdded.value ? 'تمت الإضافة ✓' : 'أضيفي للسلة')
+// Related products: client-only, lazy, and failure-tolerant so SSR and the page never depend on it.
+const { data: catalogue } = useFetch<CataloguePage>(
+  () => useRuntimeConfig().public.apiBase + '/products',
+  { key: 'related-products', lazy: true, server: false }
+)
+const related = computed(() => {
+  const current = product.value
+  if (!current?.category) return []
+  return (catalogue.value?.items ?? [])
+    .filter(item => item.id !== current.id && item.category === current.category)
+    .slice(0, 8)
+    .map(item => ({
+      ...item,
+      startingPrice: item.variants.reduce<string | undefined>((lowest, variant) =>
+        lowest === undefined || Number(variant.price) < Number(lowest) ? variant.price : lowest, undefined)
+    }))
+})
 useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: () => product.value?.description ?? '' })
 </script>
 
@@ -76,7 +116,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
     <article v-else-if="product" aria-labelledby="product-heading"
       class="grid gap-6 md:grid-cols-2 md:gap-x-10 lg:gap-x-14">
       <section aria-label="صور المنتج" class="min-w-0">
-        <div class="relative grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-3xl border border-lavender bg-gradient-to-b from-lavender/60 to-cream">
+        <div class="relative grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-(--radius-card) border border-lavender bg-gradient-to-b from-lavender/60 to-cream shadow-(--shadow-soft)">
           <img v-if="currentImage && !failedImages.includes(currentImage)" :key="currentImage"
             :src="currentImage" :alt="product.name + ' - صورة ' + (selectedImage + 1)"
             class="absolute inset-0 size-full object-contain p-4"
@@ -93,11 +133,11 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
         </div>
         <div v-if="images.length > 1" class="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0" role="group" aria-label="اختيار صورة المنتج">
           <button v-for="(image, index) in images" :key="image" type="button"
-            :aria-label="'عرض الصورة ' + (index + 1)" :aria-pressed="selectedImage === index"
-            class="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 hover:border-brand-soft sm:size-20"
-            :class="selectedImage === index ? 'border-brand ring-2 ring-lavender' : 'border-lavender'"
+            :aria-label="'عرض الصورة ' + (index + 1)" :aria-pressed="selectedImage === index" :aria-current="selectedImage === index ? 'true' : undefined"
+            class="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border-2 bg-white p-1.5 hover:border-brand-soft sm:size-20"
+            :class="selectedImage === index ? 'border-brand ring-2 ring-brand/40' : 'border-lavender'"
             @click="selectedImage = index; imageSelectedByUser = true">
-            <img v-if="!failedImages.includes(image)" :src="image" alt="" class="size-full object-contain"
+            <img v-if="!failedImages.includes(image)" :src="image" alt="" class="size-full rounded-full object-contain"
               width="80" height="80" loading="lazy" @vue:mounted="checkLoadedImage($event.el, image)"
               @error="markFailedImage(image)">
             <span v-else aria-hidden="true" class="text-sm text-ink-soft">{{ index + 1 }}</span>
@@ -108,19 +148,23 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
       <div class="min-w-0">
         <header>
           <p v-if="product.category" class="mb-2 text-sm font-semibold wrap-anywhere text-brand-soft">{{ product.category }}</p>
-          <h1 id="product-heading" class="text-3xl leading-tight font-bold wrap-anywhere text-ink lg:text-4xl">{{ product.name }}</h1>
+          <h1 id="product-heading" class="text-3xl leading-tight font-extrabold wrap-anywhere text-ink lg:text-4xl">{{ product.name }}</h1>
         </header>
 
         <section aria-label="خيارات الشراء" class="mt-5">
           <template v-if="currentVariant">
-            <p class="price text-3xl" aria-live="polite" aria-atomic="true">
-              <bdi>{{ currentVariant.price }}</bdi> <span class="text-base">د.ل</span>
-            </p>
+            <div aria-live="polite" aria-atomic="true">
+              <Transition name="price-swap" mode="out-in">
+                <p :key="currentVariant.id" class="price text-[2rem] leading-tight font-extrabold">
+                  <bdi>{{ currentVariant.price }}</bdi> <span class="text-base">د.ل</span>
+                </p>
+              </Transition>
+            </div>
             <fieldset class="mt-5 min-w-0" :disabled="busy">
               <legend class="mb-2 text-sm font-semibold text-ink">الحجم</legend>
               <div class="flex flex-wrap gap-2">
                 <label v-for="(variant, index) in product.variants" :key="variant.id"
-                  class="chip relative cursor-pointer border-2 border-transparent bg-white text-ink ring-1 ring-lavender-deep has-checked:border-brand has-checked:bg-lavender has-checked:text-brand has-focus-visible:outline-3 has-focus-visible:outline-brand">
+                  class="chip relative cursor-pointer border-2 border-lavender-deep bg-white text-ink has-checked:border-transparent has-checked:bg-gradient-brand has-checked:text-white has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand motion-safe:transition-colors">
                   <input v-model="selectedVariant" type="radio" name="variant" :value="index"
                     class="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed">
                   <span>{{ variant.size }}</span>
@@ -130,7 +174,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
 
             <div class="mt-5 flex items-center gap-3">
               <span id="qty-label" class="text-sm font-semibold text-ink">الكمية</span>
-              <div role="group" aria-labelledby="qty-label" class="inline-flex items-center rounded-full bg-white ring-1 ring-lavender-deep">
+              <div role="group" aria-labelledby="qty-label" class="inline-flex items-center rounded-full border-2 border-lavender-deep bg-white p-0.5 shadow-(--shadow-soft)">
                 <button type="button" :disabled="busy || quantity >= 99" aria-label="زيادة الكمية"
                   class="size-11 rounded-full text-xl font-bold text-brand hover:bg-lavender disabled:opacity-40" @click="quantity++">+</button>
                 <output class="min-w-10 text-center font-bold text-ink" aria-live="polite">{{ quantity }}</output>
@@ -140,7 +184,11 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
             </div>
 
             <div class="mt-6 hidden gap-3 md:grid">
-              <button type="button" :disabled="busy" class="btn-primary storefront-action w-full" @click="addToCart">أضيفي للسلة</button>
+              <button type="button" :disabled="busy" :aria-busy="adding" class="btn-primary storefront-action w-full gap-2" @click="addToCart">
+                <span v-if="adding" class="spinner" aria-hidden="true" />
+                <AppIcon v-else-if="justAdded" name="check" :size="18" />
+                <span>{{ addLabel }}</span>
+              </button>
               <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer" class="btn-secondary w-full">اطلبي عبر واتساب</a>
             </div>
             <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer" class="btn-secondary mt-5 w-full md:hidden">اطلبي عبر واتساب</a>
@@ -150,8 +198,8 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
           <NuxtLink to="/cart" class="mt-1 inline-flex min-h-11 items-center font-semibold text-brand underline underline-offset-4">عرض السلة</NuxtLink>
         </section>
 
-        <ul class="mt-4 flex flex-wrap gap-x-5 gap-y-1 rounded-2xl bg-lavender/50 px-4 py-3 text-sm font-semibold text-ink">
-          <li class="flex items-center gap-2"><span aria-hidden="true" class="text-brand-soft">✦</span>الدفع عند الاستلام</li>
+        <ul class="mt-4 flex flex-wrap gap-2 text-sm font-semibold">
+          <li class="inline-flex items-center gap-1.5 rounded-full bg-lavender px-3.5 py-1.5 text-brand"><AppIcon name="cash" :size="16" />الدفع عند الاستلام</li>
         </ul>
 
         <section v-if="paragraphs.length" aria-labelledby="description-heading" class="mt-6">
@@ -163,17 +211,35 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
       <div v-if="currentVariant" class="fixed inset-x-0 bottom-0 z-30 flex items-center gap-4 border-t border-lavender bg-cream/95 px-4 pt-3 shadow-[0_-6px_20px_rgb(48_8_26/0.10)] backdrop-blur md:hidden"
         style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))">
         <p class="price shrink-0 text-xl"><span class="sr-only">السعر </span><bdi>{{ currentVariant.price }}</bdi> <span class="text-sm">د.ل</span></p>
-        <button type="button" :disabled="busy" class="btn-primary storefront-action flex-1" @click="addToCart">أضيفي للسلة</button>
+        <button type="button" :disabled="busy" :aria-busy="adding" class="btn-primary storefront-action flex-1 gap-2" @click="addToCart">
+          <span v-if="adding" class="spinner" aria-hidden="true" />
+          <AppIcon v-else-if="justAdded" name="check" :size="18" />
+          <span>{{ addLabel }}</span>
+        </button>
       </div>
     </article>
+
+    <section v-if="product && related.length" aria-labelledby="related-heading" class="mt-12">
+      <SectionHeader id="related-heading" title="منتجات" highlight="مشابهة" class="mb-6" />
+      <AppCarousel :items="related" label="منتجات مشابهة" :per-view="{ base: 1, sm: 2, lg: 4 }" arrows>
+        <template #item="{ item }">
+          <ProductCard :product="item" />
+        </template>
+      </AppCarousel>
+    </section>
   </div>
 </template>
 
 <style scoped>
 .skeleton { background: var(--color-lavender); opacity: 0.7; }
+.spinner { width: 1rem; height: 1rem; border-radius: 9999px; border: 2px solid rgb(255 255 255 / 0.4); border-top-color: #fff; }
 @media (prefers-reduced-motion: no-preference) {
   .skeleton { animation: skeleton-pulse 1.4s ease-in-out infinite; }
   .gallery-image-selected { animation: gallery-image-fade 180ms ease-out; }
+  .spinner { animation: pdp-spin 0.7s linear infinite; }
+  .price-swap-enter-active, .price-swap-leave-active { transition: opacity 150ms ease-out, transform 150ms ease-out; }
+  .price-swap-enter-from, .price-swap-leave-to { opacity: 0; transform: translateY(0.35rem); }
+  @keyframes pdp-spin { to { transform: rotate(360deg); } }
   @keyframes skeleton-pulse { 50% { opacity: 0.35; } }
   @keyframes gallery-image-fade { from { opacity: 0; } to { opacity: 1; } }
 }
