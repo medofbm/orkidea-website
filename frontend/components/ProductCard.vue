@@ -38,7 +38,7 @@ async function add() {
   }
   if (ok) {
     justAdded.value = true
-    toast.success('تمت إضافة ' + props.product.name + ' للسلة', { action: { label: 'عرض السلة', to: '/cart' } })
+    toast.success('تمت إضافة ' + props.product.name + ' للسلة', { action: { label: 'افتحي السلة', to: '/cart' } })
   } else {
     failed.value = true
     errorText.value = message.value || 'تعذر تحديث السلة.'
@@ -68,7 +68,7 @@ async function add() {
       <p v-if="product.startingPrice !== undefined" class="price mt-auto pt-1 text-base sm:text-lg">
         <span v-if="product.variants.length > 1" class="text-sm font-semibold text-ink-soft">من </span><bdi>{{ product.startingPrice }}</bdi> د.ل
       </p>
-      <button v-if="single" type="button" class="btn-primary relative z-10 mt-2 w-full gap-1.5 whitespace-nowrap px-3 text-sm" :disabled="busy" :aria-busy="adding" @click="add">
+      <button v-if="single" type="button" :aria-label="'أضيفي ' + product.name + ' للسلة'" class="btn-primary relative z-10 mt-2 w-full gap-1.5 whitespace-nowrap px-3 text-sm" :disabled="busy" :aria-busy="adding" @click="add">
         <span v-if="adding" class="spinner" aria-hidden="true" />
         <AppIcon v-else :name="justAdded ? 'check' : 'cart'" :size="18" aria-hidden="true" />
         <span>{{ adding ? 'جاري الإضافة...' : justAdded ? 'تمت الإضافة ✓' : 'أضيفي للسلة' }}</span>

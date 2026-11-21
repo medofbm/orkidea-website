@@ -74,7 +74,7 @@ async function askConfirm(tone: 'danger' | 'default') {
     <section class="space-y-4">
       <SectionHeader title="التنبيهات" highlight="والتأكيد" align="start" />
       <div class="flex flex-wrap gap-3">
-        <button class="btn-primary" type="button" @click="toast.success('تمت إضافة زيت الحبة السوداء للسلة', { action: { label: 'عرض السلة', to: '/cart' } })">تنبيه نجاح</button>
+        <button class="btn-primary" type="button" @click="toast.success('تمت إضافة زيت الحبة السوداء للسلة', { action: { label: 'افتحي السلة', to: '/cart' } })">تنبيه نجاح</button>
         <button class="btn-secondary" type="button" @click="toast.error('تعذر تحديث السلة.')">تنبيه خطأ</button>
         <button class="btn-secondary" type="button" @click="toast.show('معلومة صغيرة')">تنبيه معلومة</button>
         <button class="btn-secondary" type="button" @click="askConfirm('danger')">تأكيد حذف</button>

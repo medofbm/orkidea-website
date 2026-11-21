@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CataloguePage } from '~/types/catalogue'
+import { testimonials } from '~/data/testimonials'
 const route = useRoute()
 function positiveInteger(value: unknown, max: number) {
   if (typeof value !== 'string' || !/^[0-9]+$/.test(value)) return undefined
@@ -17,6 +18,20 @@ const products = computed(() => (data.value?.items ?? []).map(product => ({
   startingPrice: product.variants.reduce<string | undefined>((lowest, variant) =>
     lowest === undefined || Number(variant.price) < Number(lowest) ? variant.price : lowest, undefined)
 })))
+const featured = computed(() => products.value.slice(0, 8))
+const features = [
+  { icon: 'leaf', title: '100% طبيعي', text: 'زيوت وصابون من مكونات طبيعية وعضوية' },
+  { icon: 'hand-heart', title: 'صنع يدوي', text: 'نجهز كل طلب بعناية' },
+  { icon: 'truck', title: 'توصيل لبابك', text: 'نوصلك طلبك لين البيت' },
+  { icon: 'cash', title: 'الدفع عند الاستلام', text: 'ادفعي لما يوصلك طلبك' }
+]
+const stats = [
+  { value: '100%', label: 'طبيعي' },
+  { value: 'يدوي', label: 'صنع' },
+  { value: '5', label: 'تقييم', icon: 'star-filled' }
+]
+const gridRef = ref<HTMLElement | null>(null)
+useReveal(gridRef, { selector: '.reveal', stagger: 60 })
 const steps = ['اختاري منتجك', 'أضيفيه للسلة', 'نوصلك الطلب']
 const { whatsappNumber, facebookUrl, instagramUrl } = useRuntimeConfig().public
 const whatsappHref = computed(() => {
@@ -38,8 +53,10 @@ useSeoMeta({
   <div class="overflow-x-clip">
     <!-- Hero -->
     <section aria-labelledby="store-heading"
-      class="mt-4 grid gap-8 overflow-hidden rounded-[2rem] bg-gradient-hero px-5 py-10 sm:px-10 sm:py-14 lg:grid-cols-2 lg:items-center lg:gap-14 lg:px-14 lg:py-16">
-      <div class="order-2 min-w-0 text-center lg:order-1 lg:text-start">
+      class="relative mt-4 grid gap-8 overflow-hidden rounded-[2rem] bg-gradient-hero px-5 pt-10 pb-16 sm:px-10 sm:pt-14 lg:grid-cols-2 lg:items-center lg:gap-14 lg:px-14 lg:pt-16 lg:pb-24">
+      <span class="pointer-events-none absolute -top-16 -start-16 size-56 rounded-full bg-lilac/50 blur-3xl motion-safe:animate-float sm:size-72" aria-hidden="true"></span>
+      <span class="pointer-events-none absolute -bottom-16 -end-10 size-56 rounded-full bg-blush/50 blur-3xl motion-safe:animate-float sm:size-72" aria-hidden="true"></span>
+      <div class="relative order-2 min-w-0 text-center lg:order-1 lg:text-start">
         <p class="inline-flex items-center rounded-full border border-lavender-deep bg-white/70 px-4 py-1 text-sm font-semibold text-brand">100% طبيعي • مصنوع يدويًا</p>
         <h1 id="store-heading" class="mt-4 text-3xl leading-[1.4] font-bold text-ink sm:text-4xl lg:text-5xl">
           اكتشفي <span class="text-gradient-brand">جمال الطبيعة</span> مع أوركيديا
@@ -49,16 +66,10 @@ useSeoMeta({
           <a href="#catalogue-heading" class="btn-primary sm:min-w-44">تسوقي الآن</a>
           <a href="#contact" class="btn-secondary sm:min-w-44">تواصلي معنا</a>
         </div>
-        <dl class="mt-8 flex items-center justify-center gap-6 lg:justify-start">
-          <div><dt class="sr-only">طبيعي</dt><dd class="text-lg font-bold text-brand">100% طبيعي</dd></div>
-          <span class="h-8 w-px bg-lavender-deep" aria-hidden="true"></span>
-          <div><dt class="sr-only">طريقة الصنع</dt><dd class="text-lg font-bold text-brand">صنع يدوي</dd></div>
-          <span class="h-8 w-px bg-lavender-deep" aria-hidden="true"></span>
-          <div><dt class="sr-only">التقييم</dt><dd class="flex items-center gap-1 text-lg font-bold text-brand">5 <span class="text-gold" aria-hidden="true">★</span> <span class="text-sm font-semibold text-ink-soft">تقييم</span></dd></div>
-        </dl>
+        <StatsRow :items="stats" class="mt-8 max-w-md" />
       </div>
-      <div class="order-1 flex justify-center lg:order-2">
-        <div class="grid size-56 place-items-center rounded-full bg-white/60 p-3 shadow-[var(--shadow-soft)] ring-8 ring-white/70 sm:size-72 lg:size-96">
+      <div class="relative order-1 flex justify-center lg:order-2">
+        <div class="grid size-56 place-items-center rounded-full bg-white/60 p-3 shadow-[var(--shadow-soft)] ring-8 ring-white/70 motion-safe:animate-float sm:size-72 lg:size-96">
           <div class="grid size-full place-items-center rounded-full bg-gradient-brand">
             <img src="/brand/flower-white.png" alt="شعار أوركيديا" width="160" height="160" decoding="async" fetchpriority="high" class="h-auto w-1/2">
           </div>
@@ -66,23 +77,42 @@ useSeoMeta({
       </div>
     </section>
 
-    <!-- Catalogue -->
-    <section class="mt-6 sm:mt-10" aria-labelledby="catalogue-heading">
-      <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
-        <h2 id="catalogue-heading" tabindex="-1" class="scroll-mt-4 text-2xl font-bold text-ink sm:text-3xl">منتجات أوركيديا</h2>
-        <p v-if="data?.items.length && !error" class="text-sm text-ink-soft">عدد المنتجات <bdi class="font-bold">{{ data.total }}</bdi></p>
+    <FeaturesBar :items="features" class="-mt-8 lg:mt-0" />
+
+    <!-- Categories -->
+    <section id="categories" tabindex="-1" aria-labelledby="categories-heading" class="mt-12 scroll-mt-4 sm:mt-16">
+      <SectionHeader id="categories-heading" title="تسوقي" highlight="حسب الفئة" eyebrow="الفئات" />
+      <div class="mt-6 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
+        <CategoryCard name="كل المنتجات" to="/#catalogue-heading" />
+        <CategoryCard v-for="category in data?.categories ?? []" :key="category.id" :name="category.name"
+          :to="`/?categoryId=${category.id}#catalogue-heading`" />
       </div>
-      <div id="categories" tabindex="-1" class="scroll-mt-4">
-        <nav v-if="data?.categories?.length" aria-label="فئات المنتجات"
-          class="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
-          <NuxtLink :to="{ query: {}, hash: '#catalogue-heading' }"
-            :aria-current="categoryId === undefined ? 'page' : undefined"
-            class="chip shrink-0 whitespace-nowrap aria-[current=page]:bg-brand aria-[current=page]:text-white">كل المنتجات</NuxtLink>
-          <NuxtLink v-for="category in data.categories" :key="category.id"
-            :to="{ query: { categoryId: category.id }, hash: '#catalogue-heading' }"
-            :aria-current="categoryId === category.id ? 'page' : undefined"
-            class="chip shrink-0 whitespace-nowrap aria-[current=page]:bg-brand aria-[current=page]:text-white">{{ category.name }}</NuxtLink>
-        </nav>
+      <nav v-if="data?.categories?.length" aria-label="فئات المنتجات"
+        class="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0">
+        <NuxtLink :to="{ query: {}, hash: '#catalogue-heading' }"
+          :aria-current="categoryId === undefined ? 'page' : undefined"
+          class="chip shrink-0 whitespace-nowrap aria-[current=page]:bg-brand aria-[current=page]:text-white">كل المنتجات</NuxtLink>
+        <NuxtLink v-for="category in data.categories" :key="category.id"
+          :to="{ query: { categoryId: category.id }, hash: '#catalogue-heading' }"
+          :aria-current="categoryId === category.id ? 'page' : undefined"
+          class="chip shrink-0 whitespace-nowrap aria-[current=page]:bg-brand aria-[current=page]:text-white">{{ category.name }}</NuxtLink>
+      </nav>
+    </section>
+
+    <!-- Featured -->
+    <section v-if="featured.length >= 4" aria-labelledby="featured-heading" class="mt-12 sm:mt-16">
+      <SectionHeader id="featured-heading" title="منتجات" highlight="مختارة" eyebrow="الأكثر طلبًا" />
+      <AppCarousel class="mt-6" :items="featured" label="منتجات مختارة" :per-view="{ base: 1, sm: 2, lg: 3, xl: 4 }"
+        :autoplay="5000" dots arrows>
+        <template #item="{ item }"><ProductCard :product="item" /></template>
+      </AppCarousel>
+    </section>
+
+    <!-- Catalogue -->
+    <section class="mt-12 sm:mt-16" aria-labelledby="catalogue-heading">
+      <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
+        <h2 id="catalogue-heading" tabindex="-1" class="scroll-mt-4 text-2xl font-bold text-ink sm:text-3xl">كل منتجاتنا</h2>
+        <p v-if="data?.items.length && !error" class="text-sm text-ink-soft">عدد المنتجات <bdi class="font-bold">{{ data.total }}</bdi></p>
       </div>
 
       <div v-if="status === 'pending'" role="status" aria-label="جاري تحميل المنتجات"
@@ -108,8 +138,8 @@ useSeoMeta({
             عرض كل المنتجات
           </NuxtLink>
         </div>
-        <div v-else class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-          <ProductCard v-for="product in products" :key="product.id" :product="product" />
+        <div v-else ref="gridRef" class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
+          <ProductCard v-for="product in products" :key="product.id" :product="product" class="reveal" />
         </div>
         <nav v-if="data && data.total > data.pageSize" class="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-lavender-deep/50 pt-5" aria-label="صفحات المنتجات">
           <NuxtLink v-if="page > 1" :to="{ query: { page: page - 1, categoryId }, hash: '#catalogue-heading' }" class="btn-secondary">السابق</NuxtLink>
@@ -133,6 +163,17 @@ useSeoMeta({
       <p class="mt-5 text-center text-sm font-semibold text-brand">الدفع عند الاستلام</p>
     </section>
 
+    <!-- Testimonials -->
+    <section aria-labelledby="testimonials-heading" class="mt-14 rounded-[2rem] bg-gradient-band px-5 py-10 sm:px-10 sm:py-14">
+      <SectionHeader id="testimonials-heading" tone="light" title="ماذا يقول" highlight="زبائننا" />
+      <AppCarousel class="mt-8" :items="testimonials" label="آراء الزبائن" :per-view="{ base: 1, sm: 2, lg: 3 }"
+        :autoplay="4500" loop dots dots-tone="light">
+        <template #item="{ item }">
+          <TestimonialCard :text="item.text" :product="item.product" :source="item.source" />
+        </template>
+      </AppCarousel>
+    </section>
+
     <!-- About -->
     <section id="about-orkidea" tabindex="-1" aria-labelledby="about-heading" class="mt-10 scroll-mt-4 px-1 text-center">
       <h2 id="about-heading" class="text-2xl font-bold text-ink sm:text-3xl">أوركيديا</h2>
@@ -141,7 +182,7 @@ useSeoMeta({
 
     <!-- Contact -->
     <section id="contact" tabindex="-1" aria-labelledby="contact-heading" class="mt-10 mb-6 scroll-mt-4 rounded-[var(--radius-card)] bg-lavender px-5 py-8 text-center sm:px-10">
-      <h2 id="contact-heading" class="text-2xl font-bold text-ink sm:text-3xl">تواصلي معنا</h2>
+      <SectionHeader id="contact-heading" title="هل لديكِ" highlight="استفسار؟" subtitle="تواصلي معانا وبنرد عليك في أقرب وقت" />
       <div v-if="contactLinks.length" class="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
         <a v-for="link in contactLinks" :key="link.label" :href="link.href" target="_blank" rel="noopener noreferrer" class="btn-secondary bg-white sm:min-w-40">{{ link.label }}</a>
       </div>
