@@ -49,47 +49,57 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
 </script>
 
 <template>
-  <section class="mx-auto max-w-md rounded-xl bg-white p-5 md:p-8" aria-labelledby="account-title">
-    <h1 id="account-title" class="mb-5 text-2xl font-bold">حساب أوركيديا</h1>
+  <section aria-labelledby="account-title">
+  <div class="relative isolate overflow-hidden rounded-3xl bg-gradient-hero px-4 py-10 md:px-8 md:py-16">
+    <span class="pointer-events-none absolute -top-16 -start-16 size-56 rounded-full bg-lilac/50 blur-2xl motion-safe:animate-float" aria-hidden="true" />
+    <span class="pointer-events-none absolute -bottom-20 -end-12 size-64 rounded-full bg-blush blur-2xl motion-safe:animate-float" aria-hidden="true" />
+    <div class="card-glass relative mx-auto max-w-md p-6 md:p-8 motion-safe:animate-fade-in-up">
+      <div class="mb-6 text-center">
+        <span class="mx-auto mb-3 inline-flex size-14 items-center justify-center rounded-full bg-gradient-brand text-white shadow-(--shadow-glow)"><AppIcon name="flower" :size="28" /></span>
+        <h1 id="account-title" class="section-title">حساب أوركيديا</h1>
+        <p class="mt-1 text-ink-soft">أهلًا بكِ، سجّلي دخولك وتابعي طلباتك بسهولة.</p>
+      </div>
     <p v-if="loading" role="status">جاري التحقق من الجلسة…</p>
-    <p v-if="error" role="alert" class="mb-4 rounded-lg bg-danger/10 p-3 text-danger">{{ error }}</p>
+    <p v-if="error" role="alert" class="mb-4 rounded-xl bg-danger/10 p-3 text-danger">{{ error }}</p>
     <template v-if="account?.signedIn">
-      <p>تم تسجيل الدخول</p>
+      <p class="flex items-center gap-2 font-semibold text-success"><AppIcon name="check-circle" :size="20" />تم تسجيل الدخول</p>
       <p v-if="account.name" class="my-2 break-all" dir="ltr">{{ account.name }}</p>
-      <button type="button" :disabled="pending" class="mt-4 min-h-11 rounded-lg border px-4" @click="submit('logout')">تسجيل الخروج</button>
-      <NuxtLink v-if="account.isAdmin" to="/admin" class="ms-4 inline-block min-h-11 text-brand-deep underline">لوحة الإدارة</NuxtLink>
+      <button type="button" :disabled="pending" class="btn-secondary mt-4" @click="submit('logout')">تسجيل الخروج</button>
+      <NuxtLink v-if="account.isAdmin" to="/admin" class="btn-ghost ms-2 mt-4 underline">لوحة الإدارة</NuxtLink>
       <AccountSettings :phone-number="account.phoneNumber" />
     </template>
     <form v-else-if="account && !loading" @submit.prevent="submit(verification ? 'verify' : 'login')">
       <fieldset :disabled="pending" class="space-y-4">
         <template v-if="verification">
-          <label class="block">{{ fields.recovery ? 'رمز الاسترداد' : 'رمز تطبيق المصادقة' }}
+          <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="shield" :size="16" class="text-brand" />{{ fields.recovery ? 'رمز الاسترداد' : 'رمز تطبيق المصادقة' }}</span>
             <input v-model="fields.code" required maxlength="64" dir="ltr" autocomplete="one-time-code"
-              :inputmode="fields.recovery ? 'text' : 'numeric'" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+              :inputmode="fields.recovery ? 'text' : 'numeric'" class="field">
           </label>
           <label class="flex min-h-11 items-center gap-2">
             <input v-model="fields.recovery" type="checkbox"> استخدام رمز الاسترداد
           </label>
         </template>
         <template v-else>
-          <label class="block">البريد الإلكتروني
-            <input v-model="fields.email" required type="email" maxlength="254" dir="ltr" autocomplete="username" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+          <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="mail" :size="16" class="text-brand" />البريد الإلكتروني</span>
+            <input v-model="fields.email" required type="email" maxlength="254" dir="ltr" autocomplete="username" class="field">
           </label>
-          <label class="block">كلمة المرور
-            <input v-model="fields.password" required type="password" maxlength="1024" dir="ltr" autocomplete="current-password" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+          <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="shield" :size="16" class="text-brand" />كلمة المرور</span>
+            <input v-model="fields.password" required type="password" maxlength="1024" dir="ltr" autocomplete="current-password" class="field">
           </label>
           <label class="flex min-h-11 items-center gap-2">
-            <input v-model="fields.rememberMe" type="checkbox"> تذكّر تسجيل الدخول
+            <input v-model="fields.rememberMe" type="checkbox"> تذكّريني على هذا الجهاز
           </label>
         </template>
-        <button type="submit" class="min-h-12 w-full btn-primary disabled:opacity-50">
+        <button type="submit" class="btn-primary w-full">
           {{ verification ? 'تأكيد الرمز' : 'تسجيل الدخول' }}
         </button>
       </fieldset>
     </form>
-    <button v-else-if="!loading" class="min-h-11 underline" @click="load()">إعادة المحاولة</button>
+    <button v-else-if="!loading" class="btn-secondary w-full" @click="load()">إعادة المحاولة</button>
     <NuxtLink v-if="account && !account.signedIn && !verification" to="/account/register"
-      class="mt-5 block min-h-11 text-brand-deep underline">إنشاء حساب</NuxtLink>
-    <NuxtLink to="/" class="mt-5 inline-block min-h-11 text-brand-deep underline">العودة للمتجر</NuxtLink>
+      class="btn-secondary mt-5 w-full">ما عندك حساب؟ إنشاء حساب</NuxtLink>
+    <NuxtLink to="/" class="btn-ghost mt-3 w-full">العودة للمتجر</NuxtLink>
+    </div>
+  </div>
   </section>
 </template>

@@ -28,32 +28,32 @@ async function save(action: 'phone' | 'password') {
 </script>
 
 <template>
-  <section class="mt-6 space-y-5" aria-label="إعدادات الحساب">
-    <p v-if="error" role="alert" class="rounded-lg bg-danger/10 p-3 text-danger">{{ error }}</p>
-    <p v-if="message" role="status" class="rounded-lg bg-success/10 p-3 text-success">{{ message }}</p>
-    <form class="space-y-3 border-t pt-4" @submit.prevent="save('phone')">
-      <label class="block">رقم الهاتف
+  <section class="mt-6 space-y-4" aria-label="إعدادات الحساب">
+    <p v-if="error" role="alert" class="rounded-xl bg-danger/10 p-3 text-danger">{{ error }}</p>
+    <p v-if="message" role="status" class="rounded-xl bg-success/10 p-3 text-success">{{ message }}</p>
+    <form class="card space-y-3 p-4" @submit.prevent="save('phone')">
+      <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="phone" :size="16" class="text-brand" />رقم الهاتف</span>
         <input v-model="phone" :disabled="pending" type="tel" maxlength="32" dir="ltr" autocomplete="tel"
-          class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+          class="field">
       </label>
-      <button type="submit" :disabled="pending" class="min-h-11 rounded-lg border px-4">حفظ رقم الهاتف</button>
+      <button type="submit" :disabled="pending" class="btn-secondary">حفظ رقم الهاتف</button>
     </form>
-    <form class="border-t pt-4" @submit.prevent="save('password')">
+    <form class="card p-4" @submit.prevent="save('password')">
       <fieldset :disabled="pending" class="space-y-3">
-        <legend class="font-semibold">تغيير كلمة المرور</legend>
-        <label class="block">كلمة المرور الحالية
+        <legend class="mb-2 font-bold text-brand">تغيير كلمة المرور</legend>
+        <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="shield" :size="16" class="text-brand" />كلمة المرور الحالية</span>
           <input v-model="passwords.currentPassword" required type="password" maxlength="1024" dir="ltr"
-            autocomplete="current-password" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+            autocomplete="current-password" class="field">
         </label>
-        <label class="block">كلمة المرور الجديدة
+        <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="shield" :size="16" class="text-brand" />كلمة المرور الجديدة</span>
           <input v-model="passwords.newPassword" required type="password" minlength="8" maxlength="100" dir="ltr"
-            autocomplete="new-password" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+            autocomplete="new-password" class="field">
         </label>
-        <label class="block">تأكيد كلمة المرور الجديدة
+        <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="shield" :size="16" class="text-brand" />تأكيد كلمة المرور الجديدة</span>
           <input v-model="passwords.confirmation" required type="password" maxlength="100" dir="ltr"
-            autocomplete="new-password" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+            autocomplete="new-password" class="field">
         </label>
-        <button type="submit" class="min-h-11 rounded-lg border px-4">تغيير كلمة المرور</button>
+        <button type="submit" class="btn-secondary">تغيير كلمة المرور</button>
       </fieldset>
     </form>
   </section>
