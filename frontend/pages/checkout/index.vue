@@ -111,59 +111,59 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
 
 <template>
   <section aria-labelledby="checkout-heading">
-    <NuxtLink to="/cart" class="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 font-semibold text-purple-900 hover:bg-purple-50">
+    <NuxtLink to="/cart" class="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 font-semibold text-brand-deep hover:bg-cream">
       <span aria-hidden="true">→</span> رجوع للسلة
     </NuxtLink>
-    <h1 id="checkout-heading" class="mb-5 text-3xl font-bold text-purple-950 sm:text-4xl">إتمام الطلب</h1>
-    <p v-if="loading" role="status" class="rounded-2xl border border-purple-100 bg-white p-5 text-purple-900">جاري تجهيز الطلب…</p>
-    <ul v-if="errors.length" role="alert" class="mb-4 list-inside list-disc rounded-xl bg-red-50 p-4 text-red-800">
+    <h1 id="checkout-heading" class="mb-5 text-3xl font-bold text-ink sm:text-4xl">إتمام الطلب</h1>
+    <p v-if="loading" role="status" class="card p-5 text-brand-deep">جاري تجهيز الطلب…</p>
+    <ul v-if="errors.length" role="alert" class="mb-4 list-inside list-disc rounded-xl bg-danger/10 p-4 text-danger">
       <li v-for="(error, index) in errors" :key="index">{{ error }}</li>
     </ul>
-    <div v-if="state && !loading && !hasDeliveryOptions" role="status" class="mb-4 rounded-2xl border border-purple-100 bg-white p-5">
-      <p class="font-semibold text-purple-950">التوصيل غير متاح حاليًا.</p>
-      <p class="mt-2 text-sm text-purple-900">منتجاتك ما زالت في السلة. تقدري تعيدي التحقق من خيارات التوصيل.</p>
+    <div v-if="state && !loading && !hasDeliveryOptions" role="status" class="mb-4 card p-5">
+      <p class="font-semibold text-ink">التوصيل غير متاح حاليًا.</p>
+      <p class="mt-2 text-sm text-brand-deep">منتجاتك ما زالت في السلة. تقدري تعيدي التحقق من خيارات التوصيل.</p>
     </div>
     <button v-if="!loading && !hasDeliveryOptions && (state || errors.length)" type="button"
-      class="storefront-action min-h-11 rounded-xl bg-purple-900 px-4 font-semibold text-white hover:bg-purple-800" @click="load">إعادة المحاولة</button>
+      class="storefront-action min-h-11 btn-primary" @click="load">إعادة المحاولة</button>
     <form v-if="state && hasDeliveryOptions" class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.65fr)]"
       @submit.prevent="send('orders')">
-      <section aria-labelledby="delivery-heading" class="min-w-0 rounded-2xl border border-purple-100 bg-white p-4 shadow-sm sm:p-6">
-        <h2 id="delivery-heading" class="mb-4 text-lg font-bold text-purple-950">خيارات التوصيل</h2>
+      <section aria-labelledby="delivery-heading" class="min-w-0 card p-4 shadow-sm sm:p-6">
+        <h2 id="delivery-heading" class="mb-4 text-lg font-bold text-ink">خيارات التوصيل</h2>
         <fieldset :disabled="busy" aria-labelledby="delivery-heading" class="min-w-0 space-y-4">
           <template v-if="state.destinations">
             <fieldset v-if="services.length > 1">
               <legend class="mb-2 font-semibold">اختاري نوع التوصيل</legend>
               <div class="grid gap-2 min-[360px]:grid-cols-2">
                 <label v-for="kind in services" :key="kind"
-                  class="flex min-h-11 items-center gap-2 rounded-xl border border-purple-200 px-3 py-2 has-checked:border-purple-800 has-checked:bg-purple-50 has-checked:font-semibold has-checked:ring-1 has-checked:ring-purple-800 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-purple-800">
+                  class="flex min-h-11 items-center gap-2 rounded-xl border border-lavender-deep px-3 py-2 has-checked:border-brand-deep has-checked:bg-cream has-checked:font-semibold has-checked:ring-1 has-checked:ring-brand-deep has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-deep">
                   <input :checked="service === kind" name="carrierService" type="radio" :value="kind"
-                    class="accent-purple-800" @change="chooseService(kind)">
+                    class="accent-brand-deep" @change="chooseService(kind)">
                   {{ serviceLabels[kind] }}
                 </label>
               </div>
             </fieldset>
-            <p v-else-if="selectedService" class="font-semibold text-purple-950">{{ serviceLabels[selectedService] }}</p>
+            <p v-else-if="selectedService" class="font-semibold text-ink">{{ serviceLabels[selectedService] }}</p>
             <label v-if="cities.length" class="block">مدينة التوصيل
-              <select :value="city" class="mt-1 block min-h-11 w-full rounded-lg border border-purple-200 bg-white px-3 text-purple-950" @change="chooseCity">
+              <select :value="city" class="mt-1 block min-h-11 w-full field" @change="chooseCity">
                 <option value="" disabled>اختاري المدينة</option>
                 <option v-for="name in cities" :key="name" :value="name">{{ name }}</option>
               </select>
             </label>
             <label v-if="options.length > 1" class="block">{{ selectedService === 'office' ? 'مكتب الاستلام' : 'المنطقة' }}
-              <select v-model="destinationKey" class="mt-1 block min-h-11 w-full rounded-lg border border-purple-200 bg-white px-3 text-purple-950">
+              <select v-model="destinationKey" class="mt-1 block min-h-11 w-full field">
                 <option value="" disabled>{{ selectedService === 'office' ? 'اختاري المكتب' : 'اختاري المنطقة' }}</option>
                 <option v-for="destination in options" :key="destination.key" :value="destination.key">{{ destination.area }}</option>
               </select>
             </label>
-            <p v-else-if="selectedDestination" class="text-sm text-purple-950">
+            <p v-else-if="selectedDestination" class="text-sm text-ink">
               {{ selectedDestination.isPickup ? 'مكتب الاستلام' : 'المنطقة' }} · {{ selectedDestination.area }}
             </p>
             <button v-if="selectedDestination && !busy && shippingFee == null" type="button"
-              class="min-h-11 rounded-xl border border-purple-300 bg-white px-4 font-semibold text-purple-950 hover:bg-purple-50"
+              class="min-h-11 btn-secondary"
               @click="send('shipping')">إعادة حساب التوصيل</button>
           </template>
           <label v-else class="block">مدينة التوصيل
-            <select v-model.number="fields.shippingRateId" required class="mt-1 block min-h-11 w-full rounded-lg border border-purple-200 bg-white px-3 text-purple-950">
+            <select v-model.number="fields.shippingRateId" required class="mt-1 block min-h-11 w-full field">
               <option :value="0" disabled>اختاري المدينة</option>
               <option v-for="shippingRate in state.shippingRates" :key="shippingRate.id" :value="shippingRate.id">
                 {{ shippingRate.city }} — {{ shippingRate.price }} د.ل
@@ -171,25 +171,25 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
             </select>
           </label>
         </fieldset>
-        <fieldset v-if="!state.destinations || shippingFee != null" :disabled="busy" class="mt-6 min-w-0 space-y-4 border-t border-purple-100 pt-4">
-          <legend class="pe-2 font-semibold text-purple-950">بيانات الطلب</legend>
+        <fieldset v-if="!state.destinations || shippingFee != null" :disabled="busy" class="mt-6 min-w-0 space-y-4 border-t border-lavender-deep pt-4">
+          <legend class="pe-2 font-semibold text-ink">بيانات الطلب</legend>
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="block">الاسم الأول
-              <input v-model="fields.firstName" required maxlength="50" autocomplete="given-name" class="mt-1 block min-h-11 w-full rounded-lg border border-purple-200 bg-white px-3 text-purple-950">
+              <input v-model="fields.firstName" required maxlength="50" autocomplete="given-name" class="mt-1 block min-h-11 w-full field">
             </label>
             <label class="block">اسم العائلة
-              <input v-model="fields.lastName" required maxlength="50" autocomplete="family-name" class="mt-1 block min-h-11 w-full rounded-lg border border-purple-200 bg-white px-3 text-purple-950">
+              <input v-model="fields.lastName" required maxlength="50" autocomplete="family-name" class="mt-1 block min-h-11 w-full field">
             </label>
           </div>
           <label class="block">رقم الواتساب
-            <input v-model="fields.whatsAppNumber" required maxlength="20" type="tel" dir="ltr" autocomplete="tel" class="mt-1 block min-h-11 w-full rounded-lg border border-purple-200 bg-white px-3 text-purple-950">
+            <input v-model="fields.whatsAppNumber" required maxlength="20" type="tel" dir="ltr" autocomplete="tel" class="mt-1 block min-h-11 w-full field">
           </label>
           <label v-if="!selectedDestination?.isPickup" class="block">العنوان بالتفصيل
-            <textarea v-model="fields.shippingAddress" required maxlength="200" autocomplete="street-address" rows="3" class="mt-1 block w-full rounded-lg border border-purple-200 bg-white p-3 text-purple-950" />
+            <textarea v-model="fields.shippingAddress" required maxlength="200" autocomplete="street-address" rows="3" class="mt-1 block w-full field" />
           </label>
         </fieldset>
       </section>
-      <section aria-labelledby="order-summary" class="min-w-0 rounded-2xl border border-purple-100 bg-purple-50 p-4 text-purple-950 shadow-sm sm:p-6">
+      <section aria-labelledby="order-summary" class="min-w-0 rounded-2xl border border-lavender-deep bg-cream p-4 text-ink shadow-sm sm:p-6">
         <h2 id="order-summary" class="mb-4 text-lg font-bold">ملخص الطلب</h2>
         <dl aria-live="polite" class="space-y-3">
           <div class="flex flex-wrap justify-between gap-2"><dt>المنتجات</dt><dd><bdi>{{ state.productsTotal }}</bdi> د.ل</dd></div>
@@ -198,11 +198,11 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
             <template v-else-if="state.destinations && fields.carrierDestination">بانتظار حساب التوصيل</template>
             <template v-else>بانتظار اختيار الوجهة</template>
           </dd></div>
-          <div v-if="total != null" class="flex flex-wrap justify-between gap-2 border-t border-purple-200 pt-3 text-lg font-bold">
+          <div v-if="total != null" class="flex flex-wrap justify-between gap-2 border-t border-lavender-deep pt-3 text-lg font-bold">
             <dt>الإجمالي</dt><dd><bdi>{{ total }}</bdi> د.ل</dd>
           </div>
         </dl>
-        <button type="submit" :disabled="busy || shippingFee == null" class="storefront-action mt-5 min-h-12 w-full rounded-xl bg-purple-900 px-4 py-2 font-bold text-white hover:bg-purple-800 disabled:opacity-50">
+        <button type="submit" :disabled="busy || shippingFee == null" class="storefront-action mt-5 min-h-12 w-full rounded-xl bg-brand-deep px-4 py-2 font-bold text-white hover:bg-brand-deep disabled:opacity-50">
           تأكيد الطلب والدفع عند الاستلام
         </button>
         <p role="status" :class="{ 'mt-2': busy }" class="text-sm">{{ busy ? 'جاري المعالجة…' : '' }}</p>

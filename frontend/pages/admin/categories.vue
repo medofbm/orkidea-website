@@ -62,12 +62,12 @@ async function save() {
 
 <template>
   <section aria-labelledby="categories-title" class="mx-auto max-w-4xl">
-    <NuxtLink to="/admin/products" class="inline-flex min-h-11 items-center text-purple-900 underline">العودة للمنتجات</NuxtLink>
+    <NuxtLink to="/admin/products" class="inline-flex min-h-11 items-center text-brand underline">العودة للمنتجات</NuxtLink>
     <h1 id="categories-title" class="mb-2 text-3xl font-bold">إدارة الفئات</h1>
     <p class="mb-5">الفئات هنا تظهر في خيارات المنتج. تغيير الاسم يبقى مرتبط بنفس المنتجات.</p>
 
-    <p v-if="notice" role="status" class="mb-3 text-emerald-800">{{ notice }}</p>
-    <p v-if="failure" role="alert" class="mb-3 text-red-800">{{ failure }}</p>
+    <p v-if="notice" role="status" class="mb-3 text-success">{{ notice }}</p>
+    <p v-if="failure" role="alert" class="mb-3 text-danger">{{ failure }}</p>
     <button v-if="needsRefresh" type="button" :disabled="saving || status === 'pending'"
       class="mb-4 min-h-11 rounded-lg border px-4" @click="reload()">تحديث قائمة الفئات</button>
 
@@ -77,7 +77,7 @@ async function save() {
         <label class="min-w-40 flex-1">اسم الفئة
           <input v-model="name" maxlength="150" required class="mt-1 block min-h-11 w-full rounded-lg border px-3">
         </label>
-        <button type="submit" :disabled="!name.trim()" class="min-h-11 rounded-lg bg-purple-900 px-4 text-white disabled:opacity-60">
+        <button type="submit" :disabled="!name.trim()" class="min-h-11 btn-primary disabled:opacity-60">
           {{ saving ? 'جاري الحفظ…' : 'حفظ الفئة' }}
         </button>
         <button v-if="selected" type="button" class="min-h-11 rounded-lg border px-4" @click="edit()">إلغاء التعديل</button>
@@ -103,7 +103,7 @@ async function save() {
             <p class="text-sm">{{ category.products }} منتج مرتبط</p>
           </div>
           <button type="button" :disabled="disabled" :aria-label="'تعديل فئة ' + category.name"
-            class="min-h-11 px-2 text-purple-900 underline disabled:opacity-60" @click="edit(category)">تعديل الاسم</button>
+            class="min-h-11 px-2 text-brand underline disabled:opacity-60" @click="edit(category)">تعديل الاسم</button>
         </li>
       </ul>
       <nav v-if="data.pages > 1" aria-label="صفحات الفئات" class="mt-4 flex items-center justify-between gap-3">

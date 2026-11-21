@@ -3,7 +3,7 @@ useSeoMeta({ title: 'سياسة الخصوصية | أوركيديا' })
 </script>
 
 <template>
-  <article class="mx-auto max-w-3xl space-y-6 rounded-2xl border border-purple-100 bg-white p-5 text-purple-950 sm:p-8">
+  <article class="mx-auto max-w-3xl space-y-6 card p-5 text-ink sm:p-8">
     <h1 class="text-3xl font-bold">سياسة الخصوصية</h1>
 
     <section aria-labelledby="privacy-orders" class="space-y-2 leading-relaxed">

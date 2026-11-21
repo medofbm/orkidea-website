@@ -100,7 +100,7 @@ function submitDelivery() {
     <h2 id="order-stock-title" class="mb-3 text-xl font-bold">المخزون والتعبئة</h2>
     <p>{{ stockLabels[order.stockState] ?? 'حالة المخزون غير معروفة' }}</p>
     <button v-if="stockAction" type="button" :disabled="disabled" @click="emit('stock', stockAction)"
-      class="mt-3 min-h-11 rounded-lg bg-purple-900 px-4 font-semibold text-white disabled:opacity-60">
+      class="mt-3 min-h-11 btn-primary disabled:opacity-60">
       {{ stockAction === 'Reserve' ? 'تأكيد التوفر وحجز الكمية' : 'تمت التعبئة — صرف الكمية' }}
     </button>
   </section>
@@ -115,14 +115,14 @@ function submitDelivery() {
     </p>
     <p v-else-if="deliveryActions.length">سجّل التسليم بعد ما تعطي الطلب لشركة التوصيل أو تبدأ توصله بنفسك.</p>
     <p v-else>تقدر تسجّل التوصيل بعد تجهيز الطلب.</p>
-    <p v-if="order.delivery?.state === 'Returned'" class="mt-2 text-sm text-slate-700">
+    <p v-if="order.delivery?.state === 'Returned'" class="mt-2 text-sm text-ink-soft">
       استلام الراجع وإعادة إرساله ما يغيروش كمية الزيت المصروفة.
     </p>
     <form v-if="deliveryActions.length" class="mt-4" @submit.prevent="submitDelivery">
       <fieldset :disabled="disabled" class="space-y-3">
         <label class="block">
           <span class="block font-semibold">إجراء التوصيل</span>
-          <select v-model="action" class="min-h-11 w-full rounded-lg border border-slate-400 p-2">
+          <select v-model="action" class="min-h-11 w-full field">
             <option value="" disabled>اختر الإجراء</option>
             <option v-for="value in deliveryActions" :key="value" :value="value">{{ actions[value] }}</option>
           </select>
@@ -130,18 +130,18 @@ function submitDelivery() {
         <template v-if="metadata">
           <label class="block">
             <span class="block font-semibold">طريقة التوصيل</span>
-            <select v-model="mode" class="min-h-11 w-full rounded-lg border border-slate-400 p-2">
+            <select v-model="mode" class="min-h-11 w-full field">
               <option value="Company">شركة توصيل</option>
               <option value="Self">توصيل ذاتي</option>
             </select>
           </label>
           <label v-if="mode === 'Company'" class="block">
             <span class="block font-semibold">شركة التوصيل</span>
-            <input v-model="carrierName" required maxlength="120" class="min-h-11 w-full rounded-lg border border-slate-400 p-2">
+            <input v-model="carrierName" required maxlength="120" class="min-h-11 w-full field">
           </label>
           <label v-if="mode === 'Company'" class="block">
             <span class="block font-semibold">كيف سُلّم الطلب لشركة التوصيل؟</span>
-            <select v-model="handoffMode" :required="action !== 'CorrectDetails'" class="min-h-11 w-full rounded-lg border border-slate-400 p-2">
+            <select v-model="handoffMode" :required="action !== 'CorrectDetails'" class="min-h-11 w-full field">
               <option value="">{{ action === 'CorrectDetails' ? 'غير مسجل' : 'اختر طريقة التسليم' }}</option>
               <option value="OfficeDropoff">تسليم إلى مكتب الشركة</option>
               <option value="CarrierCollection">استلام مندوب الشركة</option>
@@ -149,18 +149,18 @@ function submitDelivery() {
           </label>
           <label class="block">
             <span class="block font-semibold">مرجع الشحنة (اختياري)</span>
-            <input v-model="reference" maxlength="100" class="min-h-11 w-full rounded-lg border border-slate-400 p-2">
+            <input v-model="reference" maxlength="100" class="min-h-11 w-full field">
           </label>
         </template>
         <label v-if="requiresReason" class="block">
           <span class="block font-semibold">سبب الإجراء</span>
-          <textarea v-model="reason" required maxlength="500" rows="3" class="w-full rounded-lg border border-slate-400 p-2" />
+          <textarea v-model="reason" required maxlength="500" rows="3" class="w-full field" />
         </label>
         <label v-if="confirmationLabel" class="flex min-h-11 items-center gap-2">
           <input v-model="confirmed" type="checkbox" required>
           {{ confirmationLabel }}
         </label>
-        <button v-if="action" type="submit" class="min-h-11 rounded-lg bg-purple-900 px-4 font-semibold text-white disabled:opacity-60">
+        <button v-if="action" type="submit" class="min-h-11 btn-primary disabled:opacity-60">
           {{ actions[action] }}
         </button>
       </fieldset>
@@ -168,7 +168,7 @@ function submitDelivery() {
 
     <details v-if="order.deliveryHistory.length" class="mt-4">
       <summary class="min-h-11 cursor-pointer py-2 font-semibold">سجل التوصيل (آخر {{ order.deliveryHistory.length }} إجراء)</summary>
-      <ol class="divide-y divide-slate-200">
+      <ol class="divide-y divide-lavender-deep">
         <li v-for="entry in order.deliveryHistory" :key="entry.revision" class="py-3">
           <p>{{ actions[entry.action as DeliveryAction] ?? entry.action }} · {{ adminDeliveryState(entry.newState) }}</p>
           <p>
@@ -176,7 +176,7 @@ function submitDelivery() {
             <template v-if="entry.mode === 'Company'"> · {{ adminHandoffMode(entry.handoffMode) }}</template>
             <bdi v-if="entry.shipmentReference"> · {{ entry.shipmentReference }}</bdi>
           </p>
-          <p class="text-sm text-slate-700">
+          <p class="text-sm text-ink-soft">
             <bdi>{{ entry.actorName ?? 'حساب إداري سابق' }}</bdi> ·
             <time :datetime="entry.changedAtUtc" dir="ltr">{{ entry.changedAtUtc.replace('T', ' ').slice(0, 16) }} UTC</time>
           </p>

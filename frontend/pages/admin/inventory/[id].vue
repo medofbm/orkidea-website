@@ -92,10 +92,10 @@ function configure() {
 
 <template>
   <section aria-labelledby="stock-title" class="mx-auto max-w-3xl">
-    <NuxtLink to="/admin/inventory" class="mb-3 inline-flex min-h-11 items-center text-purple-900 underline">العودة للمخزون</NuxtLink>
+    <NuxtLink to="/admin/inventory" class="mb-3 inline-flex min-h-11 items-center text-brand underline">العودة للمخزون</NuxtLink>
     <h1 id="stock-title" class="mb-5 text-3xl font-bold">مخزون {{ data?.name }}</h1>
-    <p v-if="notice" role="status" class="mb-3 text-emerald-800">{{ notice }}</p>
-    <p v-if="failure" role="alert" class="mb-3 text-red-800">{{ failure }}</p>
+    <p v-if="notice" role="status" class="mb-3 text-success">{{ notice }}</p>
+    <p v-if="failure" role="alert" class="mb-3 text-danger">{{ failure }}</p>
     <button v-if="needsRefresh" type="button" :disabled="saving || status === 'pending'" @click="recover"
       class="mb-4 min-h-11 rounded-lg border px-4">تحديث الرصيد والسجل</button>
     <p v-if="status === 'idle' || status === 'pending'" role="status">جاري تحميل تفاصيل المخزون…</p>
@@ -113,7 +113,7 @@ function configure() {
               <option value="piece">قطعة للمنتجات الجاهزة</option>
             </select>
           </label>
-          <button class="min-h-11 rounded-lg bg-purple-900 px-4 text-white disabled:opacity-60" type="submit" :disabled="!unit">تفعيل التتبّع</button>
+          <button class="min-h-11 btn-primary disabled:opacity-60" type="submit" :disabled="!unit">تفعيل التتبّع</button>
         </fieldset>
       </form>
       <template v-else>
@@ -130,7 +130,7 @@ function configure() {
               <textarea v-model="reason" required maxlength="500" rows="2" class="mt-1 block w-full rounded-lg border p-2" />
             </label>
             <button :disabled="delta === '' || delta === 0 || !reason.trim()" type="submit"
-              class="min-h-11 rounded-lg bg-purple-900 px-4 text-white disabled:opacity-60">حفظ حركة الكمية</button>
+              class="min-h-11 btn-primary disabled:opacity-60">حفظ حركة الكمية</button>
           </fieldset>
         </form>
         <section class="mt-6 rounded-xl bg-white p-4" aria-labelledby="stock-variants">
@@ -152,24 +152,24 @@ function configure() {
                   class="mt-1 block min-h-11 w-full rounded-lg border px-3 sm:w-auto">
               </label>
               <button :disabled="variantId === '' || units === ''" type="submit"
-                class="min-h-11 rounded-lg bg-purple-900 px-4 text-white disabled:opacity-60">حفظ استهلاك الحجم</button>
+                class="min-h-11 btn-primary disabled:opacity-60">حفظ استهلاك الحجم</button>
             </fieldset>
           </form>
         </section>
         <section class="mt-6 rounded-xl bg-white p-4" aria-labelledby="stock-history">
           <h2 id="stock-history" class="mb-3 text-xl font-bold">سجل الحركات</h2>
           <p v-if="!data.movements.length">ما فيش حركات مسجّلة.</p>
-          <ol v-else class="divide-y divide-slate-200">
+          <ol v-else class="divide-y divide-lavender-deep">
             <li v-for="move in data.movements" :key="move.stockMovementId" class="py-3">
               <p class="font-semibold">{{ moveKinds[move.kind] ?? move.kind }}</p>
               <p>تغيّر الفعلي <bdi>{{ move.onHandDelta }}</bdi> · تغيّر المحجوز <bdi>{{ move.reservedDelta }}</bdi></p>
-              <p class="text-sm text-slate-700">
+              <p class="text-sm text-ink-soft">
                 {{ move.actorName ?? 'حساب إداري سابق' }} ·
                 <time :datetime="move.createdAtUtc" dir="ltr">{{ move.createdAtUtc.replace('T', ' ').slice(0, 16) }} UTC</time>
               </p>
               <p class="whitespace-pre-line break-words">{{ move.reason }}</p>
               <NuxtLink v-if="move.orderId" :to="'/admin/orders/' + move.orderId"
-                class="inline-flex min-h-11 items-center text-purple-900 underline">الطلب <bdi class="ms-1">#{{ move.orderId }}</bdi></NuxtLink>
+                class="inline-flex min-h-11 items-center text-brand underline">الطلب <bdi class="ms-1">#{{ move.orderId }}</bdi></NuxtLink>
             </li>
           </ol>
           <nav v-if="data.pages > 1" aria-label="صفحات سجل المخزون" class="mt-4 flex items-center justify-between gap-3">

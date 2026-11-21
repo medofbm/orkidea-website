@@ -29,8 +29,8 @@ async function save(action: 'phone' | 'password') {
 
 <template>
   <section class="mt-6 space-y-5" aria-label="إعدادات الحساب">
-    <p v-if="error" role="alert" class="rounded-lg bg-red-50 p-3 text-red-800">{{ error }}</p>
-    <p v-if="message" role="status" class="rounded-lg bg-green-50 p-3 text-green-800">{{ message }}</p>
+    <p v-if="error" role="alert" class="rounded-lg bg-danger/10 p-3 text-danger">{{ error }}</p>
+    <p v-if="message" role="status" class="rounded-lg bg-success/10 p-3 text-success">{{ message }}</p>
     <form class="space-y-3 border-t pt-4" @submit.prevent="save('phone')">
       <label class="block">رقم الهاتف
         <input v-model="phone" :disabled="pending" type="tel" maxlength="32" dir="ltr" autocomplete="tel"

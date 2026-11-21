@@ -23,7 +23,7 @@ function apply() {
       <label class="min-w-40 flex-1">اسم المنتج
         <input v-model="search" type="search" maxlength="100" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
       </label>
-      <button type="submit" class="min-h-11 rounded-lg bg-purple-900 px-4 text-white">بحث</button>
+      <button type="submit" class="min-h-11 btn-primary">بحث</button>
     </form>
     <p v-if="status === 'idle' || status === 'pending'" role="status">جاري تحميل المخزون…</p>
     <AdminReadError v-else-if="error" :status-code="error.statusCode" />
@@ -32,7 +32,7 @@ function apply() {
       <ul class="grid gap-3 lg:grid-cols-2">
         <li v-for="product in data.items" :key="product.productId" class="min-w-0 rounded-xl bg-white p-4">
           <NuxtLink :to="'/admin/inventory/' + product.productId"
-            class="mb-2 inline-flex min-h-11 items-center break-words font-bold text-purple-900 underline">
+            class="mb-2 inline-flex min-h-11 items-center break-words font-bold text-brand underline">
             {{ product.name }}
           </NuxtLink>
           <AdminStockBalances v-if="product.account" :account="product.account" />

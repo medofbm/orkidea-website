@@ -29,25 +29,25 @@ function changePage(page: number) {
 <template>
   <section aria-labelledby="delivery-title">
     <h1 id="delivery-title" class="text-3xl font-bold">التوصيل والرواجع</h1>
-    <p class="mb-6 mt-2 text-slate-700">تابع الشحنات المفتوحة والرواجع. تسوية المحفظة في تطبيق شركة التوصيل.</p>
+    <p class="mb-6 mt-2 text-ink-soft">تابع الشحنات المفتوحة والرواجع. تسوية المحفظة في تطبيق شركة التوصيل.</p>
 
     <form class="mb-6 flex flex-wrap items-end gap-3 rounded-xl bg-white p-4" @submit.prevent="apply">
       <label class="min-w-52 flex-1">
         <span class="block font-semibold">بحث عن شحنة</span>
         <input v-model="fields.search" type="search" maxlength="100"
           placeholder="رقم الطلب أو العميل أو المدينة أو المرجع أو الشركة"
-          class="mt-1 block min-h-11 w-full rounded-lg border border-slate-400 px-3">
+          class="mt-1 block min-h-11 w-full field">
       </label>
       <label class="w-full sm:w-auto">
         <span class="block font-semibold">حالة التوصيل</span>
-        <select v-model="fields.state" class="mt-1 min-h-11 w-full rounded-lg border border-slate-400 px-3">
+        <select v-model="fields.state" class="mt-1 min-h-11 w-full field">
           <option value="active">الشحنات المفتوحة</option>
           <option value="all">كل الشحنات</option>
           <option v-for="state in states" :key="state" :value="state">{{ adminDeliveryState(state) }}</option>
         </select>
       </label>
-      <button type="submit" class="min-h-11 rounded-lg bg-purple-900 px-4 font-semibold text-white">بحث</button>
-      <button type="button" class="min-h-11 rounded-lg border border-purple-900 px-4 text-purple-900" @click="reset">
+      <button type="submit" class="min-h-11 btn-primary">بحث</button>
+      <button type="button" class="min-h-11 btn-secondary" @click="reset">
         إعادة ضبط
       </button>
     </form>
@@ -68,10 +68,10 @@ function changePage(page: number) {
         <li v-for="shipment in data.items" :key="shipment.orderId" class="min-w-0 rounded-xl bg-white p-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <NuxtLink :to="'/admin/orders/' + shipment.orderId"
-              class="inline-flex min-h-11 items-center font-bold text-purple-900 underline">
+              class="inline-flex min-h-11 items-center font-bold text-brand underline">
               الطلب <bdi class="ms-1">#{{ shipment.orderId }}</bdi>
             </NuxtLink>
-            <span class="rounded-full bg-purple-50 px-3 py-1 text-sm font-semibold text-purple-950">
+            <span class="rounded-full bg-lavender px-3 py-1 text-sm font-semibold text-brand-deep">
               {{ adminDeliveryState(shipment.state) }}
             </span>
           </div>
