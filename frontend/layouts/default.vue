@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { cart, load } = useCart()
+const { cart, pulse, load } = useCart()
 const route = useRoute()
 const { facebookUrl, instagramUrl, whatsappNumber } = useRuntimeConfig().public
 const whatsappHref = computed(() => {
@@ -7,15 +7,19 @@ const whatsappHref = computed(() => {
   return digits ? `https://wa.me/${digits}` : ''
 })
 const year = new Date().getFullYear()
-const navLink = 'storefront-action inline-flex min-h-11 items-center rounded-full px-4 hover:bg-lavender/60'
+// Desktop: plain pills. Mobile (inside the offcanvas): soft lavender chips with icons.
+const navLink = 'storefront-action inline-flex min-h-12 items-center gap-3 rounded-2xl bg-lavender/60 px-4 text-brand hover:bg-lavender sm:min-h-11 sm:rounded-full sm:bg-transparent sm:text-ink sm:hover:bg-lavender/60'
 const footLink = 'inline-flex min-h-11 items-center text-white/85 hover:text-white hover:underline'
-const socialBtn = 'storefront-action inline-flex size-11 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25'
+const socialBtn = 'storefront-action inline-flex size-11 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25'
+const menuSocialBtn = 'storefront-action inline-flex size-11 items-center justify-center rounded-full bg-lavender text-brand hover:bg-lavender-deep'
 const whatsappDisplay = computed(() => {
   const digits = String(whatsappNumber ?? '').replace(/\D/g, '')
   return digits ? `+${digits}` : ''
 })
 const menuOpen = ref(false)
+const scrolled = ref(false)
 const menuButton = ref<HTMLButtonElement>()
+const panel = ref<HTMLElement>()
 const nuxtApp = useNuxtApp()
 let pendingFocus: string | undefined
 async function focusPendingTarget() {
@@ -28,7 +32,6 @@ async function focusPendingTarget() {
   }
 }
 const removePageFinishHook = nuxtApp.hook('page:finish', focusPendingTarget)
-onUnmounted(removePageFinishHook)
 watch(() => route.fullPath, () => { menuOpen.value = false })
 async function navigateFromMenu(event: MouseEvent, hash: string) {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
@@ -43,47 +46,127 @@ function closeMenu() {
   menuOpen.value = false
   menuButton.value?.focus()
 }
+const isMobile = () => window.matchMedia('(max-width: 639px)').matches
+// Keep Tab inside the open offcanvas (menu button + panel links).
+function trapTab(event: KeyboardEvent) {
+  if (event.key !== 'Tab' || !menuOpen.value || !isMobile() || !panel.value) return
+  const items = [menuButton.value, ...Array.from(panel.value.querySelectorAll<HTMLElement>('a[href], button'))]
+    .filter((el): el is HTMLElement => !!el)
+  const first = items[0]
+  const last = items[items.length - 1]
+  if (!first || !last) return
+  const active = document.activeElement
+  if (!items.includes(active as HTMLElement)) {
+    event.preventDefault()
+    first.focus()
+  } else if (event.shiftKey && active === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+watch(menuOpen, async (open) => {
+  if (!import.meta.client) return
+  document.body.style.overflow = open && isMobile() ? 'hidden' : ''
+  if (open && isMobile()) {
+    await nextTick()
+    panel.value?.querySelector<HTMLElement>('a[href]')?.focus()
+  }
+})
+function onScroll() { scrolled.value = window.scrollY > 30 }
+function onResize() { if (menuOpen.value && !isMobile()) menuOpen.value = false }
 onMounted(() => {
+  window.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('resize', onResize, { passive: true })
+  onScroll()
   if (!cart.value && route.path !== '/cart') void load().catch(() => undefined)
+})
+onUnmounted(() => {
+  removePageFinishHook()
+  window.removeEventListener('scroll', onScroll)
+  window.removeEventListener('resize', onResize)
+  document.body.style.overflow = ''
 })
 </script>
 
 <template>
   <div class="flex min-h-screen flex-col">
     <a href="#content" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:px-4 focus:py-2">الانتقال إلى المحتوى</a>
-    <header class="sticky top-0 z-40 border-b border-lavender bg-white/95 backdrop-blur">
-      <nav class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2" aria-label="القائمة الرئيسية">
-        <NuxtLink to="/" class="inline-flex min-h-11 items-center gap-3 rounded-full text-xl font-bold text-brand">
-          <img src="/brand/flower-purple.png" alt="شعار أوركيديا" width="40" height="40" class="size-10 object-contain">
-          أوركيديا
+    <header class="sticky top-0 z-40 border-b border-lavender motion-safe:transition-shadow" :class="scrolled ? 'scrolled shadow-lg shadow-brand/15' : 'shadow-sm shadow-brand/5'">
+      <!-- Glass lives on its own layer: backdrop-filter on the header itself would trap the fixed offcanvas. -->
+      <div class="glass absolute inset-0 -z-10" aria-hidden="true" />
+      <div class="bg-gradient-strip h-[3px] motion-safe:animate-gradient-shift" aria-hidden="true" />
+      <nav class="mx-auto flex max-w-6xl flex-nowrap items-center gap-2 px-4 motion-safe:transition-[padding]" :class="scrolled ? 'py-1' : 'py-2'" aria-label="القائمة الرئيسية" @keydown.esc="closeMenu" @keydown="trapTab">
+        <NuxtLink to="/" class="group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full">
+          <img src="/brand/flower-purple.png" alt="شعار أوركيديا" width="40" height="40" class="size-10 object-contain motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:rotate-12">
+          <span class="text-gradient-brand text-xl font-extrabold">أوركيديا</span>
         </NuxtLink>
-        <div id="store-navigation" :class="menuOpen ? 'flex' : 'hidden'" class="order-last w-full flex-col gap-1 border-t border-lavender pt-2 text-sm font-semibold text-ink sm:contents" @keydown.esc="closeMenu">
-          <div class="flex flex-col gap-1 sm:order-2 sm:flex-row sm:items-center">
-            <NuxtLink to="/" :class="[navLink, 'gap-2']" @click="menuOpen = false">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="size-5"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-9Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+
+        <div class="ms-auto flex items-center gap-1 text-sm font-semibold text-ink sm:order-3 sm:ms-0">
+          <NuxtLink to="/cart" class="storefront-action relative inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-lavender-deep px-3 hover:bg-lavender/60 sm:px-4">
+            <AppIcon name="bag" :size="20" />
+            <span class="max-sm:sr-only">السلة</span>
+            <bdi v-if="cart?.count" :key="pulse" class="rounded-full bg-brand px-2 py-0.5 text-xs text-white max-sm:absolute max-sm:-top-1 max-sm:-end-1" :class="pulse ? 'motion-safe:animate-pulse-once' : ''">{{ cart.count }}</bdi>
+          </NuxtLink>
+          <button ref="menuButton" type="button" class="storefront-action relative z-20 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-lavender-deep bg-white/80 hover:bg-lavender/60 sm:hidden"
+            :aria-expanded="menuOpen" aria-controls="store-navigation" @click="menuOpen = !menuOpen">
+            <span class="relative inline-flex size-5 items-center justify-center" aria-hidden="true">
+              <AppIcon name="menu" :size="20" class="absolute motion-safe:transition-all motion-safe:duration-300" :class="menuOpen ? 'rotate-90 opacity-0' : 'rotate-0 opacity-100'" />
+              <AppIcon name="x" :size="20" class="absolute motion-safe:transition-all motion-safe:duration-300" :class="menuOpen ? 'rotate-0 opacity-100' : '-rotate-90 opacity-0'" />
+            </span>
+            <span class="sr-only">{{ menuOpen ? 'إغلاق' : 'القائمة' }}</span>
+          </button>
+        </div>
+
+        <!-- Backdrop (mobile only) -->
+        <div class="fixed inset-0 z-0 bg-ink/40 motion-safe:transition-opacity motion-safe:duration-300 sm:hidden" :class="menuOpen ? 'opacity-100' : 'invisible opacity-0'" aria-hidden="true" @click="closeMenu" />
+
+        <!-- Offcanvas on mobile (slides from the inline-start side), plain inline nav from sm up -->
+        <div id="store-navigation" ref="panel"
+          class="text-sm font-semibold text-ink max-sm:fixed max-sm:inset-y-0 max-sm:start-0 max-sm:z-10 max-sm:flex max-sm:w-[min(20rem,85vw)] max-sm:flex-col max-sm:overflow-y-auto max-sm:bg-white max-sm:shadow-2xl motion-safe:max-sm:transition-[transform,visibility] motion-safe:max-sm:duration-300 sm:contents"
+          :class="menuOpen ? 'max-sm:visible max-sm:translate-x-0' : 'max-sm:invisible max-sm:translate-x-full'">
+          <div class="bg-gradient-brand flex min-h-16 items-center gap-3 px-5 py-4 text-white sm:hidden">
+            <img src="/brand/flower-white.png" alt="" width="36" height="36" class="size-9 object-contain">
+            <span class="text-lg font-extrabold">أوركيديا</span>
+          </div>
+          <div class="flex flex-col gap-2 p-4 sm:order-2 sm:flex-row sm:items-center sm:gap-1 sm:p-0">
+            <NuxtLink to="/" :class="navLink" @click="menuOpen = false">
+              <AppIcon name="home" :size="20" class="sm:hidden" />
               الرئيسية
             </NuxtLink>
-            <NuxtLink :to="{ path: '/', hash: '#catalogue-heading' }" :class="navLink" @click="navigateFromMenu($event, '#catalogue-heading')">المنتجات</NuxtLink>
-            <NuxtLink :to="{ path: '/', hash: '#categories' }" :class="navLink" @click="navigateFromMenu($event, '#categories')">الفئات</NuxtLink>
-            <NuxtLink :to="{ path: '/', hash: '#how-to-order' }" :class="navLink" @click="navigateFromMenu($event, '#how-to-order')">طريقة الطلب</NuxtLink>
+            <NuxtLink :to="{ path: '/', hash: '#catalogue-heading' }" :class="navLink" @click="navigateFromMenu($event, '#catalogue-heading')">
+              <AppIcon name="bag" :size="20" class="sm:hidden" />
+              المنتجات
+            </NuxtLink>
+            <NuxtLink :to="{ path: '/', hash: '#categories' }" :class="navLink" @click="navigateFromMenu($event, '#categories')">
+              <AppIcon name="flower" :size="20" class="sm:hidden" />
+              الفئات
+            </NuxtLink>
+            <NuxtLink :to="{ path: '/', hash: '#how-to-order' }" :class="navLink" @click="navigateFromMenu($event, '#how-to-order')">
+              <AppIcon name="sparkle" :size="20" class="sm:hidden" />
+              طريقة الطلب
+            </NuxtLink>
           </div>
-          <div class="flex flex-col gap-2 pb-2 sm:order-4 sm:flex-row sm:items-center sm:pb-0">
-            <NuxtLink to="/account/register" class="btn-secondary storefront-action text-sm" @click="menuOpen = false">إنشاء حساب</NuxtLink>
-            <NuxtLink to="/account" class="btn-primary storefront-action text-sm" @click="menuOpen = false">دخول</NuxtLink>
+          <div v-if="whatsappHref || instagramUrl || facebookUrl" class="px-4 pb-4 sm:hidden">
+            <p class="mb-2 text-sm font-bold text-ink-soft">تابعينا</p>
+            <div class="flex items-center gap-3">
+              <a v-if="whatsappHref" :href="whatsappHref" target="_blank" rel="noopener noreferrer" aria-label="تواصلي معنا عبر واتساب" :class="menuSocialBtn"><AppIcon name="whatsapp" :size="20" /></a>
+              <a v-if="instagramUrl" :href="instagramUrl" target="_blank" rel="noopener noreferrer" aria-label="تابعي أوركيديا على إنستغرام" :class="menuSocialBtn"><AppIcon name="instagram" :size="20" /></a>
+              <a v-if="facebookUrl" :href="facebookUrl" target="_blank" rel="noopener noreferrer" aria-label="تابعي أوركيديا على فيسبوك" :class="menuSocialBtn"><AppIcon name="facebook" :size="20" /></a>
+            </div>
           </div>
-        </div>
-        <div class="ms-auto flex items-center gap-1 text-sm font-semibold text-ink sm:order-3 sm:ms-0">
-          <NuxtLink to="/cart" class="storefront-action inline-flex min-h-11 items-center gap-2 rounded-full border border-lavender-deep px-4 hover:bg-lavender/60">
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="size-5">
-              <path d="M5 8h14l1 12H4L5 8Z M9 9V6a3 3 0 0 1 6 0v3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            السلة <bdi v-if="cart?.count" class="rounded-full bg-brand px-2 py-0.5 text-xs text-white">{{ cart.count }}</bdi>
-          </NuxtLink>
-          <button ref="menuButton" type="button" class="storefront-action inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-lavender-deep px-3 hover:bg-lavender/60 sm:hidden"
-            :aria-expanded="menuOpen" aria-controls="store-navigation" @click="menuOpen = !menuOpen" @keydown.esc="closeMenu">
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-5"><path :d="menuOpen ? 'M6 6l12 12M18 6L6 18' : 'M4 7h16M4 12h16M4 17h16'" stroke-linecap="round" /></svg>
-            {{ menuOpen ? 'إغلاق' : 'القائمة' }}
-          </button>
+          <div class="mt-auto flex flex-col gap-2 border-t border-lavender p-4 sm:order-4 sm:mt-0 sm:flex-row sm:items-center sm:border-0 sm:p-0">
+            <NuxtLink to="/account/register" class="btn-secondary storefront-action text-sm sm:min-h-11!" @click="menuOpen = false">
+              <AppIcon name="user-plus" :size="18" class="sm:hidden" />
+              إنشاء حساب
+            </NuxtLink>
+            <NuxtLink to="/account" class="btn-primary storefront-action text-sm sm:min-h-11!" @click="menuOpen = false">
+              <AppIcon name="login" :size="18" class="sm:hidden" />
+              دخول
+            </NuxtLink>
+          </div>
         </div>
       </nav>
     </header>
@@ -98,23 +181,17 @@ onMounted(() => {
           <h2 id="footer-about" class="mt-2 text-lg font-bold text-white">عن أوركيديا</h2>
           <p class="mt-2 text-sm leading-7 text-white/90">متجر متخصص في بيع الزيوت والصابون الطبيعية. نقدّم منتجات طبيعية وعضوية للعناية بك.</p>
           <ul class="mt-3 flex flex-wrap gap-2" aria-label="مزايا المنتجات">
-            <li class="inline-flex min-h-9 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white">طبيعي 100%</li>
-            <li class="inline-flex min-h-9 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white">عضوي</li>
-            <li class="inline-flex min-h-9 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white">صنع يدوي</li>
+            <li class="inline-flex min-h-9 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white ring-1 ring-white/25">طبيعي 100%</li>
+            <li class="inline-flex min-h-9 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white ring-1 ring-white/25">عضوي</li>
+            <li class="inline-flex min-h-9 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white ring-1 ring-white/25">صنع يدوي</li>
           </ul>
         </section>
         <section aria-labelledby="footer-contact">
           <h2 id="footer-contact" class="text-lg font-bold text-white">تواصلي معنا</h2>
           <div v-if="whatsappHref || instagramUrl || facebookUrl" class="mt-3 flex flex-wrap items-center gap-3">
-            <a v-if="whatsappHref" :href="whatsappHref" target="_blank" rel="noopener noreferrer" aria-label="تواصلي معنا عبر واتساب" :class="socialBtn">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="size-5"><path d="M4 20l1.3-4.2A8 8 0 1 1 8.4 18.8L4 20Z" stroke-linejoin="round"/><path d="M9 8.5c0 3.5 3 6.5 6.5 6.5l1-1.5-2-1-1 .8c-1-.4-2-1.4-2.4-2.4l.8-1-1-2-1.9.6Z" stroke-linejoin="round"/></svg>
-            </a>
-            <a v-if="instagramUrl" :href="instagramUrl" target="_blank" rel="noopener noreferrer" aria-label="تابعي أوركيديا على إنستغرام" :class="socialBtn">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="size-5"><rect x="4" y="4" width="16" height="16" rx="5"/><circle cx="12" cy="12" r="3.7"/><circle cx="16.8" cy="7.2" r="0.8" fill="currentColor" stroke="none"/></svg>
-            </a>
-            <a v-if="facebookUrl" :href="facebookUrl" target="_blank" rel="noopener noreferrer" aria-label="تابعي أوركيديا على فيسبوك" :class="socialBtn">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="size-5"><path d="M14 21v-7h2.5l.5-3h-3V9.2c0-.9.4-1.7 1.8-1.7H17V5a17 17 0 0 0-2.4-.2C12.2 4.8 11 6.2 11 8.6V11H8.5v3H11v7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </a>
+            <a v-if="whatsappHref" :href="whatsappHref" target="_blank" rel="noopener noreferrer" aria-label="تواصلي معنا عبر واتساب" :class="socialBtn"><AppIcon name="whatsapp" :size="20" /></a>
+            <a v-if="instagramUrl" :href="instagramUrl" target="_blank" rel="noopener noreferrer" aria-label="تابعي أوركيديا على إنستغرام" :class="socialBtn"><AppIcon name="instagram" :size="20" /></a>
+            <a v-if="facebookUrl" :href="facebookUrl" target="_blank" rel="noopener noreferrer" aria-label="تابعي أوركيديا على فيسبوك" :class="socialBtn"><AppIcon name="facebook" :size="20" /></a>
           </div>
           <a v-if="whatsappDisplay" :href="`tel:${whatsappDisplay}`" dir="ltr" class="mt-3 inline-flex min-h-11 items-center font-semibold text-white hover:underline">{{ whatsappDisplay }}</a>
         </section>
