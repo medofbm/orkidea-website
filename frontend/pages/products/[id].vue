@@ -107,7 +107,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
 
       <div class="min-w-0">
         <header>
-          <p v-if="product.category" class="mb-2 text-sm font-semibold wrap-anywhere text-accent">{{ product.category }}</p>
+          <p v-if="product.category" class="mb-2 text-sm font-semibold wrap-anywhere text-brand-soft">{{ product.category }}</p>
           <h1 id="product-heading" class="text-3xl leading-tight font-bold wrap-anywhere text-ink lg:text-4xl">{{ product.name }}</h1>
         </header>
 
@@ -151,7 +151,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
         </section>
 
         <ul class="mt-4 flex flex-wrap gap-x-5 gap-y-1 rounded-2xl bg-lavender/50 px-4 py-3 text-sm font-semibold text-ink">
-          <li class="flex items-center gap-2"><span aria-hidden="true" class="text-gold">✦</span>الدفع عند الاستلام</li>
+          <li class="flex items-center gap-2"><span aria-hidden="true" class="text-brand-soft">✦</span>الدفع عند الاستلام</li>
         </ul>
 
         <section v-if="paragraphs.length" aria-labelledby="description-heading" class="mt-6">

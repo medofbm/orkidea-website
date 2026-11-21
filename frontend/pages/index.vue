@@ -38,11 +38,11 @@ useSeoMeta({
   <div class="overflow-x-clip">
     <!-- Hero -->
     <section aria-labelledby="store-heading"
-      class="mt-4 grid gap-8 overflow-hidden rounded-[2rem] bg-linear-to-br from-lavender via-cream to-lavender/60 px-5 py-10 sm:px-10 sm:py-14 lg:grid-cols-2 lg:items-center lg:gap-14 lg:px-14 lg:py-16">
+      class="mt-4 grid gap-8 overflow-hidden rounded-[2rem] bg-gradient-hero px-5 py-10 sm:px-10 sm:py-14 lg:grid-cols-2 lg:items-center lg:gap-14 lg:px-14 lg:py-16">
       <div class="order-2 min-w-0 text-center lg:order-1 lg:text-start">
         <p class="inline-flex items-center rounded-full border border-lavender-deep bg-white/70 px-4 py-1 text-sm font-semibold text-brand">100% طبيعي • مصنوع يدويًا</p>
         <h1 id="store-heading" class="mt-4 text-3xl leading-[1.4] font-bold text-ink sm:text-4xl lg:text-5xl">
-          اكتشفي <span class="bg-linear-to-l from-brand to-accent bg-clip-text text-transparent">جمال الطبيعة</span> مع أوركيديا
+          اكتشفي <span class="text-gradient-brand">جمال الطبيعة</span> مع أوركيديا
         </h1>
         <p class="mx-auto mt-4 max-w-md text-base text-ink-soft lg:mx-0">زيوت وصابون طبيعي من ليبيا. اختاري منتجك واطلبيه بسهولة.</p>
         <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
@@ -59,7 +59,7 @@ useSeoMeta({
       </div>
       <div class="order-1 flex justify-center lg:order-2">
         <div class="grid size-56 place-items-center rounded-full bg-white/60 p-3 shadow-[var(--shadow-soft)] ring-8 ring-white/70 sm:size-72 lg:size-96">
-          <div class="grid size-full place-items-center rounded-full bg-linear-to-br from-brand-soft to-brand">
+          <div class="grid size-full place-items-center rounded-full bg-gradient-brand">
             <img src="/brand/flower-white.png" alt="شعار أوركيديا" width="160" height="160" decoding="async" fetchpriority="high" class="h-auto w-1/2">
           </div>
         </div>
