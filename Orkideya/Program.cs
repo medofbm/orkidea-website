@@ -23,11 +23,21 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("public-forms", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
+    // Password recovery gets its own, looser budget so a few typos do not lock a customer out for an hour.
+    options.AddPolicy("account-recovery", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
     var previousRejection = options.OnRejected;
     options.OnRejected = async (context, token) =>
     {
         var path = context.HttpContext.Request.Path;
-        if (path.StartsWithSegments("/api/v1/reviews") || path.StartsWithSegments("/api/v1/contact") ||
+        if (path.StartsWithSegments("/api/v1/account/forgot-password") || path.StartsWithSegments("/api/v1/account/reset-password"))
+        {
+            context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { message = "جربتي أكثر من مرة، جربي بعد ربع ساعة." }, token);
+        }
+        else if (path.StartsWithSegments("/api/v1/reviews") || path.StartsWithSegments("/api/v1/contact") ||
             path.StartsWithSegments("/api/v1/checkout/receipt/review"))
         {
             context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
@@ -97,6 +107,12 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 })
 .AddRoles<IdentityRole>()
 .AddEntityFrameworkStores<ApplicationDbContext>();
+
+// Password reset email: SMTP sender replaces the default no-op IEmailSender; reset links live 2 hours.
+builder.Services.Configure<Orkideya.Services.Email.EmailOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.Configure<Orkideya.Services.Email.AppOptions>(builder.Configuration.GetSection("App"));
+builder.Services.AddTransient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, Orkideya.Services.Email.SmtpEmailSender>();
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options => options.TokenLifespan = TimeSpan.FromHours(2));
 
 // Application Services
 Orkideya.Infrastructure.Shipping.ShippingRegistration.AddCarrierReadGateway(builder.Services, builder.Configuration);
