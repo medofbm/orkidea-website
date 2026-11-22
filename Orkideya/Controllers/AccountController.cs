@@ -2,6 +2,12 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Options;
+using System.Text;
+using Orkideya.Services.Email;
 
 namespace Orkideya.Controllers;
 
@@ -24,12 +30,83 @@ public sealed record AccountPassword(
     [Required, StringLength(100, MinimumLength = 8)] string NewPassword,
     [Required, StringLength(100)] string Confirmation);
 
+public sealed record ForgotPasswordInput([Required, EmailAddress, StringLength(254)] string Email);
+
+public sealed record ResetPasswordInput(
+    [Required, EmailAddress, StringLength(254)] string Email,
+    [Required, StringLength(2048)] string Token,
+    [Required, StringLength(100)] string Password,
+    [Required, StringLength(100)] string ConfirmPassword);
+
 [ApiController]
 [Route("api/v1/account")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class AccountController(SignInManager<IdentityUser> signInManager,
-    UserManager<IdentityUser> userManager) : ControllerBase
+    UserManager<IdentityUser> userManager, IEmailSender emailSender, IOptions<AppOptions> appOptions,
+    ILogger<AccountController> logger) : ControllerBase
 {
+    private const string InvalidTokenMessage = "الرابط غير صالح أو انتهت صلاحيته. اطلبي رابط جديد.";
+
+    [HttpPost("forgot-password")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("account-recovery")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordInput input)
+    {
+        var user = await userManager.FindByEmailAsync(input.Email.Trim());
+        var baseUrl = appOptions.Value.PublicBaseUrl;
+        // Accounts use the email as the login name, so any user found by email may receive the link.
+        if (user?.Email is { Length: > 0 } address)
+        {
+            if (string.IsNullOrWhiteSpace(baseUrl))
+                logger.LogWarning("App:PublicBaseUrl is empty; password reset email not sent.");
+            else
+            {
+                var token = await userManager.GeneratePasswordResetTokenAsync(user);
+                var encoded = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+                var link = PasswordResetEmail.BuildLink(baseUrl, address, encoded);
+                await emailSender.SendEmailAsync(address, PasswordResetEmail.Subject, PasswordResetEmail.BuildHtml(link));
+            }
+        }
+        // Same answer whether or not the account exists (no account enumeration).
+        return Accepted(new { message = "إذا كان البريد مسجّل عندنا، بيوصلك رابط لتغيير كلمة المرور خلال دقائق." });
+    }
+
+    [HttpPost("reset-password")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("account-recovery")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordInput input)
+    {
+        if (input.Password != input.ConfirmPassword)
+            return BadRequest(new { message = "كلمتا المرور غير متطابقتين." });
+
+        string token;
+        try { token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(input.Token)); }
+        catch (FormatException) { return BadRequest(new { message = InvalidTokenMessage }); }
+
+        var user = await userManager.FindByEmailAsync(input.Email.Trim());
+        if (user is null) return BadRequest(new { message = InvalidTokenMessage });
+
+        var result = await userManager.ResetPasswordAsync(user, token, input.Password);
+        if (!result.Succeeded)
+        {
+            var errors = result.Errors.Select(e => e.Code).Distinct().Select(ArabicError).ToArray();
+            var message = result.Errors.Any(e => e.Code == "InvalidToken") ? InvalidTokenMessage : "كلمة المرور لا تحقق الشروط.";
+            return BadRequest(new { message, errors });
+        }
+        return Ok(new { message = "تم تغيير كلمة المرور. تقدري تسجلي دخولك الحين." });
+    }
+
+    public static string ArabicError(string code) => code switch
+    {
+        "PasswordTooShort" => "كلمة المرور قصيرة (8 أحرف على الأقل).",
+        "PasswordRequiresDigit" => "لازم تحتوي على رقم واحد على الأقل.",
+        "PasswordRequiresUpper" => "لازم تحتوي على حرف إنجليزي كبير.",
+        "PasswordRequiresLower" => "لازم تحتوي على حرف إنجليزي صغير.",
+        "PasswordRequiresNonAlphanumeric" => "لازم تحتوي على رمز خاص واحد على الأقل.",
+        "InvalidToken" => InvalidTokenMessage,
+        _ => "كلمة المرور غير مقبولة."
+    };
+
     [HttpGet]
     public async Task<IActionResult> Current()
     {

@@ -93,6 +93,7 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
         <button type="submit" class="btn-primary w-full">
           {{ verification ? 'تأكيد الرمز' : 'تسجيل الدخول' }}
         </button>
+        <NuxtLink v-if="!verification" to="/account/forgot-password" class="btn-ghost w-full text-sm underline">نسيتي كلمة المرور؟</NuxtLink>
       </fieldset>
     </form>
     <button v-else-if="!loading" class="btn-secondary w-full" @click="load()">إعادة المحاولة</button>
