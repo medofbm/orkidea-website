@@ -4,18 +4,18 @@
 /* Orkidea design system. Source of truth: docs/brand/BRAND.md (staging palette is the official identity).
    Old token names (brand, brand-soft, accent, lavender, lavender-deep, cream, plum, gold, ink, ink-soft) keep working. */
 @theme {
-  --color-brand: #6a1b9a;
-  --color-brand-deep: #4a148c;
-  --color-brand-soft: #9c4dcc;
+  --color-brand: #751D82;
+  --color-brand-deep: #4E1258;
+  --color-brand-soft: #8B3689;
   --color-orchid: #751D82;
-  --color-lilac: #e0b0ff;
+  --color-lilac: #D9B8E0;
   --color-accent: #A70A78;
-  --color-lavender: #f3e5f5;
-  --color-lavender-deep: #e1bee7;
-  --color-blush: #fce4ff;
-  --color-cream: #f8f4ff;
-  --color-plum: #4a148c;
-  --color-gold: #ffc107;
+  --color-lavender: #E6D3E5;
+  --color-lavender-deep: #CFB3C8;
+  --color-blush: #F3E6EF;
+  --color-cream: #F6F0EA;
+  --color-plum: #30081A;
+  --color-gold: #C9A24B;
   --color-ink: #2A1530;
   --color-ink-soft: #6B5A72;
 
@@ -35,9 +35,9 @@
   --radius-field: 12px;
   --radius-pill: 999px;
 
-  --shadow-soft: 0 4px 18px rgb(106 27 154 / 0.08);
-  --shadow-lift: 0 18px 48px rgb(106 27 154 / 0.18);
-  --shadow-glow: 0 8px 24px rgb(106 27 154 / 0.35);
+  --shadow-soft: 0 4px 18px rgb(117 29 130 / 0.08);
+  --shadow-lift: 0 18px 48px rgb(117 29 130 / 0.18);
+  --shadow-glow: 0 8px 24px rgb(117 29 130 / 0.35);
 
   --animate-fade-in-up: fade-in-up 0.5s ease-out both;
   --animate-float: float 4s ease-in-out infinite;
@@ -49,7 +49,7 @@
 
   @keyframes fade-in-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-  @keyframes glow-pulse { 0%, 100% { box-shadow: 0 8px 24px rgb(106 27 154 / 0.25); } 50% { box-shadow: 0 8px 36px rgb(106 27 154 / 0.5); } }
+  @keyframes glow-pulse { 0%, 100% { box-shadow: 0 8px 24px rgb(117 29 130 / 0.25); } 50% { box-shadow: 0 8px 36px rgb(117 29 130 / 0.5); } }
   @keyframes gradient-shift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
   @keyframes pulse-once { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
   @keyframes confirm-bounce { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
@@ -57,12 +57,12 @@
 }
 
 :root {
-  --gradient-brand: linear-gradient(135deg, #4a148c 0%, #6a1b9a 50%, #751D82 75%, #9c4dcc 100%);
-  --gradient-hero: linear-gradient(150deg, #f8f4ff 0%, #fce4ff 50%, #f3e5f5 100%);
-  --gradient-band: linear-gradient(150deg, #4a148c 0%, #7b1fa2 40%, #6a1b9a 70%, #8e24aa 100%);
-  --gradient-text: linear-gradient(90deg, #4a148c, #6a1b9a, #9c4dcc, #A70A78);
-  --gradient-strip: linear-gradient(90deg, #4a148c, #6a1b9a, #e0b0ff, #6a1b9a, #4a148c);
-  --gradient-card: linear-gradient(180deg, #ffffff, #f8f4ff);
+  --gradient-brand: linear-gradient(135deg, #4E1258 0%, #751D82 55%, #8B3689 100%);
+  --gradient-hero: linear-gradient(150deg, #F6F0EA 0%, #F3E6EF 50%, #E6D3E5 100%);
+  --gradient-band: linear-gradient(150deg, #30081A 0%, #4E1258 45%, #751D82 100%);
+  --gradient-text: linear-gradient(90deg, #4E1258, #751D82, #A70A78);
+  --gradient-strip: linear-gradient(90deg, #4E1258, #751D82, #CFB3C8, #751D82, #4E1258);
+  --gradient-card: linear-gradient(180deg, #ffffff, #F6F0EA);
 }
 
 html { font-family: var(--font-sans); }
@@ -130,7 +130,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
     transition: transform 200ms ease-out, filter 200ms ease-out, box-shadow 200ms ease-out;
     &:hover:not(:disabled)::after { transform: translateX(120%); transition: transform 700ms ease-out; }
   }
-  &:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 12px 30px rgb(106 27 154 / 0.45); }
+  &:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 12px 30px rgb(117 29 130 / 0.45); }
   &:active:not(:disabled) { transform: scale(0.98); }
   &:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
 }
@@ -159,7 +159,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 @utility card {
   background: #fff; border-radius: var(--radius-card); box-shadow: var(--shadow-soft);
-  border: 1px solid rgb(106 27 154 / 0.10); overflow: hidden;
+  border: 1px solid rgb(117 29 130 / 0.10); overflow: hidden;
 }
 
 @utility card-glass {
@@ -175,10 +175,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 @utility field {
   width: 100%; min-height: 48px; padding: 0.65rem 1rem;
-  border-radius: var(--radius-field); border: 1.5px solid rgb(106 27 154 / 0.18);
+  border-radius: var(--radius-field); border: 1.5px solid rgb(117 29 130 / 0.18);
   background: #fafafa; color: var(--color-ink);
   @media (prefers-reduced-motion: no-preference) { transition: border-color 160ms ease-out, box-shadow 160ms ease-out, background-color 160ms ease-out; }
-  &:focus { outline: none; border-color: var(--color-brand); background: #fff; box-shadow: 0 0 0 3px rgb(106 27 154 / 0.12); }
+  &:focus { outline: none; border-color: var(--color-brand); background: #fff; box-shadow: 0 0 0 3px rgb(117 29 130 / 0.12); }
   &::placeholder { color: #bbb; }
   &:disabled { opacity: 0.6; cursor: not-allowed; }
 }
@@ -211,7 +211,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 @utility section-eyebrow {
   display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.9rem;
-  border-radius: var(--radius-pill); background: rgb(106 27 154 / 0.08); border: 1px solid rgb(106 27 154 / 0.15);
+  border-radius: var(--radius-pill); background: rgb(117 29 130 / 0.08); border: 1px solid rgb(117 29 130 / 0.15);
   color: var(--color-brand); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px;
   & > svg, & > .eyebrow-icon { width: 1rem; height: 1rem; flex: none; }
 }
