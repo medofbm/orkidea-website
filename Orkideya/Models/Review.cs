@@ -20,5 +20,17 @@ namespace Orkideya.Models
 
         [Display(Name = "إظهار في الموقع؟")]
         public bool IsVisible { get; set; } = true;
+
+        public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+        /// <summary>"site" (left on the website) or "facebook" (imported from the Facebook page).</summary>
+        [MaxLength(16)]
+        public string Source { get; set; } = "site";
+
+        /// <summary>The customer agreed to show the first word of their name next to the review.</summary>
+        public bool AllowName { get; set; }
+
+        /// <summary>The order this review belongs to (set for reviews left from the receipt page).</summary>
+        public int? OrderId { get; set; }
     }
 }

@@ -181,6 +181,7 @@ try
     await OutboxScenario.Run(options, Check);
     await DashboardScenario.Run(Open, Check);
     await AdminDeleteScenario.Run(Open, Check);
+    await ArchiveScenario.Run(Open, Check);
     await OrderListScenario.Run(Open, Check);
     await StockScenario.Run(Open, Check);
     // Verify the older downgrade guard before checkout creates protected shipping snapshots.

@@ -13,6 +13,7 @@ namespace Orkideya.Controllers;
 public sealed class AdminFeedbackController(ApplicationDbContext db) : ControllerBase
 {
     public sealed record VisibilityInput(bool Visible);
+    public sealed record ReadInput(bool Read);
 
     [HttpGet("reviews")]
     public async Task<IActionResult> Reviews(CancellationToken ct)
@@ -21,9 +22,14 @@ public sealed class AdminFeedbackController(ApplicationDbContext db) : Controlle
             .Select(review => new
             {
                 id = review.Id, customerName = review.CustomerName, message = review.Message,
-                rating = review.Rating, isVisible = review.IsVisible
+                rating = review.Rating, isVisible = review.IsVisible, source = review.Source,
+                allowName = review.AllowName, createdAtUtc = review.CreatedAtUtc, orderId = review.OrderId
             }).ToListAsync(ct);
-        return Ok(new { items });
+        return Ok(new { items = items.Select(review => new
+        {
+            review.id, review.customerName, review.message, review.rating, review.isVisible, review.source,
+            review.allowName, createdAtUtc = DateTime.SpecifyKind(review.createdAtUtc, DateTimeKind.Utc), review.orderId
+        }) });
     }
 
     [HttpPost("reviews/{id:int}/visibility"), ValidateAntiForgeryToken]
@@ -54,9 +60,20 @@ public sealed class AdminFeedbackController(ApplicationDbContext db) : Controlle
             .Select(message => new
             {
                 id = message.Id, name = message.Name, email = message.Email, phoneNumber = message.PhoneNumber,
-                message = message.Message, receivedAt = message.ReceivedAt
+                message = message.Message, receivedAt = message.ReceivedAt, isRead = message.IsRead
             }).ToListAsync(ct);
         return Ok(new { items });
+    }
+
+    [HttpPost("contact-messages/{id:int}/read"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkRead(int id, [FromBody] ReadInput? input, CancellationToken ct)
+    {
+        if (input is null) return BadRequest(new { message = "البيانات ناقصة." });
+        var message = await db.ContactMessages.FirstOrDefaultAsync(item => item.Id == id, ct);
+        if (message is null) return NotFound();
+        message.IsRead = input.Read;
+        await db.SaveChangesAsync(ct);
+        return Ok(new { id = message.Id, isRead = message.IsRead });
     }
 
     [HttpPost("contact-messages/{id:int}/delete"), ValidateAntiForgeryToken]

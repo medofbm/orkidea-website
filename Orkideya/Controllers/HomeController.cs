@@ -17,11 +17,11 @@ namespace Orkideya.Controllers
 
         public async Task<IActionResult> Index()
         {
-            ViewBag.Categories = await _context.Categories.ToListAsync();
+            ViewBag.Categories = await _context.Categories.Where(c => !c.IsArchived).ToListAsync();
             ViewBag.Reviews = await _context.Reviews.Where(r => r.IsVisible).ToListAsync();
 
-            var allProducts = await _context.Products
-                                         .Include(p => p.ProductVariants)
+            var allProducts = await _context.Products.Where(p => !p.IsArchived)
+                                         .Include(p => p.ProductVariants.Where(v => !v.IsArchived))
                                          .ToListAsync();
 
             ViewBag.FeaturedProducts = allProducts.Where(p => p.ProductVariants.Any()).Take(4).ToList();
@@ -31,10 +31,10 @@ namespace Orkideya.Controllers
 
         public async Task<IActionResult> ProductsByCategory(int categoryId)
         {
-            ViewBag.Categories = await _context.Categories.ToListAsync();
+            ViewBag.Categories = await _context.Categories.Where(c => !c.IsArchived).ToListAsync();
             var products = await _context.Products
-                                         .Include(p => p.ProductVariants)
-                                         .Where(p => p.CategoryId == categoryId)
+                                         .Include(p => p.ProductVariants.Where(v => !v.IsArchived))
+                                         .Where(p => p.CategoryId == categoryId && !p.IsArchived)
                                          .ToListAsync();
             ViewBag.CurrentCategoryName = _context.Categories.FirstOrDefault(c => c.CategoryId == categoryId)?.Name;
             return View("Index", products);
@@ -74,9 +74,9 @@ namespace Orkideya.Controllers
         public async Task<IActionResult> ProductDetail(int id)
         {
             var product = await _context.Products
-                .Include(p => p.ProductVariants)
+                .Include(p => p.ProductVariants.Where(v => !v.IsArchived))
                 .Include(p => p.Category)
-                .FirstOrDefaultAsync(p => p.ProductId == id);
+                .FirstOrDefaultAsync(p => p.ProductId == id && !p.IsArchived);
 
             if (product == null) return NotFound();
 
@@ -87,14 +87,14 @@ namespace Orkideya.Controllers
 
             // منتجات مشابهة (نفس الفئة)
             var related = await _context.Products
-                .Include(p => p.ProductVariants)
-                .Where(p => p.CategoryId == product.CategoryId && p.ProductId != id && p.ProductVariants.Any())
+                .Include(p => p.ProductVariants.Where(v => !v.IsArchived))
+                .Where(p => p.CategoryId == product.CategoryId && p.ProductId != id && !p.IsArchived && p.ProductVariants.Any(v => !v.IsArchived))
                 .Take(4)
                 .ToListAsync();
 
             ViewBag.OrderCount = orderCount;
             ViewBag.RelatedProducts = related;
-            ViewBag.Categories = await _context.Categories.ToListAsync();
+            ViewBag.Categories = await _context.Categories.Where(c => !c.IsArchived).ToListAsync();
 
             return View(product);
         }

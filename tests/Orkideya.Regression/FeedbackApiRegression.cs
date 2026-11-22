@@ -93,6 +93,16 @@ internal static class FeedbackApiRegression
         check(Contact(null, "not-an-email") is not null, "Contact with invalid email rejected");
         check(Contact("0910000000", null, "قصير") is not null, "Short contact message rejected");
 
+        // Receipt review validation (no HTTP).
+        check(CheckoutController.ValidateReceiptReview(new(5, null, true), out _) is null, "Receipt review without a comment accepted");
+        check(CheckoutController.ValidateReceiptReview(new(1, new string('a', 500), false), out _) is null, "Receipt review with 500 characters accepted");
+        check(CheckoutController.ValidateReceiptReview(new(0, null, false), out _) is not null, "Receipt review rating 0 rejected");
+        check(CheckoutController.ValidateReceiptReview(new(6, null, false), out _) is not null, "Receipt review rating 6 rejected");
+        check(CheckoutController.ValidateReceiptReview(new(5, new string('a', 501), false), out _) is not null, "Receipt review over 500 characters rejected");
+        check(CheckoutController.ValidateReceiptReview(null, out _) is not null, "Missing receipt review body rejected");
+        check(ReviewsApiController.FirstWord("  Nora Ali ") == "Nora" && ReviewsApiController.FirstWord("") is null &&
+            ReviewsApiController.FirstWord(null) is null, "Public review name is the first word only");
+
         // HTTP behaviour. Each factory has its own rate limiter state (public-forms allows 3 per hour).
         using (var factory = Create())
         using (var client = Client(factory))
@@ -132,12 +142,33 @@ internal static class FeedbackApiRegression
                 "Fourth public form post from one IP returns 429 with message");
         }
 
+        // Receipt review: antiforgery, validation, then the session receipt (none here, so 404 before any database access).
+        using (var factory = Create())
+        using (var client = Client(factory))
+        {
+            using var noToken = await client.PostAsJsonAsync("/api/v1/checkout/receipt/review", new { rating = 5, allowName = false });
+            check(noToken.StatusCode == HttpStatusCode.BadRequest, "Receipt review without antiforgery rejected");
+            using var badRequest = await Post(client, "/api/v1/checkout/receipt/review", new { rating = 9, allowName = false });
+            using var badResponse = await client.SendAsync(badRequest);
+            check(badResponse.StatusCode == HttpStatusCode.BadRequest && !string.IsNullOrWhiteSpace(await Message(badResponse)),
+                "Receipt review with invalid rating returns 400 with message");
+            using var noReceiptRequest = await Post(client, "/api/v1/checkout/receipt/review", new { rating = 5, message = "تجربة جميلة", allowName = true });
+            using var noReceipt = await client.SendAsync(noReceiptRequest);
+            check(noReceipt.StatusCode == HttpStatusCode.NotFound, "Receipt review without a receipt session returns 404");
+            using var limitedRequest = await Post(client, "/api/v1/checkout/receipt/review", new { rating = 5, allowName = false });
+            using var limited = await client.SendAsync(limitedRequest);
+            check(limited.StatusCode == HttpStatusCode.TooManyRequests && !string.IsNullOrWhiteSpace(await Message(limited)),
+                "Receipt review shares the public-forms rate limit");
+        }
+
         // Admin routes: anonymous and Customer blocked, Admin still needs antiforgery.
         using (var factory = Create())
         using (var client = Client(factory))
         {
             var reads = new[] { "/api/v1/admin/reviews", "/api/v1/admin/contact-messages" };
-            var writes = new[] { "/api/v1/admin/reviews/1/visibility", "/api/v1/admin/reviews/1/delete", "/api/v1/admin/contact-messages/1/delete" };
+            var writes = new[] { "/api/v1/admin/reviews/1/visibility", "/api/v1/admin/reviews/1/delete", "/api/v1/admin/contact-messages/1/delete",
+                "/api/v1/admin/contact-messages/1/read", "/api/v1/admin/products/1/archive",
+                "/api/v1/admin/products/1/variants/1/archive", "/api/v1/admin/categories/1/archive" };
             foreach (var path in reads)
             {
                 using var response = await client.GetAsync(path);

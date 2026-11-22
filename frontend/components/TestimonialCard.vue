@@ -1,10 +1,12 @@
 <script setup lang="ts">
-// Customer comment card. Deliberately no names or avatars (commenter privacy).
+// Customer comment card. A first name is shown only when the API provides one (customer opted in).
 const props = defineProps<{
   text: string
   product?: string
   source: 'facebook' | 'site'
   rating?: number
+  /** First name, only when the customer allowed it. */
+  name?: string | null
 }>()
 
 const stars = computed(() => Math.min(5, Math.max(0, Math.round(props.rating ?? 0))))
@@ -21,6 +23,8 @@ const stars = computed(() => Math.min(5, Math.max(0, Math.round(props.rating ?? 
     </div>
 
     <blockquote class="relative z-10 flex-1 text-base leading-8 text-ink">{{ text }}</blockquote>
+
+    <p v-if="name" class="text-sm font-semibold text-ink-soft">{{ name }}</p>
 
     <p v-if="product" class="text-sm font-bold text-brand">{{ product }}</p>
 

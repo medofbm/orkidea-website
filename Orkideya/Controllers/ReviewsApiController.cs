@@ -6,7 +6,7 @@ using Orkideya.Models;
 
 namespace Orkideya.Controllers;
 
-/// <summary>Public customer reviews. Names are never returned; new reviews wait for admin approval.</summary>
+/// <summary>Public customer reviews. Only the first word of a name is returned, and only with the customer's consent; new reviews wait for admin approval.</summary>
 [ApiController]
 [Route("api/v1/reviews")]
 public sealed class ReviewsApiController(ApplicationDbContext db) : ControllerBase
@@ -17,11 +17,24 @@ public sealed class ReviewsApiController(ApplicationDbContext db) : ControllerBa
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Latest(CancellationToken ct)
     {
-        var items = await db.Reviews.AsNoTracking().Where(review => review.IsVisible)
+        var rows = await db.Reviews.AsNoTracking().Where(review => review.IsVisible)
             .OrderByDescending(review => review.Id).Take(12)
-            .Select(review => new { id = review.Id, message = review.Message, rating = review.Rating })
+            .Select(review => new { review.Id, review.Message, review.Rating, review.Source, review.CustomerName, review.AllowName })
             .ToListAsync(ct);
+        // Only the first word of the name, and only when the customer agreed to show it.
+        var items = rows.Select(review => new
+        {
+            id = review.Id, message = review.Message, rating = review.Rating, source = review.Source,
+            name = review.AllowName ? FirstWord(review.CustomerName) : null
+        });
         return Ok(new { items });
+    }
+
+    /// <summary>First word of a name, or null when there is none.</summary>
+    public static string? FirstWord(string? fullName)
+    {
+        var word = (fullName ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+        return string.IsNullOrEmpty(word) ? null : word;
     }
 
     [HttpPost, ValidateAntiForgeryToken]

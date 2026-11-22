@@ -31,7 +31,7 @@ public sealed class AdminCategoriesController(ApplicationDbContext db) : Control
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(category => new
             {
-                category.CategoryId, category.Name,
+                category.CategoryId, category.Name, category.IsArchived,
                 products = db.Products.Count(product => product.CategoryId == category.CategoryId)
             }).ToListAsync(ct);
         return Ok(new { items, page, pages, total });
@@ -86,6 +86,19 @@ public sealed class AdminCategoriesController(ApplicationDbContext db) : Control
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return Ok(new { success = true });
+    }
+
+    public sealed record ArchiveInput(bool Archived);
+
+    [HttpPost("{id:int}/archive"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Archive(int id, [FromBody] ArchiveInput? input, CancellationToken ct)
+    {
+        if (input is null) return BadRequest(new { message = "البيانات ناقصة." });
+        var category = await db.Categories.SingleOrDefaultAsync(row => row.CategoryId == id, ct);
+        if (category is null) return NotFound(new { message = "الفئة غير موجودة." });
+        category.IsArchived = input.Archived;
+        await db.SaveChangesAsync(ct);
+        return Ok(new { id = category.CategoryId, isArchived = category.IsArchived });
     }
 
     [HttpPost("{id:int}/delete"), ValidateAntiForgeryToken]

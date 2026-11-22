@@ -18,6 +18,9 @@ namespace Orkideya.Models
 
         public string? GalleryJson { get; set; }
 
+        /// <summary>Archived products are hidden from the storefront but kept for orders and admin.</summary>
+        public bool IsArchived { get; set; }
+
         [NotMapped]
         public IReadOnlyList<string> GalleryImages => GalleryJson is null
             ? []

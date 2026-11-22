@@ -88,6 +88,7 @@ export interface AdminProductsPage {
     variants: number
     pricedVariants?: number
     hasDescription?: boolean
+    isArchived?: boolean
   }[]
   page: number
   pages: number
@@ -102,7 +103,8 @@ export interface AdminProductDetails {
   imageUrl: string | null
   gallery: string[]
   version: string
-  variants: { productVariantId: number; size: string; price: string }[]
+  isArchived?: boolean
+  variants: { productVariantId: number; size: string; price: string; isArchived?: boolean }[]
 }
 
 export interface AdminOrderDetails {

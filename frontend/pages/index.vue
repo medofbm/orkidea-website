@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { CataloguePage } from '~/types/catalogue'
-import { testimonials } from '~/data/testimonials'
 const route = useRoute()
 function positiveInteger(value: unknown, max: number) {
   if (typeof value !== 'string' || !/^[0-9]+$/.test(value)) return undefined
@@ -43,12 +42,13 @@ const contactLinks = computed(() => [
   { label: 'فيسبوك', href: facebookUrl ? String(facebookUrl) : '' },
   { label: 'إنستغرام', href: instagramUrl ? String(instagramUrl) : '' }
 ].filter(link => link.href))
-// Approved site reviews (client-side only, no names) shown before the Facebook comments.
-const { data: reviewsData } = useFetch<{ items: { id: number, message: string, rating: number }[] }>('/api/reviews', { lazy: true, server: false })
-const allTestimonials = computed(() => [
-  ...(reviewsData.value?.items ?? []).map(r => ({ key: `site-${r.id}`, text: r.message, rating: r.rating, source: 'site' as const, product: undefined as string | undefined })),
-  ...testimonials.map((t, i) => ({ key: `fb-${i}`, text: t.text, rating: undefined as number | undefined, source: t.source as 'facebook' | 'site', product: t.product }))
-])
+// Visible reviews (site + imported Facebook comments) come only from the API, client-side.
+type ApiReview = { id: number, message: string, rating: number, source: 'facebook' | 'site', name: string | null }
+const { data: reviewsData } = useFetch<{ items: ApiReview[] }>('/api/reviews', { lazy: true, server: false })
+const allTestimonials = computed(() => (reviewsData.value?.items ?? []).map(r => ({
+  key: `${r.source}-${r.id}`, text: r.message, name: r.name,
+  rating: r.source === 'site' ? r.rating : undefined, source: r.source
+})))
 const reviewDialog = ref<HTMLDialogElement | null>(null)
 const reviewOpen = ref(false)
 const reviewOpener = ref<HTMLElement | null>(null)
@@ -190,10 +190,10 @@ useSeoMeta({
     <!-- Testimonials -->
     <section aria-labelledby="testimonials-heading" class="mt-14 rounded-[2rem] bg-gradient-band px-5 py-10 sm:px-10 sm:py-14">
       <SectionHeader id="testimonials-heading" tone="light" title="ماذا يقول" highlight="زبائننا" />
-      <AppCarousel class="mt-8" :items="allTestimonials" label="آراء الزبائن" :per-view="{ base: 1, sm: 2, lg: 3 }"
+      <AppCarousel v-if="allTestimonials.length" class="mt-8" :items="allTestimonials" label="آراء الزبائن" :per-view="{ base: 1, sm: 2, lg: 3 }"
         :autoplay="4500" loop dots dots-tone="light">
         <template #item="{ item }">
-          <TestimonialCard :text="item.text" :product="item.product" :source="item.source" :rating="item.rating" />
+          <TestimonialCard :text="item.text" :source="item.source" :rating="item.rating" :name="item.name" />
         </template>
       </AppCarousel>
       <div class="mt-8 flex justify-center">

@@ -15,6 +15,16 @@ const links: { to: string, label: string, icon: AppIconName }[] = [
   { to: '/admin/messages', label: 'الرسائل', icon: 'mail' },
   { to: '/account', label: 'الحساب', icon: 'user' }
 ]
+// Light unread badge on the messages link (best effort; never blocks the layout).
+const unread = ref(0)
+async function loadUnread() {
+  try {
+    const result = await $fetch<{ items: { isRead?: boolean }[] }>('/api/admin/contact-messages', { retry: 0 })
+    unread.value = result.items.filter(item => item.isRead === false).length
+  } catch { unread.value = 0 }
+}
+onMounted(loadUnread)
+watch(() => route.fullPath, loadUnread)
 const isActive = (to: string) => to === '/admin' ? route.path === '/admin' : route.path === to || route.path.startsWith(to + '/')
 
 const open = ref(false)
@@ -76,6 +86,9 @@ watch(() => route.fullPath, () => { open.value = false })
               :class="isActive(link.to) ? 'bg-lavender text-brand-deep' : ''">
               <AppIcon :name="link.icon" :size="20" />
               {{ link.label }}
+              <span v-if="link.to === '/admin/messages' && unread" class="ms-auto grid min-w-6 place-items-center rounded-full bg-brand px-2 text-xs font-bold text-white">
+                <bdi>{{ unread }}</bdi><span class="sr-only"> غير مقروءة</span>
+              </span>
             </NuxtLink>
           </li>
         </ul>

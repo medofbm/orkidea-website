@@ -35,7 +35,7 @@ namespace Orkideya.Controllers
                                   .Include(v => v.Product)
                                   .FirstOrDefaultAsync(v => v.ProductVariantId == variantId);
 
-            if (variant == null || variant.Price <= 0)
+            if (variant == null || variant.Price <= 0 || variant.IsArchived || variant.Product.IsArchived)
             {
                 return Json(new { success = false, message = "لم يتم العثور على خيار المنتج." });
             }

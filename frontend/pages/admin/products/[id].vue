@@ -197,6 +197,37 @@ async function deletePost(path: string) {
   })
 }
 
+async function setArchived(path: string, archived: boolean, okText: string, failText: string) {
+  if (disabled.value) return
+  saving.value = true
+  try {
+    const session = await $fetch<{ requestToken: string }>('/api/session')
+    const response = await $fetch.raw<{ message?: string }>(path, {
+      method: 'POST', retry: 0, ignoreResponseError: true, body: { archived },
+      headers: { RequestVerificationToken: session.requestToken }
+    })
+    if (!response.ok) { toast.error(response._data?.message ?? failText); return }
+    toast.success(okText)
+    await refresh()
+    needsRefresh.value = !!error.value
+  } catch {
+    toast.error(failText)
+  } finally {
+    saving.value = false
+  }
+}
+
+function toggleProductArchive() {
+  const archived = !data.value?.isArchived
+  return setArchived(url + '/archive', archived, archived ? 'تمت أرشفة المنتج.' : 'تم إلغاء أرشفة المنتج.', 'تعذر تحديث أرشفة المنتج.')
+}
+
+function toggleVariantArchive(variant: AdminProductDetails['variants'][number]) {
+  const archived = !variant.isArchived
+  return setArchived(url + '/variants/' + variant.productVariantId + '/archive', archived,
+    archived ? 'تمت أرشفة الحجم.' : 'تم إلغاء أرشفة الحجم.', 'تعذر تحديث أرشفة الحجم.')
+}
+
 async function removeProduct() {
   if (disabled.value || !data.value) return
   const ok = await confirmDialog({ title: 'حذف المنتج؟', message: 'سيُحذف المنتج وأحجامه نهائيًا.', confirmLabel: 'حذف', tone: 'danger' })
@@ -237,7 +268,8 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
 <template>
   <section class="mx-auto max-w-3xl" aria-labelledby="product-editor-title">
     <NuxtLink to="/admin/products" class="inline-flex min-h-11 items-center text-brand underline">العودة للمنتجات</NuxtLink>
-    <h1 id="product-editor-title" class="mb-5 text-3xl font-bold">{{ isNew ? 'إضافة منتج' : 'تعديل المنتج' }}</h1>
+    <h1 id="product-editor-title" class="mb-5 text-3xl font-bold">{{ isNew ? 'إضافة منتج' : 'تعديل المنتج' }}
+      <span v-if="data?.isArchived" class="badge badge-status-pending ms-2 align-middle text-sm">مؤرشف</span></h1>
     <p v-if="notice" class="mb-3 text-success" role="status">{{ notice }}</p>
     <p v-if="failure" class="mb-3 text-danger" role="alert">{{ failure }}</p>
     <button v-if="needsRefresh" type="button" :disabled="saving" class="mb-3 min-h-11 rounded-lg border px-4"
@@ -311,9 +343,12 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
         <h2 id="variant-title" class="mb-3 text-xl font-bold">الأحجام والأسعار</h2>
         <ul class="mb-3 divide-y">
           <li v-for="variant in data.variants" :key="variant.productVariantId" class="flex flex-wrap items-center justify-between gap-3 py-2">
-            <span>{{ variant.size }} · <bdi>{{ variant.price }}</bdi> د.ل</span>
+            <span>{{ variant.size }} · <bdi>{{ variant.price }}</bdi> د.ل
+              <span v-if="variant.isArchived" class="badge badge-status-pending ms-1">مؤرشف</span></span>
             <button type="button" :disabled="disabled" class="min-h-11 px-2 text-brand underline"
               @click="chooseVariant(variant)">تعديل</button>
+            <button type="button" :disabled="disabled" :aria-label="(variant.isArchived ? 'إلغاء أرشفة الحجم ' : 'أرشفة الحجم ') + variant.size"
+              class="min-h-11 px-2 text-brand underline disabled:opacity-60" @click="toggleVariantArchive(variant)">{{ variant.isArchived ? 'إلغاء الأرشفة' : 'أرشفة' }}</button>
             <button type="button" :disabled="disabled" :aria-label="'حذف الحجم ' + variant.size"
               class="min-h-11 px-2 text-danger underline disabled:opacity-60" @click="removeVariant(variant)">حذف</button>
           </li>
@@ -333,7 +368,9 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
           </fieldset>
         </form>
       </section>
-      <div v-if="!isNew && data" class="mt-6">
+      <div v-if="!isNew && data" class="mt-6 flex flex-wrap gap-3">
+        <button type="button" :disabled="disabled" class="min-h-11 rounded-lg border px-4 disabled:opacity-60"
+          @click="toggleProductArchive">{{ data.isArchived ? 'إلغاء الأرشفة' : 'أرشفة المنتج' }}</button>
         <button type="button" :disabled="disabled" class="min-h-11 rounded-lg border border-danger px-4 text-danger disabled:opacity-60"
           @click="removeProduct">حذف المنتج</button>
       </div>
