@@ -22,3 +22,8 @@ Legacy Razor store and admin still exist; retire only after Vue acceptance.
 
 ## Checks before a commit
 `dotnet build Orkideya.sln -c Release`, the node tests and `python -I tests/check_safety.py` from README.md, and in `frontend/`: `npm run typecheck`.
+
+## Gotchas learned
+- Nitro routing: creating a folder `frontend/server/api/<x>/` makes that segment stop falling back to a sibling `[path].ts` catch-all. Add an explicit `index.get.ts` (or move the route into the catch-all allowlist). This broke the receipt once (phase 4B).
+- The SQL regression database is shared by all scenarios; never assume a new fixture is on page 1 of a paged list. Filter by the fixture's own category or id.
+- Seeded or anonymous reviews have an empty `CustomerName`; never index into names in views.
