@@ -46,7 +46,7 @@ internal static class ArchiveScenario
 
         // Archive the product: hidden from list and detail, still in admin with a flag.
         check(await products.Archive(hidden.ProductId, new(true), default) is OkObjectResult, "Admin can archive a product");
-        var list = Json(((OkObjectResult)await catalogue.Products(1, default)).Value);
+        var list = Json(((OkObjectResult)await catalogue.Products(1, default, category.CategoryId)).Value);
         var listedIds = list.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("id").GetInt32()).ToList();
         check(!listedIds.Contains(hidden.ProductId) && listedIds.Contains(shown.ProductId), "Archived product is hidden from the catalogue list");
         check(await catalogue.Product(hidden.ProductId, default) is NotFoundObjectResult, "Archived product detail returns 404");
