@@ -2,7 +2,7 @@
 definePageMeta({ layout: 'admin' })
 useSeoMeta({ title: 'إدارة التقييمات' })
 
-type Review = { id: number, customerName: string, message: string, rating: number, isVisible: boolean }
+type Review = { id: number, customerName: string, message: string, rating: number, isVisible: boolean, source?: 'facebook' | 'site', allowName?: boolean, createdAtUtc?: string, orderId?: number | null }
 const toast = useToast()
 const confirm = useConfirm()
 const { data, status, error, refresh } = useFetch<{ items: Review[] }>('/api/admin/reviews', { server: false, cache: 'no-store' })
@@ -18,6 +18,13 @@ const filters = [
 watch(data, value => { if (value) items.value = value.items.map(item => ({ ...item })) }, { immediate: true })
 const shown = computed(() => items.value.filter(item =>
   filter.value === 'all' || (filter.value === 'visible' ? item.isVisible : !item.isVisible)))
+
+const dateFormatter = new Intl.DateTimeFormat('ar-LY', { dateStyle: 'medium', timeZone: 'Africa/Tripoli' })
+function created(value?: string) {
+  if (!value) return ''
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : dateFormatter.format(date)
+}
 
 async function send(path: string, body?: Record<string, unknown>) {
   const session = await $fetch<{ requestToken: string }>('/api/session')
@@ -96,6 +103,12 @@ async function remove(review: Review) {
             {{ review.isVisible ? 'ظاهرة' : 'بانتظار المراجعة' }}
           </span>
         </div>
+        <p class="mt-2 flex flex-wrap items-center gap-2 text-sm text-ink-soft">
+          <span class="badge">{{ review.source === 'facebook' ? 'فيسبوك' : 'الموقع' }}</span>
+          <time v-if="created(review.createdAtUtc)" :datetime="review.createdAtUtc">{{ created(review.createdAtUtc) }}</time>
+          <NuxtLink v-if="review.orderId" :to="'/admin/orders/' + review.orderId"
+            class="inline-flex min-h-11 items-center text-brand underline">طلب <bdi>#{{ review.orderId }}</bdi></NuxtLink>
+        </p>
         <p class="mt-2 whitespace-pre-line break-words">{{ review.message }}</p>
         <div class="mt-3 flex flex-wrap gap-2">
           <button type="button" class="btn-secondary" :disabled="busy.includes(review.id)"

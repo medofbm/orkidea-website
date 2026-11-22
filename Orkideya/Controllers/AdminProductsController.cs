@@ -32,7 +32,7 @@ public sealed class AdminProductsController(ApplicationDbContext db, ProductEdit
         var items = await query.OrderBy(product => product.ProductId).Skip((page - 1) * pageSize).Take(pageSize)
             .Select(product => new
             {
-                product.ProductId, product.Name, product.ImageUrl,
+                product.ProductId, product.Name, product.ImageUrl, product.IsArchived,
                 category = product.Category == null ? null : product.Category.Name,
                 variants = product.ProductVariants.Count,
                 pricedVariants = product.ProductVariants.Count(variant => variant.Price > 0),
@@ -44,7 +44,7 @@ public sealed class AdminProductsController(ApplicationDbContext db, ProductEdit
     [HttpGet("categories")]
     public async Task<IActionResult> Categories(CancellationToken ct) => Ok(await db.Categories.AsNoTracking()
         .OrderBy(category => category.Name).ThenBy(category => category.CategoryId)
-        .Select(category => new { category.CategoryId, category.Name }).ToListAsync(ct));
+        .Select(category => new { category.CategoryId, category.Name, category.IsArchived }).ToListAsync(ct));
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> Details(int id, CancellationToken ct)
@@ -54,11 +54,11 @@ public sealed class AdminProductsController(ApplicationDbContext db, ProductEdit
         if (product is null) return NotFound();
         return Ok(new
         {
-            product.ProductId, product.Name, product.Description, product.CategoryId, product.ImageUrl,
+            product.ProductId, product.Name, product.Description, product.CategoryId, product.ImageUrl, product.IsArchived,
             gallery = product.GalleryImages, version = Version(product),
             variants = product.ProductVariants.OrderBy(variant => variant.ProductVariantId).Select(variant => new
             {
-                variant.ProductVariantId, variant.Size, price = Money(variant.Price)
+                variant.ProductVariantId, variant.Size, price = Money(variant.Price), variant.IsArchived
             })
         });
     }
@@ -136,6 +136,42 @@ public sealed class AdminProductsController(ApplicationDbContext db, ProductEdit
         return changed == 1 ? Ok(new { success = true }) : Stale();
     }
 
+    public sealed record ArchiveInput(bool Archived);
+
+    [HttpPost("{id:int}/archive"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Archive(int id, [FromBody] ArchiveInput? input, CancellationToken ct)
+    {
+        if (input is null) return BadRequest(new { message = "البيانات ناقصة." });
+        var product = await db.Products.SingleOrDefaultAsync(row => row.ProductId == id, ct);
+        if (product is null) return NotFound();
+        product.IsArchived = input.Archived;
+        await db.SaveChangesAsync(ct);
+        return Ok(new { id = product.ProductId, isArchived = product.IsArchived });
+    }
+
+    [HttpPost("{productId:int}/variants/{variantId:int}/archive"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> ArchiveVariant(int productId, int variantId, [FromBody] ArchiveInput? input, CancellationToken ct)
+    {
+        if (input is null) return BadRequest(new { message = "البيانات ناقصة." });
+        var strategy = db.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync<IActionResult>(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            var product = await db.Products.SingleOrDefaultAsync(row => row.ProductId == productId, ct);
+            var variants = await db.ProductVariants.Where(row => row.ProductId == productId).ToListAsync(ct);
+            var variant = variants.SingleOrDefault(row => row.ProductVariantId == variantId);
+            if (product is null || variant is null) return NotFound();
+            // A visible product must always keep at least one visible size.
+            if (input.Archived && !product.IsArchived && !variant.IsArchived && variants.Count(row => !row.IsArchived) == 1)
+                return Conflict(new { message = "هذا آخر حجم ظاهر للمنتج. أرشفي المنتج كامل بدل الحجم." });
+            variant.IsArchived = input.Archived;
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return Ok(new { id = variant.ProductVariantId, productId, isArchived = variant.IsArchived });
+        });
+    }
+
     // Products that appear in orders or have stock history are kept (OrderItem.ProductId has no FK).
     [HttpPost("{id:int}/delete"), ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
@@ -150,7 +186,7 @@ public sealed class AdminProductsController(ApplicationDbContext db, ProductEdit
             if (product is null) return NotFound();
             if (await db.OrderItems.AnyAsync(item => item.ProductId == id, ct) ||
                 await db.StockAccounts.AnyAsync(account => account.ProductId == id, ct))
-                return Conflict(new { message = "ما ينفعش نحذف منتج عنده طلبات أو مخزون. تقدري تخفيه لاحقًا من الأرشفة." });
+                return Conflict(new { message = "ما ينفعش نحذف منتج عنده طلبات أو مخزون. تقدري تأرشفيه عشان يختفي من المتجر." });
             // Same as the Razor delete: rows only; image files are not removed (they may be shared).
             db.ProductVariants.RemoveRange(product.ProductVariants);
             db.Products.Remove(product);

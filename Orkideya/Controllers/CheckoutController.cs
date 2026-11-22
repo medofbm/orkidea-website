@@ -255,7 +255,7 @@ public partial class CheckoutController : Controller
     {
         changed = false;
         if (cart.Any(item => !variants.TryGetValue(item.ProductVariantId, out var variant) ||
-            variant.Product == null || variant.Price <= 0)) return false;
+            variant.Product == null || variant.Price <= 0 || variant.IsArchived || variant.Product.IsArchived)) return false;
         foreach (var item in cart)
         {
             var variant = variants[item.ProductVariantId];
@@ -274,7 +274,7 @@ public partial class CheckoutController : Controller
 
     private IActionResult InvalidCart()
     {
-        TempData["CartError"] = "راجع السلة: قد يكون أحد الأحجام غير متاح أو الكمية غير صالحة.";
+        TempData["CartError"] = "بعض المنتجات في سلتك لم تعد متاحة. راجعي السلة.";
         return RedirectToAction("Index", "Cart");
     }
 

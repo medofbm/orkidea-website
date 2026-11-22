@@ -27,7 +27,8 @@ builder.Services.AddRateLimiter(options =>
     options.OnRejected = async (context, token) =>
     {
         var path = context.HttpContext.Request.Path;
-        if (path.StartsWithSegments("/api/v1/reviews") || path.StartsWithSegments("/api/v1/contact"))
+        if (path.StartsWithSegments("/api/v1/reviews") || path.StartsWithSegments("/api/v1/contact") ||
+            path.StartsWithSegments("/api/v1/checkout/receipt/review"))
         {
             context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
             await context.HttpContext.Response.WriteAsJsonAsync(

@@ -259,11 +259,17 @@
                                 <blockquote class="review-message">
                                     <p>"@review.Message"</p>
                                 </blockquote>
+                                @{
+                                    var displayName = review.AllowName && !string.IsNullOrWhiteSpace(review.CustomerName)
+                                        ? review.CustomerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries)[0]
+                                        : null;
+                                    var sourceLabel = review.Source == "facebook" ? "من تعليقات فيسبوك" : "زبونة أوركيديا";
+                                }
                                 <footer class="review-customer">
                                     <div class="review-avatar" aria-hidden="true">
-                                        @review.CustomerName.Substring(0, 1)
+                                        @(displayName is null ? "✿" : displayName.Substring(0, 1))
                                     </div>
-                                    <cite>@review.CustomerName</cite>
+                                    <cite>@(displayName ?? sourceLabel)</cite>
                                 </footer>
                             </article>
                         </div>

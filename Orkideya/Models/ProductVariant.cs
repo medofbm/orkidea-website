@@ -21,5 +21,7 @@ namespace Orkideya.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal Price { get; set; }
         [ConcurrencyCheck, Column(TypeName = "decimal(18,3)")] public decimal? StockUnitsPerItem { get; set; }
+
+        public bool IsArchived { get; set; }
     }
 }

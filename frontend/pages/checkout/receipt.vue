@@ -60,6 +60,7 @@ useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchi
           </section>
         </div>
       </div>
+      <OrderRatingCard />
     </template>
     <template v-else>
       <h1 id="receipt-heading" class="mb-5 text-3xl font-bold text-ink sm:text-4xl">إيصال الطلب</h1>

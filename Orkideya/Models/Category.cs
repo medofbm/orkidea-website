@@ -9,5 +9,7 @@ namespace Orkideya.Models
         [Required]
         [Display(Name = "Category Name")]
         public required string Name { get; set; }
+
+        public bool IsArchived { get; set; }
     }
 }

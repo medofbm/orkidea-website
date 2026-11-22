@@ -4,12 +4,14 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Orkideya.Models;
 
 namespace Orkideya.Controllers;
 
 public sealed record CheckoutReview([Required, StringLength(64, MinimumLength = 64)] string CartRevision, decimal ShippingFee);
 public sealed record CheckoutApiOrder([Required] CheckoutInput Input, [Required] CheckoutReview Review);
+public sealed record ReceiptReviewInput(int Rating, string? Message, bool AllowName);
 
 public partial class CheckoutController
 {
@@ -51,10 +53,59 @@ public partial class CheckoutController
         });
     }
 
+    /// <summary>
+    /// Review of the order shown on the receipt. The order comes from the same session receipt access as
+    /// GET /api/v1/checkout/receipt; no order id is ever accepted from the client. Saved hidden for admin approval.
+    /// </summary>
+    [HttpPost("/api/v1/checkout/receipt/review")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("public-forms")]
+    public async Task<IActionResult> ApiReceiptReview([FromBody] ReceiptReviewInput? input)
+    {
+        var error = ValidateReceiptReview(input, out var message);
+        if (error is not null) return BadRequest(new { message = error });
+
+        if (!Guid.TryParse(HttpContext.Session.GetString("CompletedCheckoutToken"), out var token) || token == Guid.Empty)
+            return NotFound();
+        var order = await _context.Orders.AsNoTracking().Where(row => row.CheckoutToken == token)
+            .Select(row => new { row.OrderId, row.CustomerName }).SingleOrDefaultAsync(HttpContext.RequestAborted);
+        if (order is null) return NotFound();
+
+        var already = new { message = "قيّمتي هذا الطلب قبل." };
+        if (await _context.Reviews.AnyAsync(review => review.OrderId == order.OrderId, HttpContext.RequestAborted))
+            return Conflict(already);
+        var firstName = ReviewsApiController.FirstWord(order.CustomerName) ?? "";
+        _context.Reviews.Add(new Review
+        {
+            CustomerName = firstName.Length > 60 ? firstName[..60] : firstName, Message = message, Rating = input!.Rating,
+            IsVisible = false, Source = "site", AllowName = input.AllowName, OrderId = order.OrderId,
+            CreatedAtUtc = DateTime.UtcNow
+        });
+        try { await _context.SaveChangesAsync(HttpContext.RequestAborted); }
+        catch (DbUpdateException)
+        {
+            // A second request raced past the check above; the unique index on Reviews.OrderId decides.
+            _context.ChangeTracker.Clear();
+            if (await _context.Reviews.AnyAsync(review => review.OrderId == order.OrderId, HttpContext.RequestAborted))
+                return Conflict(already);
+            throw;
+        }
+        return Accepted(new { message = "شكرًا على تقييمك! 💜" });
+    }
+
+    public static string? ValidateReceiptReview(ReceiptReviewInput? input, out string message)
+    {
+        message = input?.Message?.Trim() ?? "";
+        if (input is null) return "البيانات ناقصة، حاولي مرة ثانية.";
+        if (input.Rating < 1 || input.Rating > 5) return "اختاري تقييم من 1 إلى 5.";
+        if (message.Length > 500) return "رأيك طويل شوية، خليه في حدود 500 حرف.";
+        return null;
+    }
+
     private IActionResult CheckoutResponse(IActionResult result)
     {
         if (result is RedirectToActionResult { ControllerName: "Cart" })
-            return Conflict(new { message = "راجع السلة. قد يكون أحد الأحجام غير متاح أو الكمية غير صالحة." });
+            return Conflict(new { message = "بعض المنتجات في سلتك لم تعد متاحة. راجعي السلة." });
         if (result is not ViewResult { Model: CheckoutViewModel model }) return result;
 
         var fee = model.HomeDestinations is not null

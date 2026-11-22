@@ -30,7 +30,7 @@ public partial class CartController
         var items = cart.Select(item =>
         {
             variants.TryGetValue(item.ProductVariantId, out var variant);
-            var available = variant?.Product is not null && variant.Price > 0;
+            var available = variant?.Product is not null && variant.Price > 0 && !variant.IsArchived && !variant.Product.IsArchived;
             var price = available ? variant!.Price : item.Price;
             return new
             {

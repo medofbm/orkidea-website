@@ -2,7 +2,7 @@
 definePageMeta({ layout: 'admin' })
 useSeoMeta({ title: 'إدارة الفئات' })
 
-type Category = { categoryId: number, name: string, products: number }
+type Category = { categoryId: number, name: string, products: number, isArchived?: boolean }
 type CategoryPage = { items: Category[], page: number, pages: number, total: number }
 const url = '/api/admin/categories'
 const search = ref('')
@@ -56,6 +56,29 @@ async function save() {
   } catch {
     needsRefresh.value = true
     failure.value = 'تعذر التحقق من الحفظ. حدّث القائمة وراجعها قبل إعادة المحاولة.'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function toggleArchive(category: Category) {
+  if (disabled.value) return
+  const archived = !category.isArchived
+  saving.value = true
+  try {
+    const session = await $fetch<{ requestToken: string }>('/api/session')
+    const response = await $fetch.raw<{ message?: string }>(url + '/' + category.categoryId + '/archive', {
+      method: 'POST', retry: 0, ignoreResponseError: true, body: { archived },
+      headers: { RequestVerificationToken: session.requestToken }
+    })
+    if (!response.ok) {
+      toast.error(response._data?.message ?? 'تعذر تحديث أرشفة الفئة.')
+      return
+    }
+    toast.success(archived ? 'تمت أرشفة الفئة.' : 'تم إلغاء أرشفة الفئة.')
+    await refresh()
+  } catch {
+    toast.error('تعذر تحديث أرشفة الفئة. حاول مرة أخرى.')
   } finally {
     saving.value = false
   }
@@ -126,11 +149,14 @@ async function removeCategory(category: Category) {
         <li v-for="category in data.items" :key="category.categoryId"
           class="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl bg-white p-4">
           <div class="min-w-0">
-            <p class="break-words font-semibold">{{ category.name }}</p>
+            <p class="break-words font-semibold">{{ category.name }}
+              <span v-if="category.isArchived" class="badge badge-status-pending ms-1">مؤرشفة</span></p>
             <p class="text-sm">{{ category.products }} منتج مرتبط</p>
           </div>
           <button type="button" :disabled="disabled" :aria-label="'تعديل فئة ' + category.name"
             class="min-h-11 px-2 text-brand underline disabled:opacity-60" @click="edit(category)">تعديل الاسم</button>
+          <button type="button" :disabled="disabled" :aria-label="(category.isArchived ? 'إلغاء أرشفة فئة ' : 'أرشفة فئة ') + category.name"
+            class="min-h-11 px-2 text-brand underline disabled:opacity-60" @click="toggleArchive(category)">{{ category.isArchived ? 'إلغاء الأرشفة' : 'أرشفة' }}</button>
           <button type="button" :disabled="disabled" :aria-label="'حذف فئة ' + category.name"
             class="min-h-11 px-2 text-danger underline disabled:opacity-60" @click="removeCategory(category)">حذف</button>
         </li>

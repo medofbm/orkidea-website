@@ -1,7 +1,10 @@
 <script setup lang="ts">
 // Internal component gallery for visual review during development only.
 // Production builds return 404 for this route.
-import { testimonials } from '~/data/testimonials'
+const testimonials = [
+  { text: 'حاجة طبيعية واكويسة... بالتوفيق', source: 'facebook' as const },
+  { text: 'منتج ممتاز وتوصيل سريع.', source: 'site' as const, rating: 5, name: 'سارة' }
+]
 
 if (!import.meta.dev) {
   throw createError({ statusCode: 404, statusMessage: 'Not Found' })

@@ -82,6 +82,16 @@ namespace Orkideya.Data
                 .HasForeignKey(item => item.OrderId).OnDelete(DeleteBehavior.Cascade);
             builder.Entity<Order>().HasMany(order => order.Notifications).WithOne(notification => notification.Order)
                 .HasForeignKey(notification => notification.OrderId).OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<Review>().Property(review => review.Source).HasMaxLength(16).HasDefaultValue("site");
+            builder.Entity<Review>().Property(review => review.AllowName).HasDefaultValue(false);
+            builder.Entity<Review>().Property(review => review.CreatedAtUtc).HasDefaultValueSql("GETUTCDATE()");
+            // One review per order. Deleting an order never cascades to its review (rows are kept; the link is cleared).
+            builder.Entity<Review>().HasOne<Order>().WithMany().HasForeignKey(review => review.OrderId).OnDelete(DeleteBehavior.SetNull);
+            builder.Entity<Review>().HasIndex(review => review.OrderId).IsUnique().HasFilter("[OrderId] IS NOT NULL");
+            builder.Entity<ContactMessage>().Property(message => message.IsRead).HasDefaultValue(false);
+            builder.Entity<Product>().Property(product => product.IsArchived).HasDefaultValue(false);
+            builder.Entity<ProductVariant>().Property(variant => variant.IsArchived).HasDefaultValue(false);
+            builder.Entity<Category>().Property(category => category.IsArchived).HasDefaultValue(false);
             builder.Entity<OrderNotification>().HasIndex(notification => notification.OrderId).IsUnique();
             builder.Entity<OrderNotification>().HasIndex(notification => new { notification.State, notification.NextAttemptAtUtc });
         }

@@ -22,5 +22,7 @@ namespace Orkideya.Models
         [Display(Name = "رقم الهاتف")]
         public required string PhoneNumber { get; set; }
         public DateTime ReceivedAt { get; set; } = DateTime.Now;
+
+        public bool IsRead { get; set; }
     }
 }
