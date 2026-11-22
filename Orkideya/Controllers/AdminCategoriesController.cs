@@ -88,6 +88,25 @@ public sealed class AdminCategoriesController(ApplicationDbContext db) : Control
         return Ok(new { success = true });
     }
 
+    [HttpPost("{id:int}/delete"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        var strategy = db.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync<IActionResult>(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+            var category = await db.Categories.SingleOrDefaultAsync(row => row.CategoryId == id, ct);
+            if (category is null) return NotFound(new { message = "الفئة غير موجودة." });
+            if (await db.Products.AnyAsync(product => product.CategoryId == id, ct))
+                return Conflict(new { message = "الفئة فيها منتجات. انقلي المنتجات لفئة ثانية أول." });
+            db.Categories.Remove(category);
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return NoContent();
+        });
+    }
+
     private Task<bool> NameTaken(string name, int? excludeId, CancellationToken ct) =>
         db.Categories.AnyAsync(category => category.CategoryId != excludeId && category.Name.Trim() == name, ct);
 

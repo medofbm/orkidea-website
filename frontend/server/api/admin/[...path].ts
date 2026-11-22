@@ -1,7 +1,7 @@
 export default defineEventHandler(event => {
   const path = getRouterParam(event, 'path') ?? ''
-  const read = event.method === 'GET' && new RegExp('^(dashboard|delivery|categories|orders/(?:export|manual)|products(?:/(?:categories|[1-9][0-9]*))?|(?:orders|inventory)(?:/[1-9][0-9]*)?)$').test(path)
-  const write = event.method === 'POST' && new RegExp('^(categories(?:/[1-9][0-9]*)?|orders/(?:[1-9][0-9]*/(?:status|stock|delivery)|manual/(?:review|confirm))|inventory/[1-9][0-9]*/(open|configure|adjust)|products(?:/[1-9][0-9]*(?:/variants(?:/[1-9][0-9]*)?)?)?)$').test(path)
+  const read = event.method === 'GET' && new RegExp('^(dashboard|delivery|categories|reviews|contact-messages|sales-chart|orders/(?:export|manual)|products(?:/(?:categories|[1-9][0-9]*))?|(?:orders|inventory)(?:/[1-9][0-9]*)?)$').test(path)
+  const write = event.method === 'POST' && new RegExp('^(categories(?:/[1-9][0-9]*(?:/delete)?)?|reviews/[1-9][0-9]*/(?:visibility|delete)|contact-messages/[1-9][0-9]*/delete|orders/(?:[1-9][0-9]*/(?:status|stock|delivery)|manual/(?:review|confirm))|inventory/[1-9][0-9]*/(open|configure|adjust)|products(?:/[1-9][0-9]*(?:/delete|/variants(?:/[1-9][0-9]*(?:/delete)?)?)?)?)$').test(path)
   if (!read && !write) {
     throw createError({ statusCode: 404 })
   }

@@ -136,6 +136,51 @@ public sealed class AdminProductsController(ApplicationDbContext db, ProductEdit
         return changed == 1 ? Ok(new { success = true }) : Stale();
     }
 
+    // Products that appear in orders or have stock history are kept (OrderItem.ProductId has no FK).
+    [HttpPost("{id:int}/delete"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        var strategy = db.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync<IActionResult>(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            var product = await db.Products.Include(row => row.ProductVariants)
+                .SingleOrDefaultAsync(row => row.ProductId == id, ct);
+            if (product is null) return NotFound();
+            if (await db.OrderItems.AnyAsync(item => item.ProductId == id, ct) ||
+                await db.StockAccounts.AnyAsync(account => account.ProductId == id, ct))
+                return Conflict(new { message = "ما ينفعش نحذف منتج عنده طلبات أو مخزون. تقدري تخفيه لاحقًا من الأرشفة." });
+            // Same as the Razor delete: rows only; image files are not removed (they may be shared).
+            db.ProductVariants.RemoveRange(product.ProductVariants);
+            db.Products.Remove(product);
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return NoContent();
+        });
+    }
+
+    // Order lines keep a VariantSize snapshot and carts live in the session, so deleting a variant is safe.
+    [HttpPost("{id:int}/variants/{variantId:int}/delete"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteVariant(int id, int variantId, CancellationToken ct)
+    {
+        var strategy = db.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync<IActionResult>(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            var variants = await db.ProductVariants.Where(row => row.ProductId == id).ToListAsync(ct);
+            var variant = variants.SingleOrDefault(row => row.ProductVariantId == variantId);
+            if (variant is null) return NotFound();
+            if (variants.Count == 1)
+                return Conflict(new { message = "هذا آخر حجم للمنتج. أضيفي حجم ثاني أول أو احذفي المنتج كامل." });
+            db.ProductVariants.Remove(variant);
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return NoContent();
+        });
+    }
+
     private IActionResult Stale() => Conflict(new { message = "تغيّرت البيانات. حدّث صفحة المنتج قبل إعادة الحفظ." });
 
     private static string Money(decimal amount) => amount.ToString("0.00", CultureInfo.InvariantCulture);

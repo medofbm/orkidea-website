@@ -44,6 +44,7 @@ const stats = computed(() => data.value ? [
           <dd class="mt-1 text-2xl font-extrabold text-ink">{{ stat.value }}</dd>
         </div>
       </dl>
+      <AdminSalesChart class="mt-6" />
       <div class="mb-3 mt-8 flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-xl font-semibold">أحدث الطلبات</h2>
         <NuxtLink to="/admin/orders" class="min-h-11 py-2 text-brand underline">كل الطلبات</NuxtLink>

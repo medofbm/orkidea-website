@@ -7,6 +7,8 @@ useSeoMeta({ title: 'تعديل المنتج' })
 const id = String(useRoute().params.id)
 const isNew = id === 'new'
 const router = useRouter()
+const toast = useToast()
+const confirmDialog = useConfirm()
 const url = '/api/admin/products' + (isNew ? '' : '/' + id)
 const { data, status, error, refresh } = useFetch<AdminProductDetails>(url, {
   key: 'admin-product-' + id, immediate: !isNew, server: false, cache: 'no-store'
@@ -186,6 +188,50 @@ async function saveVariant() {
     saving.value = false
   }
 }
+
+async function deletePost(path: string) {
+  const session = await $fetch<{ requestToken: string }>('/api/session')
+  return await $fetch.raw<{ message?: string }>(path, {
+    method: 'POST', retry: 0, ignoreResponseError: true,
+    headers: { RequestVerificationToken: session.requestToken }
+  })
+}
+
+async function removeProduct() {
+  if (disabled.value || !data.value) return
+  const ok = await confirmDialog({ title: 'حذف المنتج؟', message: 'سيُحذف المنتج وأحجامه نهائيًا.', confirmLabel: 'حذف', tone: 'danger' })
+  if (!ok) return
+  saving.value = true
+  try {
+    const response = await deletePost(url + '/delete')
+    if (!response.ok) { toast.error(response._data?.message ?? 'تعذر حذف المنتج.'); return }
+    toast.success('تم حذف المنتج.')
+    await router.push('/admin/products')
+  } catch {
+    toast.error('تعذر حذف المنتج. حاول مرة أخرى.')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function removeVariant(variant: AdminProductDetails['variants'][number]) {
+  if (disabled.value) return
+  const ok = await confirmDialog({ title: 'حذف الحجم؟', message: 'سيُحذف الحجم «' + variant.size + '» نهائيًا.', confirmLabel: 'حذف', tone: 'danger' })
+  if (!ok) return
+  saving.value = true
+  try {
+    const response = await deletePost(url + '/variants/' + variant.productVariantId + '/delete')
+    if (!response.ok) { toast.error(response._data?.message ?? 'تعذر حذف الحجم.'); return }
+    toast.success('تم حذف الحجم.')
+    if (selected.value?.productVariantId === variant.productVariantId) chooseVariant()
+    await refresh()
+    needsRefresh.value = !!error.value
+  } catch {
+    toast.error('تعذر حذف الحجم. حاول مرة أخرى.')
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <template>
@@ -268,6 +314,8 @@ async function saveVariant() {
             <span>{{ variant.size }} · <bdi>{{ variant.price }}</bdi> د.ل</span>
             <button type="button" :disabled="disabled" class="min-h-11 px-2 text-brand underline"
               @click="chooseVariant(variant)">تعديل</button>
+            <button type="button" :disabled="disabled" :aria-label="'حذف الحجم ' + variant.size"
+              class="min-h-11 px-2 text-danger underline disabled:opacity-60" @click="removeVariant(variant)">حذف</button>
           </li>
         </ul>
         <form @submit.prevent="saveVariant">
@@ -285,6 +333,10 @@ async function saveVariant() {
           </fieldset>
         </form>
       </section>
+      <div v-if="!isNew && data" class="mt-6">
+        <button type="button" :disabled="disabled" class="min-h-11 rounded-lg border border-danger px-4 text-danger disabled:opacity-60"
+          @click="removeProduct">حذف المنتج</button>
+      </div>
     </template>
   </section>
 </template>
