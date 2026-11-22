@@ -33,6 +33,13 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
         });
     }
 
+    [HttpGet("sales-chart")]
+    public async Task<IActionResult> SalesChart(int days = 7)
+    {
+        var chart = await new DashboardMetrics(context, clock.GetUtcNow().UtcDateTime).ChartAsync(days == 30 ? 30 : 7);
+        return Ok(new { labels = chart.Labels, data = chart.Data });
+    }
+
     [HttpGet("orders")]
     public async Task<IActionResult> Orders(CancellationToken cancellationToken,
         string status = "all", string search = "", int page = 1, string source = "all")

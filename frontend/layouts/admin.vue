@@ -11,6 +11,8 @@ const links: { to: string, label: string, icon: AppIconName }[] = [
   { to: '/admin/inventory', label: 'المخزون', icon: 'droplet' },
   { to: '/admin/products', label: 'المنتجات', icon: 'bag' },
   { to: '/admin/categories', label: 'الفئات', icon: 'flower' },
+  { to: '/admin/reviews', label: 'التقييمات', icon: 'star' },
+  { to: '/admin/messages', label: 'الرسائل', icon: 'mail' },
   { to: '/account', label: 'الحساب', icon: 'user' }
 ]
 const isActive = (to: string) => to === '/admin' ? route.path === '/admin' : route.path === to || route.path.startsWith(to + '/')

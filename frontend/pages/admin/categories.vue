@@ -13,6 +13,8 @@ const name = ref('')
 const saving = ref(false)
 const needsRefresh = ref(false)
 const failure = ref('')
+const toast = useToast()
+const confirmDialog = useConfirm()
 const notice = ref('')
 const disabled = computed(() => saving.value || needsRefresh.value || status.value !== 'success')
 
@@ -54,6 +56,31 @@ async function save() {
   } catch {
     needsRefresh.value = true
     failure.value = 'تعذر التحقق من الحفظ. حدّث القائمة وراجعها قبل إعادة المحاولة.'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function removeCategory(category: Category) {
+  if (disabled.value) return
+  const ok = await confirmDialog({ title: 'حذف الفئة؟', message: 'ستُحذف فئة «' + category.name + '» نهائيًا.', confirmLabel: 'حذف', tone: 'danger' })
+  if (!ok) return
+  saving.value = true
+  try {
+    const session = await $fetch<{ requestToken: string }>('/api/session')
+    const response = await $fetch.raw<{ message?: string }>(url + '/' + category.categoryId + '/delete', {
+      method: 'POST', retry: 0, ignoreResponseError: true,
+      headers: { RequestVerificationToken: session.requestToken }
+    })
+    if (!response.ok) {
+      toast.error(response._data?.message ?? 'تعذر حذف الفئة.')
+      return
+    }
+    toast.success('تم حذف الفئة.')
+    if (selected.value?.categoryId === category.categoryId) edit()
+    await refresh()
+  } catch {
+    toast.error('تعذر حذف الفئة. حاول مرة أخرى.')
   } finally {
     saving.value = false
   }
@@ -104,6 +131,8 @@ async function save() {
           </div>
           <button type="button" :disabled="disabled" :aria-label="'تعديل فئة ' + category.name"
             class="min-h-11 px-2 text-brand underline disabled:opacity-60" @click="edit(category)">تعديل الاسم</button>
+          <button type="button" :disabled="disabled" :aria-label="'حذف فئة ' + category.name"
+            class="min-h-11 px-2 text-danger underline disabled:opacity-60" @click="removeCategory(category)">حذف</button>
         </li>
       </ul>
       <nav v-if="data.pages > 1" aria-label="صفحات الفئات" class="mt-4 flex items-center justify-between gap-3">

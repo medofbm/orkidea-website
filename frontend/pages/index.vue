@@ -43,6 +43,30 @@ const contactLinks = computed(() => [
   { label: 'فيسبوك', href: facebookUrl ? String(facebookUrl) : '' },
   { label: 'إنستغرام', href: instagramUrl ? String(instagramUrl) : '' }
 ].filter(link => link.href))
+// Approved site reviews (client-side only, no names) shown before the Facebook comments.
+const { data: reviewsData } = useFetch<{ items: { id: number, message: string, rating: number }[] }>('/api/reviews', { lazy: true, server: false })
+const allTestimonials = computed(() => [
+  ...(reviewsData.value?.items ?? []).map(r => ({ key: `site-${r.id}`, text: r.message, rating: r.rating, source: 'site' as const, product: undefined as string | undefined })),
+  ...testimonials.map((t, i) => ({ key: `fb-${i}`, text: t.text, rating: undefined as number | undefined, source: t.source as 'facebook' | 'site', product: t.product }))
+])
+const reviewDialog = ref<HTMLDialogElement | null>(null)
+const reviewOpen = ref(false)
+const reviewOpener = ref<HTMLElement | null>(null)
+function openReview(event: Event) {
+  reviewOpener.value = event.currentTarget as HTMLElement
+  reviewOpen.value = true
+  nextTick(() => {
+    reviewDialog.value?.showModal()
+    reviewDialog.value?.querySelector<HTMLElement>('input, textarea, button[autofocus]')?.focus()
+  })
+}
+function closeReview() {
+  if (reviewDialog.value?.open) reviewDialog.value.close()
+}
+function onReviewClosed() {
+  reviewOpen.value = false
+  reviewOpener.value?.focus()
+}
 useSeoMeta({
   title: 'أوركيديا | زيوت ومنتجات طبيعية',
   description: 'أوركيديا للزيوت والمنتجات الطبيعية. منتجات طبيعية وعضوية. اختاري منتجك واطلبي بسهولة والدفع عند الاستلام.'
@@ -166,12 +190,20 @@ useSeoMeta({
     <!-- Testimonials -->
     <section aria-labelledby="testimonials-heading" class="mt-14 rounded-[2rem] bg-gradient-band px-5 py-10 sm:px-10 sm:py-14">
       <SectionHeader id="testimonials-heading" tone="light" title="ماذا يقول" highlight="زبائننا" />
-      <AppCarousel class="mt-8" :items="testimonials" label="آراء الزبائن" :per-view="{ base: 1, sm: 2, lg: 3 }"
+      <AppCarousel class="mt-8" :items="allTestimonials" label="آراء الزبائن" :per-view="{ base: 1, sm: 2, lg: 3 }"
         :autoplay="4500" loop dots dots-tone="light">
         <template #item="{ item }">
-          <TestimonialCard :text="item.text" :product="item.product" :source="item.source" />
+          <TestimonialCard :text="item.text" :product="item.product" :source="item.source" :rating="item.rating" />
         </template>
       </AppCarousel>
+      <div class="mt-8 flex justify-center">
+        <button type="button" class="btn-secondary border-white bg-white text-brand hover:bg-lavender" @click="openReview">شاركينا رأيك</button>
+      </div>
+      <dialog ref="reviewDialog" aria-labelledby="review-dialog-title" class="m-auto w-[min(92vw,30rem)] max-h-[90dvh] overflow-y-auto rounded-[var(--radius-card)] bg-white p-5 text-ink shadow-[var(--shadow-soft)] backdrop:bg-ink/60 sm:p-6"
+        @close="onReviewClosed" @click.self="closeReview">
+        <h3 id="review-dialog-title" class="mb-4 text-xl font-bold text-ink">شاركينا رأيك</h3>
+        <ReviewForm v-if="reviewOpen" @done="closeReview" @cancel="closeReview" />
+      </dialog>
     </section>
 
     <!-- About -->
@@ -181,12 +213,18 @@ useSeoMeta({
     </section>
 
     <!-- Contact -->
-    <section id="contact" tabindex="-1" aria-labelledby="contact-heading" class="mt-10 mb-6 scroll-mt-4 rounded-[var(--radius-card)] bg-lavender px-5 py-8 text-center sm:px-10">
+    <section id="contact" tabindex="-1" aria-labelledby="contact-heading" class="mt-10 mb-6 scroll-mt-4 rounded-[var(--radius-card)] bg-lavender px-5 py-8 sm:px-10">
       <SectionHeader id="contact-heading" title="هل لديكِ" highlight="استفسار؟" subtitle="تواصلي معانا وبنرد عليك في أقرب وقت" />
-      <div v-if="contactLinks.length" class="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
-        <a v-for="link in contactLinks" :key="link.label" :href="link.href" target="_blank" rel="noopener noreferrer" class="btn-secondary bg-white sm:min-w-40">{{ link.label }}</a>
+      <div class="mt-6 grid gap-6 lg:grid-cols-2 lg:items-start">
+        <ContactForm />
+        <div class="flex flex-col gap-3 text-center">
+          <p class="font-bold text-ink">أو تواصلي معانا مباشرة</p>
+          <template v-if="contactLinks.length">
+            <a v-for="link in contactLinks" :key="link.label" :href="link.href" target="_blank" rel="noopener noreferrer" class="btn-secondary bg-white">{{ link.label }}</a>
+          </template>
+          <p v-else class="text-ink-soft">قنوات التواصل ستتوفر قريبًا.</p>
+        </div>
       </div>
-      <p v-else class="mt-3 text-ink-soft">قنوات التواصل ستتوفر قريبًا.</p>
     </section>
   </div>
 </template>

@@ -19,6 +19,22 @@ builder.Services.AddRateLimiter(options =>
         limiter.Window = TimeSpan.FromMinutes(1);
         limiter.QueueLimit = 0;
     });
+    // Public reviews and contact form share one budget per client IP (spam protection).
+    options.AddPolicy("public-forms", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
+    var previousRejection = options.OnRejected;
+    options.OnRejected = async (context, token) =>
+    {
+        var path = context.HttpContext.Request.Path;
+        if (path.StartsWithSegments("/api/v1/reviews") || path.StartsWithSegments("/api/v1/contact"))
+        {
+            context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { message = "وصلنا عدد كبير من الرسائل منك، جربي مرة ثانية بعد ساعة." }, token);
+        }
+        else if (previousRejection is not null) await previousRejection(context, token);
+    };
 });
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
