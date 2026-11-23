@@ -67,7 +67,7 @@ old=$(grep -oE '[0-9a-f]{64}  compose[.]vue-preview[.]yaml' "$f" | cut -d' ' -f1
 new=$(sha256sum compose.vue-preview.yaml | cut -d' ' -f1)
 sed -i "s/$old/$new/" "$f" && grep -n "$new" "$f"
 cp SHA256SUMS "SHA256SUMS.before-$(date +%Y%m%d)"
-grep -v 'compose.vue-preview.yaml' "SHA256SUMS.before-$(date +%Y%m%d)" | tr -d '' > SHA256SUMS
+grep -v 'compose.vue-preview.yaml' "SHA256SUMS.before-$(date +%Y%m%d)" | tr -d '\r' > SHA256SUMS
 sha256sum compose.vue-preview.yaml >> SHA256SUMS && sha256sum -c SHA256SUMS
 ```
 
