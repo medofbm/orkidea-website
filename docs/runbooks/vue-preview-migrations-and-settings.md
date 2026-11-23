@@ -12,11 +12,16 @@ compose config --quiet && echo config-ok
 ```
 
 ## 2. Apply migrations with the new backend image
-Use the full master commit SHA of the release (the image tag is published by CI as `preview-backend-sha-<sha>`):
+The failed deploy already pulled the new images by digest, and compose uses `pull_policy: never`, so a tag reference is not found. Find the local image id by its revision label (backend runs as user `1654`, frontend as `node`):
 ```bash
 SHA=<full master commit sha>
-ORKIDEA_PREVIEW_BACKEND_IMAGE=ghcr.io/medofbm/orkidea-website:preview-backend-sha-$SHA compose --profile maintenance run --rm initialize
+docker images -q --no-trunc | sort -u | while read id; do echo "$id $(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}} {{.Config.User}}' $id)"; done | grep "$SHA"
 ```
+Then run the initializer with the backend id (the line ending in `1654`):
+```bash
+ORKIDEA_PREVIEW_BACKEND_IMAGE=sha256:<backend image id> compose --profile maintenance run --rm initialize
+```
+If no line appears, pull the image first: `docker pull ghcr.io/medofbm/orkidea-website:preview-backend-sha-$SHA`.
 `initialize` applies pending migrations only to `OrkideaStaging`, skips preview seeding when products already exist, and exits. Migrations in this project are additive, so the running (older) image keeps working while this runs.
 
 ## 3. Re-run the deploy
