@@ -66,7 +66,7 @@ useSeoMeta({ title: 'تغيير كلمة المرور - أوركيديا', robot
     <span class="pointer-events-none absolute -bottom-20 -end-12 size-64 rounded-full bg-blush blur-2xl motion-safe:animate-float" aria-hidden="true" />
     <div class="card-glass relative mx-auto max-w-md p-6 md:p-8 motion-safe:animate-fade-in-up">
       <div class="mb-6 text-center">
-        <span class="mx-auto mb-3 inline-flex size-14 items-center justify-center rounded-full bg-gradient-brand text-white shadow-(--shadow-glow)"><AppIcon name="flower" :size="28" /></span>
+        <BrandMark class="mb-3" />
         <h1 id="reset-title" class="section-title">تغيير كلمة المرور</h1>
         <p v-if="linkOk && !done" class="mt-1 text-ink-soft">اختاري كلمة مرور جديدة لحسابك.</p>
       </div>

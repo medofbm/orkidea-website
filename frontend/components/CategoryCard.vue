@@ -15,7 +15,7 @@ defineProps<{
   >
     <span class="category-card__circle flex h-16 w-16 items-center justify-center rounded-full bg-lavender text-brand" aria-hidden="true">
       <slot name="icon">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 3 4 6 0 9-4-3-3-6 0-9zM12 12c3 2 6 2 8 0-2-3-5-3-8 0zM12 12c-3 2-6 2-8 0 2-3 5-3 8 0zM12 12v9" /></svg>
+        <img src="/brand/flower-purple.png" alt="" width="36" height="36" class="size-9 object-contain motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:rotate-[20deg] motion-safe:group-hover:scale-110">
       </slot>
     </span>
     <span class="text-lg font-bold">{{ name }}</span>

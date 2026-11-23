@@ -32,6 +32,13 @@ const stats = [
 const gridRef = ref<HTMLElement | null>(null)
 useReveal(gridRef, { selector: '.reveal', stagger: 60 })
 const steps = ['اختاري منتجك', 'أضيفيه للسلة', 'نوصلك الطلب']
+// Small logo flowers drifting in the hero (decorative; frozen with reduced motion).
+const petals = [
+  { cls: 'top-8 end-[8%] size-8', delay: '0s' },
+  { cls: 'top-1/2 start-[4%] size-6 max-sm:hidden', delay: '-2s' },
+  { cls: 'bottom-10 start-[38%] size-7', delay: '-4s' },
+  { cls: 'top-6 start-[45%] size-5 max-lg:hidden', delay: '-1s' }
+]
 const { whatsappNumber, facebookUrl, instagramUrl } = useRuntimeConfig().public
 const whatsappHref = computed(() => {
   const digits = String(whatsappNumber ?? '').replace(/\D/g, '')
@@ -80,10 +87,12 @@ useSeoMeta({
       class="relative mt-4 grid gap-8 overflow-hidden rounded-[2rem] bg-gradient-hero px-5 pt-10 pb-16 sm:px-10 sm:pt-14 lg:grid-cols-2 lg:items-center lg:gap-14 lg:px-14 lg:pt-16 lg:pb-24">
       <span class="pointer-events-none absolute -top-16 -start-16 size-56 rounded-full bg-lilac/50 blur-3xl motion-safe:animate-float sm:size-72" aria-hidden="true"></span>
       <span class="pointer-events-none absolute -bottom-16 -end-10 size-56 rounded-full bg-blush/50 blur-3xl motion-safe:animate-float sm:size-72" aria-hidden="true"></span>
-      <div class="relative order-2 min-w-0 text-center lg:order-1 lg:text-start">
+      <img v-for="petal in petals" :key="petal.cls" src="/brand/flower-purple.png" alt="" aria-hidden="true" width="40" height="40" loading="lazy"
+        class="petal pointer-events-none absolute opacity-25" :class="petal.cls" :style="{ animationDelay: petal.delay }">
+      <div class="relative order-2 min-w-0 text-center motion-safe:animate-fade-in-up lg:order-1 lg:text-start">
         <p class="inline-flex items-center rounded-full border border-lavender-deep bg-white/70 px-4 py-1 text-sm font-semibold text-brand">100% طبيعي • مصنوع يدويًا</p>
         <h1 id="store-heading" class="mt-4 text-3xl leading-[1.4] font-bold text-ink sm:text-4xl lg:text-5xl">
-          اكتشفي <span class="text-gradient-brand">جمال الطبيعة</span> مع أوركيديا
+          اكتشفي <span class="text-gradient-brand text-shine">جمال الطبيعة</span> مع أوركيديا
         </h1>
         <p class="mx-auto mt-4 max-w-md text-base text-ink-soft lg:mx-0">زيوت وصابون طبيعي من ليبيا. اختاري منتجك واطلبيه بسهولة.</p>
         <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
@@ -94,21 +103,21 @@ useSeoMeta({
       </div>
       <div class="relative order-1 flex justify-center lg:order-2">
         <div class="grid size-56 place-items-center rounded-full bg-white/60 p-3 shadow-[var(--shadow-soft)] ring-8 ring-white/70 motion-safe:animate-float sm:size-72 lg:size-96">
-          <div class="grid size-full place-items-center rounded-full bg-gradient-brand">
-            <img src="/brand/flower-white.png" alt="شعار أوركيديا" width="160" height="160" decoding="async" fetchpriority="high" class="h-auto w-1/2">
+          <div class="grid size-full place-items-center rounded-full bg-gradient-brand motion-safe:animate-glow-pulse">
+            <img src="/brand/flower-white.png" alt="شعار أوركيديا" width="160" height="160" decoding="async" fetchpriority="high" class="h-auto w-1/2 motion-safe:transition-transform motion-safe:duration-700 hover:rotate-[20deg] hover:scale-105">
           </div>
         </div>
       </div>
     </section>
 
-    <FeaturesBar :items="features" class="-mt-8 lg:mt-0" />
+    <FeaturesBar v-reveal :items="features" class="-mt-8 lg:mt-0" />
 
     <!-- Categories -->
     <section id="categories" tabindex="-1" aria-labelledby="categories-heading" class="mt-12 scroll-mt-4 sm:mt-16">
-      <SectionHeader id="categories-heading" title="تسوقي" highlight="حسب الفئة" eyebrow="الفئات" />
+      <SectionHeader v-reveal id="categories-heading" title="تسوقي" highlight="حسب الفئة" eyebrow="الفئات" />
       <div class="mt-6 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-        <CategoryCard name="كل المنتجات" to="/#catalogue-heading" />
-        <CategoryCard v-for="category in data?.categories ?? []" :key="category.id" :name="category.name"
+        <CategoryCard v-reveal.zoom name="كل المنتجات" to="/#catalogue-heading" />
+        <CategoryCard v-for="(category, i) in data?.categories ?? []" :key="category.id" v-reveal.zoom="(i + 1) * 80" :name="category.name"
           :to="`/?categoryId=${category.id}#catalogue-heading`" />
       </div>
       <nav v-if="data?.categories?.length" aria-label="فئات المنتجات"
@@ -125,7 +134,7 @@ useSeoMeta({
 
     <!-- Featured -->
     <section v-if="featured.length >= 4" aria-labelledby="featured-heading" class="mt-12 sm:mt-16">
-      <SectionHeader id="featured-heading" title="منتجات" highlight="مختارة" eyebrow="الأكثر طلبًا" />
+      <SectionHeader v-reveal id="featured-heading" title="منتجات" highlight="مختارة" eyebrow="الأكثر طلبًا" />
       <AppCarousel class="mt-6" :items="featured" label="منتجات مختارة" :per-view="{ base: 1, sm: 2, lg: 3, xl: 4 }"
         :autoplay="5000" dots arrows>
         <template #item="{ item }"><ProductCard :product="item" /></template>
@@ -177,9 +186,9 @@ useSeoMeta({
 
     <!-- How to order -->
     <section id="how-to-order" tabindex="-1" aria-labelledby="order-heading" class="mt-14 scroll-mt-4 rounded-[var(--radius-card)] bg-lavender px-5 py-8 sm:px-10 sm:py-12">
-      <h2 id="order-heading" class="text-center text-2xl font-bold text-ink sm:text-3xl">كيف تطلبي؟</h2>
+      <h2 v-reveal id="order-heading" class="text-center text-2xl font-bold text-ink sm:text-3xl">كيف تطلبي؟</h2>
       <ol class="mt-6 grid gap-4 sm:grid-cols-3 sm:gap-6">
-        <li v-for="(step, i) in steps" :key="step" class="flex items-center gap-4 rounded-[var(--radius-card)] bg-white p-4 sm:flex-col sm:p-6 sm:text-center">
+        <li v-for="(step, i) in steps" :key="step" v-reveal="i * 120" class="flex items-center gap-4 rounded-[var(--radius-card)] bg-white p-4 shadow-soft motion-safe:transition-transform motion-safe:duration-300 hover:-translate-y-1 sm:flex-col sm:p-6 sm:text-center">
           <span class="grid size-11 shrink-0 place-items-center rounded-full bg-brand text-lg font-bold text-white" aria-hidden="true">{{ i + 1 }}</span>
           <span class="font-bold text-ink">{{ step }}</span>
         </li>
@@ -189,7 +198,7 @@ useSeoMeta({
 
     <!-- Testimonials -->
     <section aria-labelledby="testimonials-heading" class="mt-14 rounded-[2rem] bg-gradient-band px-5 py-10 sm:px-10 sm:py-14">
-      <SectionHeader id="testimonials-heading" tone="light" title="ماذا يقول" highlight="زبائننا" />
+      <SectionHeader v-reveal id="testimonials-heading" tone="light" title="ماذا يقول" highlight="زبائننا" />
       <AppCarousel v-if="allTestimonials.length" class="mt-8" :items="allTestimonials" label="آراء الزبائن" :per-view="{ base: 1, sm: 2, lg: 3 }"
         :autoplay="4500" loop dots dots-tone="light">
         <template #item="{ item }">
@@ -208,13 +217,13 @@ useSeoMeta({
 
     <!-- About -->
     <section id="about-orkidea" tabindex="-1" aria-labelledby="about-heading" class="mt-10 scroll-mt-4 px-1 text-center">
-      <h2 id="about-heading" class="text-2xl font-bold text-ink sm:text-3xl">أوركيديا</h2>
+      <h2 v-reveal id="about-heading" class="text-2xl font-bold text-ink sm:text-3xl">أوركيديا</h2>
       <p class="mx-auto mt-3 max-w-xl text-ink-soft">أوركيديا متجر ليبي للزيوت والصابون الطبيعية. منتجاتنا طبيعية وعضوية.</p>
     </section>
 
     <!-- Contact -->
     <section id="contact" tabindex="-1" aria-labelledby="contact-heading" class="mt-10 mb-6 scroll-mt-4 rounded-[var(--radius-card)] bg-lavender px-5 py-8 sm:px-10">
-      <SectionHeader id="contact-heading" title="هل لديكِ" highlight="استفسار؟" subtitle="تواصلي معانا وبنرد عليك في أقرب وقت" />
+      <SectionHeader v-reveal id="contact-heading" title="هل لديكِ" highlight="استفسار؟" subtitle="تواصلي معانا وبنرد عليك في أقرب وقت" />
       <div class="mt-6 grid gap-6 lg:grid-cols-2 lg:items-start">
         <ContactForm />
         <div class="flex flex-col gap-3 text-center">
