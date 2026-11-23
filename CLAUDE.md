@@ -27,3 +27,5 @@ Legacy Razor store and admin still exist; retire only after Vue acceptance.
 - Nitro routing: creating a folder `frontend/server/api/<x>/` makes that segment stop falling back to a sibling `[path].ts` catch-all. Add an explicit `index.get.ts` (or move the route into the catch-all allowlist). This broke the receipt once (phase 4B).
 - The SQL regression database is shared by all scenarios; never assume a new fixture is on page 1 of a paged list. Filter by the fixture's own category or id.
 - Seeded or anonymous reviews have an empty `CustomerName`; never index into names in views.
+- Never leave a transform, filter or backdrop-filter on the header (also via animation fill-mode `both`): it becomes the containing block for the fixed mobile menu and traps it.
+- frontend/.dockerignore is a whitelist: any new top-level folder or root file (plugins/, middleware/, error.vue) must be added there or the preview image builds without it.

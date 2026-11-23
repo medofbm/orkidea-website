@@ -101,9 +101,33 @@ button, a { -webkit-tap-highlight-color: transparent; }
   opacity: 1; transform: translateY(0);
   transition: opacity 500ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+.reveal-zoom { transform: scale(0.94); }
+.reveal-zoom.is-visible { transform: scale(1); }
 @media (prefers-reduced-motion: reduce) {
   .reveal, .reveal.is-visible { opacity: 1; transform: none; transition: none; }
 }
+
+/* Header: entrance, nav underline, scroll progress. */
+@keyframes slide-down { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@keyframes petal-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(12px, -18px, 0) rotate(18deg); }
+}
+@keyframes shine-text { from { background-position: 0% center; } to { background-position: 100% center; } }
+@media (prefers-reduced-motion: no-preference) {
+  /* "backwards", not "both": a transform kept on the header would trap the fixed mobile menu. */
+  .header-enter { animation: slide-down 500ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  .petal { animation: petal-drift 7s ease-in-out infinite; }
+  .text-shine { background-size: 200% auto; animation: shine-text 4s ease-in-out infinite alternate; }
+}
+.nav-underline { position: relative; }
+.nav-underline::after {
+  content: ""; position: absolute; inset-inline: 1rem; bottom: 0.35rem; height: 2px; border-radius: 2px;
+  background-image: var(--gradient-brand); transform: scaleX(0); transform-origin: center;
+}
+.nav-underline:hover::after, .nav-underline:focus-visible::after { transform: scaleX(1); }
+@media (prefers-reduced-motion: no-preference) { .nav-underline::after { transition: transform 250ms ease-out; } }
+@media (max-width: 639px) { .nav-underline::after { display: none; } }
 
 /* ---------- Components ---------- */
 @utility storefront-action {

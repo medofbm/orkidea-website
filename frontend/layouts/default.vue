@@ -8,7 +8,7 @@ const whatsappHref = computed(() => {
 })
 const year = new Date().getFullYear()
 // Desktop: plain pills. Mobile (inside the offcanvas): soft lavender chips with icons.
-const navLink = 'storefront-action inline-flex min-h-12 items-center gap-3 rounded-2xl bg-lavender/60 px-4 text-brand hover:bg-lavender sm:min-h-11 sm:rounded-full sm:bg-transparent sm:text-ink sm:hover:bg-lavender/60'
+const navLink = 'nav-underline storefront-action inline-flex min-h-12 items-center gap-3 whitespace-nowrap rounded-2xl bg-lavender/60 px-4 text-brand hover:bg-lavender sm:min-h-11 sm:rounded-full sm:bg-transparent sm:px-2.5 lg:px-4 sm:text-ink sm:hover:bg-lavender/60'
 const footLink = 'inline-flex min-h-11 items-center text-white/85 hover:text-white hover:underline'
 const socialBtn = 'storefront-action inline-flex size-11 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25'
 const menuSocialBtn = 'storefront-action inline-flex size-11 items-center justify-center rounded-full bg-lavender text-brand hover:bg-lavender-deep'
@@ -18,6 +18,7 @@ const whatsappDisplay = computed(() => {
 })
 const menuOpen = ref(false)
 const scrolled = ref(false)
+const progress = ref(0)
 const menuButton = ref<HTMLButtonElement>()
 const panel = ref<HTMLElement>()
 const nuxtApp = useNuxtApp()
@@ -75,7 +76,11 @@ watch(menuOpen, async (open) => {
     panel.value?.querySelector<HTMLElement>('a[href]')?.focus()
   }
 })
-function onScroll() { scrolled.value = window.scrollY > 30 }
+function onScroll() {
+  scrolled.value = window.scrollY > 30
+  const max = document.documentElement.scrollHeight - window.innerHeight
+  progress.value = max > 0 ? Math.min(1, window.scrollY / max) : 0
+}
 function onResize() { if (menuOpen.value && !isMobile()) menuOpen.value = false }
 onMounted(() => {
   window.addEventListener('scroll', onScroll, { passive: true })
@@ -94,17 +99,18 @@ onUnmounted(() => {
 <template>
   <div class="flex min-h-screen flex-col">
     <a href="#content" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:px-4 focus:py-2">الانتقال إلى المحتوى</a>
-    <header class="sticky top-0 z-40 border-b border-lavender motion-safe:transition-shadow" :class="scrolled ? 'scrolled shadow-lg shadow-brand/15' : 'shadow-sm shadow-brand/5'">
+    <header class="header-enter sticky top-0 z-40 border-b border-lavender motion-safe:transition-shadow" :class="scrolled ? 'scrolled shadow-lg shadow-brand/15' : 'shadow-sm shadow-brand/5'">
       <!-- Glass lives on its own layer: backdrop-filter on the header itself would trap the fixed offcanvas. -->
       <div class="glass absolute inset-0 -z-10" aria-hidden="true" />
       <div class="bg-gradient-strip h-[3px] motion-safe:animate-gradient-shift" aria-hidden="true" />
-      <nav class="mx-auto flex max-w-6xl flex-nowrap items-center gap-2 px-4 motion-safe:transition-[padding]" :class="scrolled ? 'py-1' : 'py-2'" aria-label="القائمة الرئيسية" @keydown.esc="closeMenu" @keydown="trapTab">
-        <NuxtLink to="/" class="group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full">
-          <img src="/brand/flower-purple.png" alt="شعار أوركيديا" width="40" height="40" class="size-10 object-contain motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:rotate-12">
-          <span class="text-gradient-brand text-xl font-extrabold">أوركيديا</span>
+      <div class="absolute inset-x-0 bottom-0 h-0.5 origin-right bg-gradient-brand" :style="{ transform: `scaleX(${progress})` }" aria-hidden="true" />
+      <nav class="mx-auto flex max-w-6xl flex-nowrap items-center gap-2 px-4 motion-safe:transition-[padding] lg:grid lg:grid-cols-[1fr_auto_1fr]" :class="scrolled ? 'py-1' : 'py-2'" aria-label="القائمة الرئيسية" @keydown.esc="closeMenu" @keydown="trapTab">
+        <NuxtLink to="/" class="group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full sm:order-3 lg:justify-self-end">
+          <img src="/brand/flower-purple.png" alt="شعار أوركيديا" width="40" height="40" class="size-10 object-contain motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:rotate-[20deg] motion-safe:group-hover:scale-110">
+          <span class="text-gradient-brand text-shine text-xl font-extrabold">أوركيديا</span>
         </NuxtLink>
 
-        <div class="ms-auto flex items-center gap-1 text-sm font-semibold text-ink sm:order-3 sm:ms-0">
+        <div class="ms-auto flex items-center gap-1 text-sm font-semibold text-ink sm:hidden">
           <NuxtLink to="/cart" class="storefront-action relative inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-lavender-deep px-3 hover:bg-lavender/60 sm:px-4">
             <AppIcon name="bag" :size="20" />
             <span class="max-sm:sr-only">السلة</span>
@@ -131,7 +137,7 @@ onUnmounted(() => {
             <img src="/brand/flower-white.png" alt="" width="36" height="36" class="size-9 object-contain">
             <span class="text-lg font-extrabold">أوركيديا</span>
           </div>
-          <div class="flex flex-col gap-2 p-4 sm:order-2 sm:flex-row sm:items-center sm:gap-1 sm:p-0">
+          <div class="flex flex-col gap-2 p-4 sm:order-2 sm:flex-1 sm:flex-row sm:items-center sm:justify-center sm:gap-1 sm:p-0 lg:flex-none">
             <NuxtLink to="/" :class="navLink" @click="menuOpen = false">
               <AppIcon name="home" :size="20" class="sm:hidden" />
               الرئيسية
@@ -141,7 +147,7 @@ onUnmounted(() => {
               المنتجات
             </NuxtLink>
             <NuxtLink :to="{ path: '/', hash: '#categories' }" :class="navLink" @click="navigateFromMenu($event, '#categories')">
-              <AppIcon name="flower" :size="20" class="sm:hidden" />
+              <img src="/brand/flower-purple.png" alt="" width="20" height="20" class="size-5 object-contain sm:hidden">
               الفئات
             </NuxtLink>
             <NuxtLink :to="{ path: '/', hash: '#how-to-order' }" :class="navLink" @click="navigateFromMenu($event, '#how-to-order')">
@@ -157,14 +163,19 @@ onUnmounted(() => {
               <a v-if="facebookUrl" :href="facebookUrl" target="_blank" rel="noopener noreferrer" aria-label="تابعي أوركيديا على فيسبوك" :class="menuSocialBtn"><AppIcon name="facebook" :size="20" /></a>
             </div>
           </div>
-          <div class="mt-auto flex flex-col gap-2 border-t border-lavender p-4 sm:order-4 sm:mt-0 sm:flex-row sm:items-center sm:border-0 sm:p-0">
-            <NuxtLink to="/account/register" class="btn-secondary storefront-action text-sm sm:min-h-11!" @click="menuOpen = false">
+          <div class="mt-auto flex flex-col gap-2 border-t border-lavender p-4 sm:order-1 sm:mt-0 sm:flex-row sm:items-center sm:border-0 sm:p-0 lg:justify-self-start">
+            <NuxtLink to="/account/register" class="btn-secondary storefront-action text-sm whitespace-nowrap sm:min-h-11! sm:px-4! sm:max-lg:hidden" @click="menuOpen = false">
               <AppIcon name="user-plus" :size="18" class="sm:hidden" />
               إنشاء حساب
             </NuxtLink>
-            <NuxtLink to="/account" class="btn-primary storefront-action text-sm sm:min-h-11!" @click="menuOpen = false">
+            <NuxtLink to="/account" class="btn-primary storefront-action text-sm whitespace-nowrap sm:min-h-11! sm:px-5!" @click="menuOpen = false">
               <AppIcon name="login" :size="18" class="sm:hidden" />
               دخول
+            </NuxtLink>
+            <NuxtLink to="/cart" class="storefront-action relative inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-lavender-deep px-3 hover:bg-lavender/60 max-sm:hidden md:px-4">
+              <AppIcon name="bag" :size="20" :class="pulse ? 'motion-safe:animate-pulse-once' : ''" :key="'bag-' + pulse" />
+              <span class="max-md:sr-only">السلة</span>
+              <bdi v-if="cart?.count" :key="pulse" class="rounded-full bg-brand px-2 py-0.5 text-xs text-white" :class="pulse ? 'motion-safe:animate-pulse-once' : ''">{{ cart.count }}</bdi>
             </NuxtLink>
           </div>
         </div>

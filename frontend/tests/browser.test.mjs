@@ -126,7 +126,7 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
       'product fits the mobile viewport without horizontal scrolling')
     await customer.getByRole('button', { name: 'أضيفي للسلة' }).click()
     await customer.getByText('تمت الإضافة للسلة.', { exact: true }).waitFor()
-    const cartLink = customer.getByRole('navigation', { name: 'القائمة الرئيسية' }).locator('a[href="/cart"]')
+    const cartLink = customer.getByRole('navigation', { name: 'القائمة الرئيسية' }).locator('a[href="/cart"]:visible')
     const cartCount = cartLink.getByText('1', { exact: true })
     const menu = customer.getByRole('button', { name: 'القائمة', exact: true })
     await menu.press('Enter')

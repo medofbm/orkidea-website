@@ -67,6 +67,9 @@
 - `badge` و`badge-status-{pending,processing,shipped,delivered,cancelled}` للشارات؛ `chip` للاختيارات (الأحجام).
 - `price` بوزن 800 بنفسجي. `section-title` 2.2rem/800 على الكمبيوتر و1.6rem على الموبايل، و`section-eyebrow` شارة صغيرة فوق العنوان.
 - الحركة: `animate-fade-in-up`، `animate-float`، `animate-glow-pulse`، `animate-gradient-shift`، `animate-pulse-once` (عداد السلة)، `animate-confirm-bounce` و`animate-confirm-ring` (صفحة التأكيد)، وظهور عند التمرير بـ`.reveal` مع `useReveal`. كلها تتعطل عند `prefers-reduced-motion: reduce`. ممنوع `* { transition }` العام وتلاشي الصفحة كلها.
+- الهيدر (من الكمبيوتر): الحساب والسلة يمين، الروابط في الوسط، الشعار والاسم يسار. على الموبايل: الشعار وزر القائمة والسلة. شريط تقدم التمرير أسفل الهيدر.
+- ظهور الأقسام عند التمرير: `v-reveal` (أو `v-reveal="120"` للتأخير، `v-reveal.zoom` للتكبير) من `frontend/plugins/reveal.ts`. المحتوى الظاهر عند التحميل لا يُخفى.
+- أيقونة صفحات الحساب والفئات: زهرة الشعار الحقيقية (`BrandMark`، `flower-white.png` / `flower-purple.png`) وليست أيقونة مرسومة.
 - بطاقة المنتج: صورة، اسم، الحجم، السعر بالدينار الليبي (د.ل)، زر "أضف للسلة". نجوم ذهبية للتقييم.
 - لا ازدحام: هدف واحد لكل شاشة. الموبايل أولاً: اختبار 390px ثم 1440px بلا تمرير أفقي.
 

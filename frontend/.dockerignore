@@ -4,6 +4,7 @@
 !nuxt.config.ts
 !tsconfig.json
 !app.vue
+!error.vue
 !assets/
 !assets/**
 !components/
@@ -14,6 +15,8 @@
 !layouts/**
 !pages/
 !pages/**
+!plugins/
+!plugins/**
 !server/
 !server/**
 !types/

@@ -44,9 +44,25 @@ public sealed partial class SmtpEmailSender(IOptions<EmailOptions> options, ILog
         }
         catch (Exception ex)
         {
-            // Only the exception type is logged: messages can contain addresses.
-            logger.LogError("Email sending failed ({ErrorType}).", ex.GetType().Name);
+            // Messages can contain addresses, so only codes and types are logged.
+            logger.LogError("Email sending failed ({ErrorType}, SMTP status {SmtpStatus}, cause {Cause}).",
+                ex.GetType().Name, DescribeStatus(ex), DescribeCause(ex));
         }
+    }
+
+    /// <summary>SMTP reply code, e.g. MustIssueStartTlsFirst or 535 auth failure (GeneralFailure covers network errors).</summary>
+    public static string DescribeStatus(Exception ex) =>
+        ex is SmtpException smtp ? $"{smtp.StatusCode} ({(int)smtp.StatusCode})" : "none";
+
+    /// <summary>Type of the innermost exception, plus the socket error for network failures. Never includes text.</summary>
+    public static string DescribeCause(Exception ex)
+    {
+        var inner = ex;
+        while (inner.InnerException is not null) inner = inner.InnerException;
+        if (ReferenceEquals(inner, ex)) return "none";
+        return inner is System.Net.Sockets.SocketException socket
+            ? $"{inner.GetType().Name}:{socket.SocketErrorCode}"
+            : inner.GetType().Name;
     }
 
     /// <summary>Plain-text version: links become "label: url", other tags are removed.</summary>
