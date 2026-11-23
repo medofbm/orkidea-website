@@ -117,7 +117,11 @@ internal static class PasswordResetRegression
         var link = PasswordResetEmail.BuildLink("https://shop.example.test/", "a@b.com", fakeToken);
         var html = PasswordResetEmail.BuildHtml(link);
         check(link == "https://shop.example.test/account/reset-password?email=a%40b.com&token=TOKEN_abc-123", "Reset link format");
-        check(html.Contains("dir=\"rtl\"") && html.Contains("#6a1b9a") && html.Contains("#4a148c"), "Reset email is RTL with brand colours");
+        check(html.Contains("dir=\"rtl\"") && html.Contains("#751D82") && html.Contains("#4E1258"), "Reset email is RTL with logo colours");
+        var authFailure = new System.Net.Mail.SmtpException(System.Net.Mail.SmtpStatusCode.ClientNotPermitted, "secret@example.test");
+        check(SmtpEmailSender.DescribeStatus(authFailure) == "ClientNotPermitted (454)" && !SmtpEmailSender.DescribeStatus(authFailure).Contains("@"), "SMTP failure log shows the status code only");
+        var network = new System.Net.Mail.SmtpException("x", new System.IO.IOException("y", new System.Net.Sockets.SocketException((int)System.Net.Sockets.SocketError.TimedOut)));
+        check(SmtpEmailSender.DescribeCause(network) == "SocketException:TimedOut", "SMTP failure log names the network cause");
         check(html.Contains("href=\"" + System.Net.WebUtility.HtmlEncode(link) + "\""), "Reset email contains the link");
         check(html.Split(fakeToken).Length == 2, "Raw token appears only inside the link");
         check(html.Contains("ساعتين") && html.Contains("إذا ما طلبتيش، تجاهلي الرسالة."), "Reset email has expiry and ignore note");

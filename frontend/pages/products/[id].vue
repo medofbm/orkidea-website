@@ -115,7 +115,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
 
     <article v-else-if="product" aria-labelledby="product-heading"
       class="grid gap-6 md:grid-cols-2 md:gap-x-10 lg:gap-x-14">
-      <section aria-label="صور المنتج" class="min-w-0">
+      <section aria-label="صور المنتج" class="min-w-0 motion-safe:animate-fade-in-up">
         <div class="relative grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-(--radius-card) border border-lavender bg-gradient-to-b from-lavender/60 to-cream shadow-(--shadow-soft)">
           <img v-if="currentImage && !failedImages.includes(currentImage)" :key="currentImage"
             :src="currentImage" :alt="product.name + ' - صورة ' + (selectedImage + 1)"
@@ -220,7 +220,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
     </article>
 
     <section v-if="product && related.length" aria-labelledby="related-heading" class="mt-12">
-      <SectionHeader id="related-heading" title="منتجات" highlight="مشابهة" class="mb-6" />
+      <SectionHeader v-reveal id="related-heading" title="منتجات" highlight="مشابهة" class="mb-6" />
       <AppCarousel :items="related" label="منتجات مشابهة" :per-view="{ base: 1, sm: 2, lg: 4 }" arrows>
         <template #item="{ item }">
           <ProductCard :product="item" />

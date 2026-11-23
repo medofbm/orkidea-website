@@ -45,7 +45,7 @@ useSeoMeta({ title: 'نسيتي كلمة المرور؟ - أوركيديا', rob
     <span class="pointer-events-none absolute -bottom-20 -end-12 size-64 rounded-full bg-blush blur-2xl motion-safe:animate-float" aria-hidden="true" />
     <div class="card-glass relative mx-auto max-w-md p-6 md:p-8 motion-safe:animate-fade-in-up">
       <div class="mb-6 text-center">
-        <span class="mx-auto mb-3 inline-flex size-14 items-center justify-center rounded-full bg-gradient-brand text-white shadow-(--shadow-glow)"><AppIcon name="flower" :size="28" /></span>
+        <BrandMark class="mb-3" />
         <h1 id="forgot-title" class="section-title">نسيتي كلمة المرور؟</h1>
         <p class="mt-1 text-ink-soft">اكتبي بريدك الإلكتروني وبنرسل لك رابط لتغيير كلمة المرور.</p>
       </div>
