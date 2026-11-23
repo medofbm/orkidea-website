@@ -54,6 +54,23 @@ ORKIDEA_EMAIL_FROM=noreply@orkidea.ly
 ORKIDEA_PUBLIC_BASE_URL=https://vue-preview.orkidea.ly
 ORKIDEA_PUBLIC_WHATSAPP_NUMBER=<digits only, e.g. 2189XXXXXXXX>
 ```
+Values go without quotes or `< >` around them (the username is the Brevo SMTP login `...@smtp-brevo.com`, the key starts with `xsmtpsib-`). Check without printing secrets (both must print 1):
+```bash
+grep -c '^ORKIDEA_EMAIL_SMTP_USERNAME=.*@smtp-brevo\.com$' .preview.env
+grep -c '^ORKIDEA_EMAIL_SMTP_PASSWORD=xsmtpsib-' .preview.env
+```
+Editing `compose.vue-preview.yaml` changes its checksum. The deploy script pins it (line `sha256sum --check --strict` in `/usr/local/sbin/orkidea-vue-preview-deploy`), and so does `SHA256SUMS` in the release folder. Update both, or the next deploy stops before swapping images:
+```bash
+f=/usr/local/sbin/orkidea-vue-preview-deploy
+cp -p "$f" "/root/orkidea-vue-preview-deploy.before-$(date +%Y%m%d)"
+old=$(grep -oE '[0-9a-f]{64}  compose[.]vue-preview[.]yaml' "$f" | cut -d' ' -f1)
+new=$(sha256sum compose.vue-preview.yaml | cut -d' ' -f1)
+sed -i "s/$old/$new/" "$f" && grep -n "$new" "$f"
+cp SHA256SUMS "SHA256SUMS.before-$(date +%Y%m%d)"
+grep -v 'compose.vue-preview.yaml' "SHA256SUMS.before-$(date +%Y%m%d)" | tr -d '' > SHA256SUMS
+sha256sum compose.vue-preview.yaml >> SHA256SUMS && sha256sum -c SHA256SUMS
+```
+
 Apply without changing images:
 ```bash
 compose config --quiet && compose up -d --wait --wait-timeout 180 web frontend
