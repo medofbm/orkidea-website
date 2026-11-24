@@ -266,10 +266,14 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
 </script>
 
 <template>
-  <section class="mx-auto max-w-3xl" aria-labelledby="product-editor-title">
+  <section class="mx-auto max-w-6xl" aria-labelledby="product-editor-title">
     <NuxtLink to="/admin/products" class="inline-flex min-h-11 items-center text-brand underline">العودة للمنتجات</NuxtLink>
-    <h1 id="product-editor-title" class="mb-5 text-3xl font-bold">{{ isNew ? 'إضافة منتج' : 'تعديل المنتج' }}
-      <span v-if="data?.isArchived" class="badge badge-status-pending ms-2 align-middle text-sm">مؤرشف</span></h1>
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <h1 id="product-editor-title" class="text-3xl font-bold">{{ isNew ? 'إضافة منتج' : 'تعديل المنتج' }}
+        <span v-if="data?.isArchived" class="badge badge-status-pending ms-2 align-middle text-sm">مؤرشف</span></h1>
+      <a v-if="!isNew && data && !data.isArchived" :href="'/products/' + data.productId" target="_blank" rel="noopener"
+        class="btn-secondary min-h-11 gap-1.5 text-sm"><AppIcon name="sparkle" :size="16" />عرض في المتجر</a>
+    </div>
     <p v-if="notice" class="mb-3 text-success" role="status">{{ notice }}</p>
     <p v-if="failure" class="mb-3 text-danger" role="alert">{{ failure }}</p>
     <button v-if="needsRefresh" type="button" :disabled="saving" class="mb-3 min-h-11 rounded-lg border px-4"
@@ -278,15 +282,16 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
         (!isNew && (status === 'pending' || status === 'idle'))" role="status">جاري تحميل البيانات…</p>
     <p v-else-if="error?.statusCode === 404" role="alert">المنتج غير موجود.</p>
     <AdminReadError v-else-if="error || categories.error.value" :status-code="error?.statusCode ?? categories.error.value?.statusCode" />
-    <template v-else>
-      <form class="rounded-xl bg-white p-4" @submit.prevent="saveProduct">
+    <div v-else class="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <form class="card p-4 sm:p-6" @submit.prevent="saveProduct">
         <fieldset :disabled="disabled" class="space-y-4">
+          <h2 class="text-xl font-bold">البيانات الأساسية</h2>
           <label class="block">اسم المنتج
-            <input v-model="form.name" maxlength="150" required class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+            <input v-model="form.name" maxlength="150" required class="field mt-1 block min-h-11 w-full">
           </label>
           <div>
             <label for="product-category" class="block">الفئة</label>
-            <select id="product-category" v-model="form.categoryId" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+            <select id="product-category" v-model="form.categoryId" class="field mt-1 block min-h-11 w-full">
               <option value="">بدون فئة</option>
               <option v-for="category in categories.data.value" :key="category.categoryId" :value="String(category.categoryId)">
                 {{ category.name }}
@@ -294,18 +299,18 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
             </select>
           </div>
           <label class="block">الوصف
-            <textarea v-model="form.description" maxlength="10000" rows="4" class="mt-1 block w-full rounded-lg border p-2" />
+            <textarea v-model="form.description" maxlength="10000" rows="4" class="field mt-1 block w-full" />
           </label>
           <div class="border-t pt-4">
             <h2 class="mb-3 text-xl font-bold">صورة الغلاف</h2>
             <label class="block">رابط HTTPS أو مسار صورة محلية
-              <input v-model="form.imageUrl" dir="ltr" maxlength="2048" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+              <input v-model="form.imageUrl" dir="ltr" maxlength="2048" class="field mt-1 block min-h-11 w-full">
             </label>
             <label class="mt-3 block">أو اختر ملف غلاف
               <input type="file" accept=".png,.jpg,.jpeg" class="mt-1 block max-w-full" @change="selectImages($event, true)">
             </label>
             <img v-if="cover || imageSource(form.imageUrl)" :src="cover?.url ?? imageSource(form.imageUrl)"
-              alt="معاينة الغلاف" referrerpolicy="no-referrer" class="mt-3 size-24 rounded-lg object-cover">
+              alt="معاينة الغلاف" referrerpolicy="no-referrer" class="mt-3 size-32 rounded-xl object-cover shadow-soft">
             <button v-if="cover" type="button" class="min-h-11 text-brand underline" @click="removeCover">إلغاء اختيار الغلاف الجديد</button>
           </div>
           <div class="border-t pt-4">
@@ -333,17 +338,24 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
               </li>
             </ul>
           </div>
-          <button type="submit" class="min-h-11 btn-primary disabled:opacity-60">
-            {{ saving ? 'جاري الحفظ…' : 'حفظ المنتج' }}
-          </button>
+          <div class="sticky bottom-0 -mx-4 border-t border-lavender bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+            <button type="submit" class="min-h-11 w-full btn-primary disabled:opacity-60 sm:w-auto">
+              {{ saving ? 'جاري الحفظ…' : 'حفظ المنتج' }}
+            </button>
+          </div>
         </fieldset>
       </form>
+      <div class="grid gap-6 lg:sticky lg:top-20">
 
-      <section v-if="!isNew && data" class="mt-6 rounded-xl bg-white p-4" aria-labelledby="variant-title">
+      <section v-if="!isNew && data" class="card p-4 sm:p-6" aria-labelledby="variant-title">
         <h2 id="variant-title" class="mb-3 text-xl font-bold">الأحجام والأسعار</h2>
-        <ul class="mb-3 divide-y">
-          <li v-for="variant in data.variants" :key="variant.productVariantId" class="flex flex-wrap items-center justify-between gap-3 py-2">
-            <span>{{ variant.size }} · <bdi>{{ variant.price }}</bdi> د.ل
+        <p v-if="!data.variants.length" class="mb-3 rounded-xl bg-status-pending p-3 text-sm text-warning">ما فيش أحجام. المنتج ما يتباعش لين تضيف حجم بسعر.</p>
+        <ul class="mb-4 space-y-2">
+          <li v-for="variant in data.variants" :key="variant.productVariantId"
+            class="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-lavender-deep px-3 py-2"
+            :class="{ 'opacity-60': variant.isArchived, 'ring-2 ring-brand': selected?.productVariantId === variant.productVariantId }">
+            <span class="me-auto"><span class="chip bg-lavender text-brand-deep">{{ variant.size }}</span>
+              <bdi class="ms-2 font-bold">{{ variant.price }}</bdi> د.ل
               <span v-if="variant.isArchived" class="badge badge-status-pending ms-1">مؤرشف</span></span>
             <button type="button" :disabled="disabled" class="min-h-11 px-2 text-brand underline"
               @click="chooseVariant(variant)">تعديل</button>
@@ -355,25 +367,30 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
         </ul>
         <form @submit.prevent="saveVariant">
           <fieldset :disabled="disabled" class="space-y-3">
-            <legend class="font-semibold">{{ selected ? 'تعديل ' + selected.size : 'إضافة حجم' }}</legend>
+            <legend class="mb-1 font-semibold">{{ selected ? 'تعديل ' + selected.size : 'إضافة حجم' }}</legend>
             <label class="block">اسم الحجم
-              <input v-model="size" maxlength="50" required class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+              <input v-model="size" maxlength="50" required class="field mt-1 block min-h-11 w-full">
             </label>
             <label class="block">السعر بالدينار الليبي
               <input v-model.trim="price" inputmode="decimal" dir="ltr" required maxlength="19" pattern="[0-9]{1,16}([.][0-9]{1,2})?"
-                class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+                class="field mt-1 block min-h-11 w-full">
             </label>
-            <button type="submit" class="min-h-11 btn-primary">حفظ الحجم</button>
+            <button type="submit" class="min-h-11 btn-primary">{{ selected ? 'حفظ التعديل' : 'حفظ الحجم' }}</button>
             <button v-if="selected" type="button" class="ms-3 min-h-11 underline" @click="chooseVariant()">إلغاء التعديل</button>
           </fieldset>
         </form>
       </section>
-      <div v-if="!isNew && data" class="mt-6 flex flex-wrap gap-3">
-        <button type="button" :disabled="disabled" class="min-h-11 rounded-lg border px-4 disabled:opacity-60"
-          @click="toggleProductArchive">{{ data.isArchived ? 'إلغاء الأرشفة' : 'أرشفة المنتج' }}</button>
-        <button type="button" :disabled="disabled" class="min-h-11 rounded-lg border border-danger px-4 text-danger disabled:opacity-60"
-          @click="removeProduct">حذف المنتج</button>
+      <section v-if="!isNew && data" class="card border border-danger/20 p-4 sm:p-6" aria-labelledby="product-danger-title">
+        <h2 id="product-danger-title" class="mb-1 text-lg font-bold">إخفاء أو حذف المنتج</h2>
+        <p class="mb-3 text-sm text-ink-soft">الأرشفة تخفي المنتج من المتجر وتقدر ترجعه. الحذف نهائي.</p>
+        <div class="flex flex-wrap gap-3">
+          <button type="button" :disabled="disabled" class="btn-secondary min-h-11 disabled:opacity-60"
+            @click="toggleProductArchive">{{ data.isArchived ? 'إلغاء الأرشفة' : 'أرشفة المنتج' }}</button>
+          <button type="button" :disabled="disabled" class="min-h-11 rounded-full border border-danger px-4 text-danger hover:bg-danger/10 disabled:opacity-60"
+            @click="removeProduct">حذف المنتج</button>
+        </div>
+      </section>
       </div>
-    </template>
+    </div>
   </section>
 </template>
