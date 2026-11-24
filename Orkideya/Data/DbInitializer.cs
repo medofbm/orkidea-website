@@ -30,9 +30,18 @@ public static class DbInitializer
                 user = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
                 EnsureSucceeded(await userManager.CreateAsync(user, password));
             }
+            else if (!await userManager.IsInRoleAsync(user, "Admin") &&
+                (string.IsNullOrWhiteSpace(password) || !await userManager.CheckPasswordAsync(user, password)))
+            {
+                // An existing account is promoted only when it also knows the bootstrap password. Otherwise a customer
+                // who signed up with the configured email first would become an administrator on the next start.
+                serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Orkideya.Bootstrap").LogWarning(
+                    "Bootstrap admin email belongs to an existing account that is not an administrator; it was not promoted.");
+                user = null;
+            }
             if (!await roleManager.RoleExistsAsync("Admin"))
                 EnsureSucceeded(await roleManager.CreateAsync(new IdentityRole("Admin")));
-            if (!await userManager.IsInRoleAsync(user, "Admin"))
+            if (user is not null && !await userManager.IsInRoleAsync(user, "Admin"))
                 EnsureSucceeded(await userManager.AddToRoleAsync(user, "Admin"));
         }
         else if (!string.IsNullOrWhiteSpace(password))

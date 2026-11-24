@@ -48,6 +48,7 @@ public partial class CartController
     }
 
     [HttpPost("/api/v1/cart/items")]
+    [Orkideya.Infrastructure.Http.Idempotent]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApiAdd([FromBody] CartApiInput input)
     {

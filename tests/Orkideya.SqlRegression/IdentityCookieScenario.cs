@@ -118,10 +118,20 @@ internal static class IdentityCookieScenario
             using var unsafeAdd = await apiBuyer.PostAsJsonAsync("/api/v1/cart/items", new { variantId, quantity = 1 });
             check(unsafeAdd.StatusCode == HttpStatusCode.BadRequest, "Cart API rejects a write without antiforgery");
             apiBuyer.DefaultRequestHeaders.Add("RequestVerificationToken", apiToken);
-            using var add = await apiBuyer.PostAsJsonAsync("/api/v1/cart/items", new { variantId, quantity = 2 });
+            var addKey = Guid.NewGuid().ToString();
+            HttpRequestMessage AddRequest()
+            {
+                var message = new HttpRequestMessage(HttpMethod.Post, "/api/v1/cart/items") { Content = JsonContent.Create(new { variantId, quantity = 2 }) };
+                message.Headers.Add("Idempotency-Key", addKey);
+                return message;
+            }
+            using var add = await apiBuyer.SendAsync(AddRequest());
             var added = await add.Content.ReadFromJsonAsync<JsonElement>();
             check(add.StatusCode == HttpStatusCode.OK && added.GetProperty("success").GetBoolean(),
                 "Cart API adds an existing variant with real session and antiforgery cookies");
+            using var replayedAdd = await apiBuyer.SendAsync(AddRequest());
+            check(replayedAdd.StatusCode == HttpStatusCode.OK && replayedAdd.Headers.Contains("Idempotent-Replay"),
+                "Repeating a cart add with the same Idempotency-Key replays the first result");
             using var state = await apiBuyer.GetAsync("/api/v1/cart");
             var cartPayload = await state.Content.ReadFromJsonAsync<JsonElement>();
             check(cartPayload.GetProperty("count").GetInt32() == 2 && state.Headers.CacheControl?.NoStore == true,

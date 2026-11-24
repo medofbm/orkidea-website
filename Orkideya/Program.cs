@@ -27,11 +27,30 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("account-recovery", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
+    // Sign-in (password and verification code) and sign-up get their own per-IP budgets against password spraying and
+    // mass sign-ups. Only POSTs count, so opening or refreshing the login page never uses the budget.
+    var signInLimit = builder.Configuration.GetValue("RateLimits:SignInPerFiveMinutes", 15);
+    var signUpLimit = builder.Configuration.GetValue("RateLimits:SignUpPerHour", 5);
+    options.AddPolicy("account-sign-in", context => HttpMethods.IsPost(context.Request.Method)
+        ? RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = signInLimit, Window = TimeSpan.FromMinutes(5), QueueLimit = 0 })
+        : RateLimitPartition.GetNoLimiter("read"));
+    options.AddPolicy("account-sign-up", context => HttpMethods.IsPost(context.Request.Method)
+        ? RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = signUpLimit, Window = TimeSpan.FromHours(1), QueueLimit = 0 })
+        : RateLimitPartition.GetNoLimiter("read"));
     var previousRejection = options.OnRejected;
     options.OnRejected = async (context, token) =>
     {
         var path = context.HttpContext.Request.Path;
-        if (path.StartsWithSegments("/api/v1/account/forgot-password") || path.StartsWithSegments("/api/v1/account/reset-password"))
+        if (path.StartsWithSegments("/api/v1/account/login") || path.StartsWithSegments("/api/v1/account/verify") ||
+            path.StartsWithSegments("/api/v1/account/register"))
+        {
+            context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { message = "محاولات كثيرة من نفس الجهاز. جربي بعد شوية." }, token);
+        }
+        else if (path.StartsWithSegments("/api/v1/account/forgot-password") || path.StartsWithSegments("/api/v1/account/reset-password"))
         {
             context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
             await context.HttpContext.Response.WriteAsJsonAsync(
@@ -141,6 +160,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Authentication.Cookies.CookieAut
 
 // Session Configuration with Security
 builder.Services.AddDistributedMemoryCache();
+builder.Services.AddMemoryCache(); // Idempotency-Key replay store (see Infrastructure/Http/IdempotentAttribute).
 builder.Services.AddSession(options =>
 {
     options.Cookie.HttpOnly = true;

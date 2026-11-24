@@ -142,6 +142,33 @@ internal static class FeedbackApiRegression
                 "Fourth public form post from one IP returns 429 with message");
         }
 
+        // Idempotency-Key: a malformed key is rejected before the action (and before any database access).
+        using (var factory = Create())
+        using (var client = Client(factory))
+        {
+            using var request = await Post(client, "/api/v1/cart/items", new { variantId = 1, quantity = 1 });
+            request.Headers.Add("Idempotency-Key", "bad key!");
+            using var response = await client.SendAsync(request);
+            check(response.StatusCode == HttpStatusCode.BadRequest && !string.IsNullOrWhiteSpace(await Message(response)),
+                "Malformed Idempotency-Key returns 400 with message");
+        }
+
+        // Sign-in budget: 15 POSTs per 5 minutes per IP, counted before antiforgery so floods are cheap to reject.
+        using (var factory = Create())
+        using (var client = Client(factory))
+        {
+            var limited = HttpStatusCode.OK;
+            string? limitMessage = null;
+            for (var attempt = 1; attempt <= 16; attempt++)
+            {
+                using var response = await client.PostAsJsonAsync("/api/v1/account/login", new { email = "a@example.com", password = "x" });
+                if (attempt <= 15 && response.StatusCode == HttpStatusCode.TooManyRequests) limited = HttpStatusCode.Conflict;
+                if (attempt == 16) { limited = limited == HttpStatusCode.Conflict ? limited : response.StatusCode; limitMessage = await Message(response); }
+            }
+            check(limited == HttpStatusCode.TooManyRequests && !string.IsNullOrWhiteSpace(limitMessage),
+                "Sixteenth sign-in POST from one IP within five minutes returns 429 with message");
+        }
+
         // Receipt review: antiforgery, validation, then the session receipt (none here, so 404 before any database access).
         using (var factory = Create())
         using (var client = Client(factory))

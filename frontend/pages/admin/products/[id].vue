@@ -121,11 +121,15 @@ async function reloadProduct() {
   return true
 }
 
-async function post(path: string, body: FormData | Record<string, unknown>) {
+// Creating a product or a size carries an Idempotency-Key so a repeat never makes a duplicate.
+const productCreation = useIdempotencyKey()
+const variantCreation = useIdempotencyKey()
+async function post(path: string, body: FormData | Record<string, unknown>, idempotencyKey?: string) {
   const session = await $fetch<{ requestToken: string }>('/api/session')
+  const headers: Record<string, string> = { RequestVerificationToken: session.requestToken }
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey
   const response = await $fetch.raw<{ success?: boolean, productId?: number, message?: string, errors?: Record<string, string[]> }>(path, {
-    method: 'POST', retry: 0, ignoreResponseError: true, body,
-    headers: { RequestVerificationToken: session.requestToken }
+    method: 'POST', retry: 0, ignoreResponseError: true, body, headers
   })
   if (!response.ok || response._data?.success !== true) {
     needsRefresh.value = !isNew && (response.status === 409 || response.status >= 500)
@@ -148,8 +152,11 @@ async function saveProduct() {
   for (const image of gallery.value) payload.append('galleryFiles', image.file)
   for (const item of removed.value) payload.append('removeGallery', item)
   try {
-    const result = await post(url, payload)
+    const result = await post(url, payload, isNew
+      ? productCreation.get({ ...form, cover: cover.value?.file.name, gallery: gallery.value.map(image => image.file.name) })
+      : undefined)
     if (!result) return
+    if (isNew) productCreation.reset()
     if (isNew && result.productId) {
       await router.replace('/admin/products/' + result.productId)
     } else {
@@ -175,8 +182,10 @@ async function saveVariant() {
   notice.value = ''
   try {
     const result = await post(url + '/variants' + (variant ? '/' + variant.productVariantId : ''),
-      variant ? { input, expectedSize: variant.size, expectedPrice: variant.price } : input)
+      variant ? { input, expectedSize: variant.size, expectedPrice: variant.price } : input,
+      variant ? undefined : variantCreation.get(input))
     if (!result) return
+    if (!variant) variantCreation.reset()
     chooseVariant()
     await refresh()
     needsRefresh.value = !!error.value

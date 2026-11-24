@@ -19,6 +19,7 @@ public sealed partial class ContactApiController(ApplicationDbContext db) : Cont
 
     [HttpPost, ValidateAntiForgeryToken]
     [EnableRateLimiting("public-forms")]
+    [Orkideya.Infrastructure.Http.Idempotent]
     public async Task<IActionResult> Send([FromBody] ContactInput? input, CancellationToken ct)
     {
         var error = Validate(input, out var name, out var phone, out var email, out var message);

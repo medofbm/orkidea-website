@@ -63,7 +63,7 @@ public sealed class AdminProductsController(ApplicationDbContext db, ProductEdit
         });
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
+    [HttpPost, ValidateAntiForgeryToken, Orkideya.Infrastructure.Http.Idempotent]
     [RequestSizeLimit(6 * 1024 * 1024), RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
     public async Task<IActionResult> Create([FromForm] ProductInput input, IFormFile? imageFile,
         [FromForm] List<IFormFile>? galleryFiles, CancellationToken ct)
@@ -107,7 +107,7 @@ public sealed class AdminProductsController(ApplicationDbContext db, ProductEdit
         return changed == 1 ? Ok(new { success = true, productId = id }) : Stale();
     }
 
-    [HttpPost("{id:int}/variants"), ValidateAntiForgeryToken]
+    [HttpPost("{id:int}/variants"), ValidateAntiForgeryToken, Orkideya.Infrastructure.Http.Idempotent]
     public async Task<IActionResult> AddVariant(int id, ProductVariantInput input, CancellationToken ct)
     {
         if (id != input.ProductId) return BadRequest();

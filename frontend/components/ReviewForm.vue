@@ -18,6 +18,7 @@ function validate() {
   return !Object.values(errors).some(Boolean)
 }
 
+const submission = useIdempotencyKey()
 async function submit() {
   if (status.value === 'sending') return
   serverMessage.value = ''
@@ -29,11 +30,13 @@ async function submit() {
   status.value = 'sending'
   try {
     const session = await $fetch<{ requestToken: string }>('/api/session')
+    const body = { name: form.name.trim(), rating: form.rating, message: form.message.trim() }
     const result = await $fetch<{ message?: string }>('/api/reviews', {
       method: 'POST',
-      headers: { RequestVerificationToken: session.requestToken },
-      body: { name: form.name.trim(), rating: form.rating, message: form.message.trim() }
+      headers: { RequestVerificationToken: session.requestToken, 'Idempotency-Key': submission.get(body) },
+      body
     })
+    submission.reset()
     serverMessage.value = result.message ?? 'شكرًا! رأيك وصلنا وبيظهر بعد المراجعة.'
     status.value = 'success'
     toast.success(serverMessage.value)

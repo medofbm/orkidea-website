@@ -39,6 +39,7 @@ public sealed class ReviewsApiController(ApplicationDbContext db) : ControllerBa
 
     [HttpPost, ValidateAntiForgeryToken]
     [EnableRateLimiting("public-forms")]
+    [Orkideya.Infrastructure.Http.Idempotent]
     public async Task<IActionResult> Create([FromBody] ReviewInput? input, CancellationToken ct)
     {
         var error = Validate(input, out var name, out var message);
