@@ -1,6 +1,5 @@
 <script setup lang="ts">
-interface AccountSession { signedIn: boolean; name: string | null; phoneNumber: string | null; isAdmin: boolean }
-const account = ref<AccountSession | null>(null)
+const { account, refresh } = useAccount()
 const loading = ref(true)
 const pending = ref(false)
 const verification = ref(false)
@@ -11,9 +10,8 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    account.value = await $fetch<AccountSession>('/api/account')
+    await refresh()
   } catch {
-    account.value = null
     error.value = 'تعذر قراءة حالة الحساب.'
   } finally {
     loading.value = false
