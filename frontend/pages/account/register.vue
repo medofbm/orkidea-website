@@ -3,6 +3,9 @@ const router = useRouter()
 const fields = reactive({ email: '', password: '', confirmation: '' })
 const pending = ref(false)
 const error = ref('')
+const show = ref(false)
+const rules = usePasswordRules(() => fields.password)
+const mismatch = computed(() => fields.confirmation.length > 0 && fields.password !== fields.confirmation)
 
 async function register() {
   if (pending.value) return
@@ -45,15 +48,23 @@ useSeoMeta({ title: 'إنشاء حساب أوركيديا', robots: 'noindex, no
             autocomplete="username" class="field">
         </label>
         <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="shield" :size="16" class="text-brand" />كلمة المرور</span>
-          <input v-model="fields.password" required type="password" minlength="8" maxlength="100" dir="ltr"
+          <input v-model="fields.password" required :type="show ? 'text' : 'password'" minlength="8" maxlength="100" dir="ltr"
             aria-describedby="password-rules" autocomplete="new-password" class="field">
         </label>
-        <p id="password-rules" class="text-sm text-ink-soft">ثمانية أحرف على الأقل، مع حرف إنجليزي كبير وصغير ورقم ورمز.</p>
+        <ul id="password-rules" class="space-y-1 text-sm">
+          <li v-for="rule in rules" :key="rule.text" class="flex items-center gap-2" :class="rule.ok ? 'text-success' : 'text-ink-soft'">
+            <AppIcon :name="rule.ok ? 'check-circle' : 'shield'" :size="14" />{{ rule.text }}
+          </li>
+        </ul>
         <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="shield" :size="16" class="text-brand" />تأكيد كلمة المرور</span>
-          <input v-model="fields.confirmation" required type="password" maxlength="100" dir="ltr"
-            autocomplete="new-password" class="field">
+          <input v-model="fields.confirmation" required :type="show ? 'text' : 'password'" maxlength="100" dir="ltr"
+            autocomplete="new-password" class="field" :aria-invalid="mismatch" :aria-describedby="mismatch ? 'register-mismatch' : undefined">
         </label>
-        <button type="submit" class="btn-primary w-full">إنشاء الحساب</button>
+        <p v-if="mismatch" id="register-mismatch" role="alert" class="text-sm text-danger">كلمتا المرور غير متطابقتين.</p>
+        <label class="flex min-h-11 items-center gap-2">
+          <input v-model="show" type="checkbox"> إظهار كلمة المرور
+        </label>
+        <button type="submit" class="btn-primary w-full">{{ pending ? 'جاري إنشاء الحساب…' : 'إنشاء الحساب' }}</button>
       </fieldset>
     </form>
     <NuxtLink to="/account" class="btn-secondary mt-5 w-full">عندي حساب</NuxtLink>

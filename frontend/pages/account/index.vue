@@ -3,6 +3,7 @@ const { account, refresh } = useAccount()
 const loading = ref(true)
 const pending = ref(false)
 const verification = ref(false)
+const showPassword = ref(false)
 const error = ref('')
 const fields = reactive({ email: '', password: '', rememberMe: false, code: '', recovery: false })
 
@@ -82,14 +83,17 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
             <input v-model="fields.email" required type="email" maxlength="254" dir="ltr" autocomplete="username" class="field">
           </label>
           <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="shield" :size="16" class="text-brand" />كلمة المرور</span>
-            <input v-model="fields.password" required type="password" maxlength="1024" dir="ltr" autocomplete="current-password" class="field">
+            <input v-model="fields.password" required :type="showPassword ? 'text' : 'password'" maxlength="1024" dir="ltr" autocomplete="current-password" class="field">
+          </label>
+          <label class="flex min-h-11 items-center gap-2">
+            <input v-model="showPassword" type="checkbox"> إظهار كلمة المرور
           </label>
           <label class="flex min-h-11 items-center gap-2">
             <input v-model="fields.rememberMe" type="checkbox"> تذكّريني على هذا الجهاز
           </label>
         </template>
         <button type="submit" class="btn-primary w-full">
-          {{ verification ? 'تأكيد الرمز' : 'تسجيل الدخول' }}
+          {{ pending ? 'جاري التحقق…' : verification ? 'تأكيد الرمز' : 'تسجيل الدخول' }}
         </button>
         <NuxtLink v-if="!verification" to="/account/forgot-password" class="btn-ghost w-full text-sm underline">نسيتي كلمة المرور؟</NuxtLink>
       </fieldset>

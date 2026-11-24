@@ -43,7 +43,7 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
     assert.equal(anonymous.status(), 401)
     await page.goto(origin + '/account')
     await page.getByLabel('البريد الإلكتروني').fill(email)
-    await page.getByLabel('كلمة المرور').fill(password)
+    await page.getByLabel('كلمة المرور', { exact: true }).fill(password)
     await page.getByRole('button', { name: 'تسجيل الدخول', exact: true }).click()
     await page.getByRole('link', { name: 'لوحة الإدارة' }).waitFor()
     assert.ok((await admin.cookies()).some(cookie => cookie.name.startsWith('.AspNetCore.Identity.Application') &&
