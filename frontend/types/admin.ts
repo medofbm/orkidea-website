@@ -15,6 +15,18 @@ export interface AdminDashboard {
   productsWithoutVariants: number
   accounts: number
   recentOrders: AdminOrderSummary[]
+  // Added for the detailed dashboard; optional so an older API still renders.
+  ordersLast30Days?: number
+  averageOrderValue30Days?: string | null
+  ordersToday?: number
+  valueToday?: string
+  weeklyChangePercent?: number | null
+  statusCounts?: Record<'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled', number>
+  topProducts?: { productId: number; name: string; quantity: number; value: string }[]
+  lowestStock?: { productId: number; name: string; unit: string; available: string }[]
+  unreadMessages?: number
+  reviewsCount?: number
+  reviewsAverage?: number | null
 }
 
 export interface AdminOrdersPage {

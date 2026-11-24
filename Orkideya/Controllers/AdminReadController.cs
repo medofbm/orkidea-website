@@ -23,13 +23,44 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
         var recent = await context.Orders.AsNoTracking().Include(order => order.Creation)
             .OrderByDescending(order => order.OrderDate).ThenByDescending(order => order.OrderId)
             .Take(5).ToListAsync(cancellationToken);
+        var thirtyDayValue = await metrics.ThirtyDaysAsync();
+        var thirtyDayOrders = await metrics.ThirtyDayOrdersAsync();
+        var today = await metrics.TodayAsync();
+        var weeklyChange = await metrics.WeeklyChangeAsync();
+        var statusCounts = await metrics.StatusCountsAsync();
+        var topProducts = await metrics.TopProductsAsync(5);
+        // Lowest available stock first (on hand minus reserved), for active products only.
+        var lowestStock = await context.StockAccounts.AsNoTracking()
+            .Join(context.Products.Where(product => !product.IsArchived), account => account.ProductId, product => product.ProductId,
+                (account, product) => new { product.ProductId, product.Name, account.Unit, Available = account.OnHand - account.Reserved })
+            .OrderBy(row => row.Available).Take(5).ToListAsync(cancellationToken);
+        var visibleReviews = context.Reviews.AsNoTracking().Where(review => review.IsVisible);
+        var reviewCount = await visibleReviews.CountAsync(cancellationToken);
         return Ok(new
         {
-            productsValueLast30Days = Money(await metrics.ThirtyDaysAsync()),
+            productsValueLast30Days = Money(thirtyDayValue),
             pendingOrders = await metrics.PendingAsync(),
             productsWithoutVariants = await context.Products.CountAsync(product => !product.ProductVariants.Any(), cancellationToken),
             accounts = await context.Users.CountAsync(cancellationToken),
-            recentOrders = recent.Select(Summary)
+            recentOrders = recent.Select(Summary),
+            ordersLast30Days = thirtyDayOrders,
+            averageOrderValue30Days = thirtyDayOrders == 0 ? null : Money(thirtyDayValue / thirtyDayOrders),
+            ordersToday = today.Orders,
+            valueToday = Money(today.Value),
+            weeklyChangePercent = weeklyChange is null ? (decimal?)null : Math.Round(weeklyChange.Value, 1),
+            statusCounts = new[] { "Pending", "Processing", "Shipped", "Delivered", "Cancelled" }
+                .ToDictionary(status => status, status => statusCounts.GetValueOrDefault(status)),
+            topProducts = topProducts.Select(product => new
+            {
+                product.ProductId, name = product.Name ?? "منتج #" + product.ProductId, product.Quantity, value = Money(product.Value)
+            }),
+            lowestStock = lowestStock.Select(row => new
+            {
+                row.ProductId, row.Name, row.Unit, available = row.Available.ToString("0.###", CultureInfo.InvariantCulture)
+            }),
+            unreadMessages = await context.ContactMessages.CountAsync(message => !message.IsRead, cancellationToken),
+            reviewsCount = reviewCount,
+            reviewsAverage = reviewCount == 0 ? (decimal?)null : Math.Round((decimal)await visibleReviews.AverageAsync(review => review.Rating, cancellationToken), 1)
         });
     }
 
