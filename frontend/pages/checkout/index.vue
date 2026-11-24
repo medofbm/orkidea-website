@@ -2,7 +2,7 @@
 import type { CheckoutReceipt, CheckoutState } from '~/types/checkout'
 
 const router = useRouter()
-const { cart } = useCart()
+const { cart, load: loadCart } = useCart()
 const state = ref<CheckoutState | null>(null)
 const loading = ref(true)
 const busy = ref(false)
@@ -64,9 +64,23 @@ async function load() {
   try {
     state.value = await $fetch<CheckoutState>('/api/checkout')
   } catch {
+    // An empty cart is not an error for the customer: send her to the cart, which shows the empty state.
+    if (await cartIsEmpty()) {
+      await router.replace('/cart')
+      return
+    }
     errors.value = ['تعذر فتح إتمام الطلب. راجعي السلة وحاولي مرة أخرى.']
   } finally {
     loading.value = false
+  }
+}
+
+async function cartIsEmpty() {
+  try {
+    await loadCart()
+    return !cart.value?.items.length
+  } catch {
+    return false
   }
 }
 
@@ -105,7 +119,11 @@ async function send(action: 'shipping' | 'orders') {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  void load()
+  // The summary lists the cart items; a failure here only hides the list.
+  void loadCart().catch(() => undefined)
+})
 useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
 </script>
 
@@ -183,7 +201,7 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
             </label>
           </div>
           <label class="block"><span class="inline-flex items-center gap-1.5 font-medium text-ink"><AppIcon name="whatsapp" :size="16" class="text-brand" />رقم الواتساب</span>
-            <input v-model="fields.whatsAppNumber" required maxlength="20" type="tel" dir="ltr" autocomplete="tel" class="mt-1 block w-full field">
+            <input v-model="fields.whatsAppNumber" required maxlength="20" type="tel" dir="ltr" autocomplete="tel" inputmode="tel" placeholder="09XXXXXXXX" class="mt-1 block w-full field">
           </label>
           <label v-if="!selectedDestination?.isPickup" class="block"><span class="inline-flex items-center gap-1.5 font-medium text-ink"><AppIcon name="home" :size="16" class="text-brand" />العنوان بالتفصيل</span>
             <textarea v-model="fields.shippingAddress" required maxlength="200" autocomplete="street-address" rows="3" class="mt-1 block w-full field" />
@@ -192,6 +210,19 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
       </section>
       <section aria-labelledby="order-summary" class="min-w-0 card-glass p-4 text-ink sm:p-6 lg:sticky lg:top-24">
         <h2 id="order-summary" class="mb-4 text-lg font-bold"><span aria-hidden="true" class="me-2 inline-grid size-7 place-items-center rounded-full bg-gradient-brand text-sm text-white">3</span>ملخص الطلب</h2>
+        <ul v-if="cart?.items.length" class="mb-4 space-y-3 border-b border-lavender-deep pb-4" aria-label="منتجات الطلب">
+          <li v-for="item in cart.items" :key="item.variantId" class="flex items-center gap-3">
+            <span class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-lavender">
+              <img v-if="item.image" :src="item.image" alt="" width="48" height="48" class="size-full object-cover">
+              <img v-else src="/brand/flower-purple.png" alt="" width="24" height="24" class="size-6 opacity-80">
+            </span>
+            <span class="min-w-0 flex-1 text-sm">
+              <span class="block font-semibold wrap-anywhere">{{ item.name }}</span>
+              <span class="text-ink-soft"><span v-if="item.size">{{ item.size }} · </span>الكمية {{ item.quantity }}</span>
+            </span>
+            <span class="shrink-0 text-sm font-semibold">{{ item.subtotal }} د.ل</span>
+          </li>
+        </ul>
         <dl aria-live="polite" class="space-y-3">
           <div class="flex flex-wrap justify-between gap-2"><dt>المنتجات</dt><dd class="font-semibold"><bdi>{{ state.productsTotal }}</bdi> د.ل</dd></div>
           <div class="flex flex-wrap justify-between gap-2"><dt>التوصيل</dt><dd>
@@ -206,6 +237,7 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
         <button type="submit" :disabled="busy || shippingFee == null" class="storefront-action btn-primary mt-5 w-full">
           تأكيد الطلب والدفع عند الاستلام
         </button>
+        <p v-if="shippingFee == null && !busy" class="mt-2 text-center text-sm text-brand-deep">اختاري مدينة التوصيل باش يظهر الإجمالي ويتفعّل التأكيد.</p>
         <p class="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink-soft"><AppIcon name="cash" :size="14" /> الدفع عند الاستلام، بدون دفع مسبق</p>
         <p role="status" :class="{ 'mt-2': busy }" class="text-sm">{{ busy ? 'جاري المعالجة…' : '' }}</p>
       </section>
