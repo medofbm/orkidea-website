@@ -15,6 +15,7 @@ const returnQuery = computed(() => {
   }
 })
 const orderUrl = '/api/admin/orders/' + route.params.id
+const phoneDigits = computed(() => adminPhoneDigits(data.value?.whatsAppNumber ?? ''))
 const { data, error, status, refresh } = useFetch<AdminOrderDetails>(orderUrl, {
   server: false, cache: 'no-store'
 })
@@ -89,12 +90,16 @@ async function updateOrder(action: 'status' | 'stock' | 'delivery', input: Recor
 </script>
 
 <template>
-  <section aria-labelledby="order-title" class="mx-auto max-w-3xl">
+  <section aria-labelledby="order-title" class="mx-auto max-w-6xl">
     <nav class="mb-3 flex flex-wrap gap-4" aria-label="تنقل الطلب">
       <NuxtLink :to="{ path: '/admin/orders', query: returnQuery }" class="inline-flex min-h-11 items-center text-brand underline">الطلبات</NuxtLink>
       <NuxtLink to="/admin/delivery" class="inline-flex min-h-11 items-center text-brand underline">التوصيل والرواجع</NuxtLink>
     </nav>
-    <h1 id="order-title" class="mb-6 text-3xl font-bold">تفاصيل الطلب <span v-if="data">#{{ data.order.id }}</span></h1>
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <h1 id="order-title" class="text-3xl font-bold">تفاصيل الطلب <span v-if="data">#{{ data.order.id }}</span></h1>
+      <span v-if="data" class="badge" :class="adminOrderStatusClass(data.order.status)">{{ adminOrderStatus(data.order.status) }}</span>
+      <time v-if="data" :datetime="data.order.orderDate" class="text-sm text-ink-soft">{{ adminOrderDate(data.order.orderDate) }}</time>
+    </div>
     <p v-if="notice" class="mb-3 text-success" role="status">{{ notice }}</p>
     <p v-if="failure" class="mb-3 text-danger" role="alert">{{ failure }}</p>
     <button v-if="needsRefresh" type="button" :disabled="status === 'pending'" @click="refreshOrder"
@@ -103,11 +108,17 @@ async function updateOrder(action: 'status' | 'stock' | 'delivery', input: Recor
     </button>
     <p v-if="status === 'idle' || status === 'pending'" role="status">جاري تحميل التفاصيل…</p>
     <AdminReadError v-else-if="error" :status-code="error.statusCode" />
-    <template v-else-if="data">
+    <div v-else-if="data" class="grid items-start gap-6 lg:grid-cols-2">
+      <div class="min-w-0">
       <dl class="grid gap-4 rounded-xl bg-white p-4 sm:grid-cols-2">
         <div><dt class="font-semibold">الزبون</dt><dd>{{ data.order.customerName }}</dd></div>
         <div><dt class="font-semibold">الحالة</dt><dd>{{ adminOrderStatus(data.order.status) }}</dd></div>
-        <div><dt class="font-semibold">الهاتف</dt><dd><bdi>{{ data.whatsAppNumber }}</bdi></dd></div>
+        <div><dt class="font-semibold">الهاتف</dt><dd><bdi>{{ data.whatsAppNumber }}</bdi></dd>
+          <dd v-if="phoneDigits" class="mt-2 flex flex-wrap gap-2">
+            <a :href="'tel:+' + phoneDigits" class="btn-secondary min-h-11 gap-1.5 px-3 text-sm"><AppIcon name="phone" :size="16" />اتصال</a>
+            <a :href="'https://wa.me/' + phoneDigits" target="_blank" rel="noopener noreferrer" class="btn-secondary min-h-11 gap-1.5 px-3 text-sm"><AppIcon name="whatsapp" :size="16" />واتساب</a>
+          </dd>
+        </div>
         <div><dt class="font-semibold">المصدر</dt><dd>{{ data.order.source }}</dd></div>
         <div class="sm:col-span-2"><dt class="font-semibold">وجهة التسليم</dt>
           <dd class="whitespace-pre-line">{{ data.order.city }} — {{ data.shippingAddress }}</dd>
@@ -130,6 +141,8 @@ async function updateOrder(action: 'status' | 'stock' | 'delivery', input: Recor
         <div class="flex justify-between"><dt>التوصيل</dt><dd>{{ data.order.shippingFee }} د.ل</dd></div>
         <div class="flex justify-between font-bold"><dt>الإجمالي</dt><dd>{{ data.order.total }} د.ل</dd></div>
       </dl>
+      </div>
+      <div class="min-w-0 lg:[&>*:first-child]:mt-0">
       <AdminOrderFulfillment :key="data.statusRevision" :order="data" :disabled="saving || needsRefresh"
         @stock="operation => updateOrder('stock', { operation })"
         @delivery="input => updateOrder('delivery', input)" />
@@ -177,6 +190,7 @@ async function updateOrder(action: 'status' | 'stock' | 'delivery', input: Recor
         </ol>
         <p v-if="data.history.length === 50" class="mt-2 text-sm text-ink-soft">يعرض السجل آخر 50 تغييراً.</p>
       </section>
-    </template>
+      </div>
+    </div>
   </section>
 </template>
