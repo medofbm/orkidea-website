@@ -157,6 +157,10 @@ onUnmounted(() => {
               <AppIcon name="sparkle" :size="20" class="sm:hidden" />
               طريقة الطلب
             </NuxtLink>
+            <NuxtLink :to="{ path: '/', hash: '#contact' }" :class="navLink" class="sm:hidden" @click="navigateFromMenu($event, '#contact')">
+              <AppIcon name="whatsapp" :size="20" />
+              تواصلي معنا
+            </NuxtLink>
           </div>
           <div v-if="whatsappHref || instagramUrl || facebookUrl" class="px-4 pb-4 sm:hidden">
             <p class="mb-2 text-sm font-bold text-ink-soft">تابعينا</p>
@@ -196,7 +200,7 @@ onUnmounted(() => {
         </div>
       </nav>
     </header>
-    <main id="content" class="mx-auto w-full max-w-6xl flex-1 px-4 py-8"><slot /></main>
+    <main id="content" class="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:py-8"><slot /></main>
     <footer class="rounded-t-3xl bg-gradient-brand text-white">
       <div class="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 sm:gap-10">
         <section aria-labelledby="footer-about">
