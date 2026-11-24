@@ -10,6 +10,9 @@ const { data, status, error } = useFetch<AdminProductsPage>('/api/admin/products
   query, server: false, cache: 'no-store'
 })
 
+// Active products first; archived ones stay visible but move to the end of the page.
+const items = computed(() => [...(data.value?.items ?? [])].sort((a, b) => Number(!!a.isArchived) - Number(!!b.isArchived)))
+
 function hasCover(imageUrl: string | null) {
   const url = imageUrl?.trim()
   return !!url && url !== '/images/logo.jpg'
@@ -21,7 +24,7 @@ function hasCover(imageUrl: string | null) {
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
       <h1 id="products-title" class="text-3xl font-bold">إدارة المنتجات</h1>
       <div class="flex flex-wrap gap-2">
-        <NuxtLink to="/admin/categories" class="inline-flex min-h-11 items-center rounded-lg border px-4">إدارة الفئات</NuxtLink>
+        <NuxtLink to="/admin/categories" class="btn-secondary inline-flex min-h-11 items-center">إدارة الفئات</NuxtLink>
         <NuxtLink to="/admin/products/new" class="inline-flex min-h-11 items-center btn-primary">إضافة منتج</NuxtLink>
       </div>
     </div>
@@ -40,7 +43,13 @@ function hasCover(imageUrl: string | null) {
         راجع الغلاف والوصف والفئة والأحجام والأسعار قبل تجهيز الكتالوج للبيع.
       </p>
       <ul class="grid gap-3 sm:grid-cols-2">
-        <li v-for="product in data.items" :key="product.productId" class="rounded-xl bg-white p-4">
+        <li v-for="product in items" :key="product.productId" class="flex gap-3 rounded-xl bg-white p-4"
+          :class="{ 'opacity-60': product.isArchived }">
+          <span class="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-lavender">
+            <img v-if="hasCover(product.imageUrl)" :src="product.imageUrl!" alt="" width="64" height="64" loading="lazy" class="size-full object-cover">
+            <img v-else src="/brand/flower-purple.png" alt="" width="28" height="28" class="size-7 opacity-70">
+          </span>
+          <div class="min-w-0 flex-1">
           <NuxtLink :to="'/admin/products/' + product.productId"
             class="inline-flex min-h-11 items-center font-semibold text-brand underline">{{ product.name }}</NuxtLink>
           <span v-if="product.isArchived" class="badge badge-status-pending ms-2">مؤرشف</span>
@@ -56,6 +65,7 @@ function hasCover(imageUrl: string | null) {
               {{ product.pricedVariants }} من {{ product.variants }} أحجام مسعّرة
             </li>
           </ul>
+          </div>
         </li>
       </ul>
       <nav v-if="data.pages > 1" class="mt-4 flex items-center justify-between gap-3" aria-label="صفحات المنتجات">

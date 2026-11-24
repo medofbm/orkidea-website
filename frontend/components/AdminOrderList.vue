@@ -2,14 +2,6 @@
 import type { AdminOrderSummary } from '~/types/admin'
 defineProps<{ orders: AdminOrderSummary[], returnQuery?: { status?: string, source?: string, page?: string } }>()
 
-const statusClasses: Record<string, string> = {
-  Pending: 'badge-status-pending',
-  Processing: 'badge-status-processing',
-  Shipped: 'badge-status-shipped',
-  Delivered: 'badge-status-delivered',
-  Cancelled: 'badge-status-cancelled'
-}
-const statusClass = (status: string) => statusClasses[status] ?? ''
 </script>
 
 <template>
@@ -21,9 +13,10 @@ const statusClass = (status: string) => statusClasses[status] ?? ''
         <div>
           <p class="font-semibold">طلب #{{ order.id }} · {{ order.customerName }}</p>
           <p class="mt-1 text-sm text-brand">{{ order.city }} · {{ order.source }}</p>
+          <p class="mt-0.5 text-xs text-ink-soft"><time :datetime="order.orderDate">{{ adminOrderDate(order.orderDate) }}</time></p>
         </div>
         <div class="flex flex-wrap items-center gap-3 sm:justify-end">
-          <span class="badge" :class="statusClass(order.status)">{{ adminOrderStatus(order.status) }}</span>
+          <span class="badge" :class="adminOrderStatusClass(order.status)">{{ adminOrderStatus(order.status) }}</span>
           <span class="font-semibold">{{ order.total }} د.ل</span>
         </div>
       </NuxtLink>
