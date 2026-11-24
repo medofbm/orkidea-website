@@ -167,8 +167,8 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
                   class="chip relative cursor-pointer border-2 border-lavender-deep bg-white text-ink has-checked:border-transparent has-checked:bg-gradient-brand has-checked:text-white has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand motion-safe:transition-colors">
                   <input v-model="selectedVariant" type="radio" name="variant" :value="index"
                     class="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed">
-                  <span>{{ variant.size }}</span>
-                  <span v-if="product.variants.length > 1" class="ms-1.5 text-xs font-semibold opacity-80">· <bdi>{{ variant.price }}</bdi> د.ل</span>
+                  <span class="pointer-events-none">{{ variant.size }}</span>
+                  <span v-if="product.variants.length > 1" class="pointer-events-none ms-1.5 text-xs font-semibold opacity-80">· <bdi>{{ variant.price }}</bdi> د.ل</span>
                 </label>
               </div>
             </fieldset>
