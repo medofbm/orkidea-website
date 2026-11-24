@@ -3,12 +3,12 @@ import type { AdminDashboard } from '~/types/admin'
 definePageMeta({ layout: 'admin' })
 useSeoMeta({ title: 'لوحة إدارة أوركيديا' })
 const shortcuts = [
-  { to: '/admin/orders', label: 'مراجعة الطلبات' },
-  { to: '/admin/orders/manual', label: 'تسجيل طلب من فيسبوك' },
-  { to: '/admin/inventory', label: 'إدارة المخزون' },
-  { to: '/admin/delivery', label: 'التوصيل والرواجع' },
-  { to: '/admin/products', label: 'مراجعة المنتجات' }
-]
+  { to: '/admin/orders', label: 'مراجعة الطلبات', icon: 'cart' },
+  { to: '/admin/orders/manual', label: 'تسجيل طلب من فيسبوك', icon: 'facebook' },
+  { to: '/admin/inventory', label: 'إدارة المخزون', icon: 'droplet' },
+  { to: '/admin/delivery', label: 'التوصيل والرواجع', icon: 'truck' },
+  { to: '/admin/products', label: 'مراجعة المنتجات', icon: 'bag' }
+] as const
 const { data, error, status } = useFetch<AdminDashboard>('/api/admin/dashboard', { server: false, cache: 'no-store' })
 const stats = computed(() => data.value ? [
   { label: 'قيمة المنتجات المطلوبة خلال 30 يومًا', value: `${data.value.productsValueLast30Days} د.ل`, icon: 'cash' as const, border: 'border-s-brand', text: 'text-brand' },
@@ -26,10 +26,11 @@ const stats = computed(() => data.value ? [
     <template v-else-if="data">
       <nav aria-labelledby="dashboard-shortcuts" class="mb-6">
         <h2 id="dashboard-shortcuts" class="mb-3 text-xl font-semibold">إجراءات الإدارة</h2>
-        <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          <li v-for="shortcut in shortcuts" :key="shortcut.to">
+        <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <li v-for="shortcut in shortcuts" :key="shortcut.to" class="last:col-span-2 sm:last:col-span-1">
             <NuxtLink :to="shortcut.to"
-              class="flex min-h-11 items-center rounded-lg border border-lavender-deep bg-white px-3 py-2 font-semibold text-brand-deep hover:bg-lavender focus-visible:bg-lavender">
+              class="flex h-full min-h-11 items-center gap-2 rounded-2xl border border-lavender-deep bg-white p-3 text-start text-sm font-semibold sm:flex-col sm:p-4 sm:text-center text-brand-deep shadow-soft motion-safe:transition hover:-translate-y-0.5 hover:bg-lavender focus-visible:bg-lavender">
+              <span class="grid size-9 shrink-0 place-items-center rounded-full bg-lavender text-brand sm:size-10" aria-hidden="true"><AppIcon :name="shortcut.icon" :size="20" /></span>
               {{ shortcut.label }}
             </NuxtLink>
           </li>
