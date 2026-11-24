@@ -19,7 +19,7 @@ const products = computed(() => (data.value?.items ?? []).map(product => ({
 })))
 const featured = computed(() => products.value.slice(0, 8))
 const features = [
-  { icon: 'leaf', title: '100% طبيعي', text: 'زيوت وصابون من مكونات طبيعية وعضوية' },
+  { icon: 'leaf', title: '100% طبيعي', text: 'زيوت وصابون من مكونات طبيعية' },
   { icon: 'hand-heart', title: 'صنع يدوي', text: 'نجهز كل طلب بعناية' },
   { icon: 'truck', title: 'توصيل لبابك', text: 'نوصلك طلبك لين البيت' },
   { icon: 'cash', title: 'الدفع عند الاستلام', text: 'ادفعي لما يوصلك طلبك' }
@@ -82,7 +82,7 @@ function onReviewClosed() {
 }
 useSeoMeta({
   title: 'أوركيديا | زيوت ومنتجات طبيعية',
-  description: 'أوركيديا للزيوت والمنتجات الطبيعية. منتجات طبيعية وعضوية. اختاري منتجك واطلبي بسهولة والدفع عند الاستلام.'
+  description: 'أوركيديا للزيوت والمنتجات الطبيعية. منتجات طبيعية. اختاري منتجك واطلبي بسهولة والدفع عند الاستلام.'
 })
 </script>
 
@@ -231,7 +231,7 @@ useSeoMeta({
     <!-- About -->
     <section id="about-orkidea" tabindex="-1" aria-labelledby="about-heading" class="mt-10 scroll-mt-4 px-1 text-center">
       <h2 v-reveal id="about-heading" class="text-2xl font-bold text-ink sm:text-3xl">أوركيديا</h2>
-      <p class="mx-auto mt-3 max-w-xl text-ink-soft">أوركيديا متجر ليبي للزيوت والصابون الطبيعية. منتجاتنا طبيعية وعضوية.</p>
+      <p class="mx-auto mt-3 max-w-xl text-ink-soft">أوركيديا متجر ليبي للزيوت والصابون الطبيعية. منتجاتنا طبيعية.</p>
     </section>
 
     <!-- Contact -->

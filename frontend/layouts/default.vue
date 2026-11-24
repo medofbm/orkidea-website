@@ -205,10 +205,9 @@ onUnmounted(() => {
             أوركيديا
           </NuxtLink>
           <h2 id="footer-about" class="mt-2 text-lg font-bold text-white">عن أوركيديا</h2>
-          <p class="mt-2 text-sm leading-7 text-white/90">متجر متخصص في بيع الزيوت والصابون الطبيعية. نقدّم منتجات طبيعية وعضوية للعناية بك.</p>
+          <p class="mt-2 text-sm leading-7 text-white/90">متجر متخصص في بيع الزيوت والصابون الطبيعية. نقدّم منتجات طبيعية للعناية بك.</p>
           <ul class="mt-3 flex flex-wrap gap-2" aria-label="مزايا المنتجات">
             <li class="inline-flex min-h-9 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white ring-1 ring-white/25">طبيعي 100%</li>
-            <li class="inline-flex min-h-9 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white ring-1 ring-white/25">عضوي</li>
             <li class="inline-flex min-h-9 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white ring-1 ring-white/25">صنع يدوي</li>
           </ul>
         </section>
