@@ -32,6 +32,12 @@ const stats = [
 const gridRef = ref<HTMLElement | null>(null)
 useReveal(gridRef, { selector: '.reveal', stagger: 60 })
 const steps = ['اختاري منتجك', 'أضيفيه للسلة', 'نوصلك الطلب']
+// Category photos are matched by name; a category without a match keeps the flower tile.
+function categoryImage(name: string) {
+  if (/زيت|زيوت/.test(name)) return '/brand/cat-oils.webp'
+  if (/صابون/.test(name)) return '/brand/cat-soap.webp'
+  return undefined
+}
 // Small logo flowers drifting in the hero (decorative; frozen with reduced motion).
 const petals = [
   { cls: 'top-8 end-[8%] size-8', delay: '0s' },
@@ -102,9 +108,16 @@ useSeoMeta({
         <StatsRow :items="stats" class="mt-8 max-w-md" />
       </div>
       <div class="relative order-1 flex justify-center lg:order-2">
-        <div class="grid size-56 place-items-center rounded-full bg-white/60 p-3 shadow-[var(--shadow-soft)] ring-8 ring-white/70 motion-safe:animate-float sm:size-72 lg:size-96">
-          <div class="grid size-full place-items-center rounded-full bg-gradient-brand motion-safe:animate-glow-pulse">
-            <img src="/brand/flower-white.png" alt="شعار أوركيديا" width="160" height="160" decoding="async" fetchpriority="high" class="h-auto w-1/2 motion-safe:transition-transform motion-safe:duration-700 hover:rotate-[20deg] hover:scale-105">
+        <div class="relative w-60 sm:w-72 lg:w-full lg:max-w-sm motion-safe:animate-fade-in-up">
+          <div class="overflow-hidden rounded-t-full rounded-b-[2rem] bg-white/60 p-2 shadow-[var(--shadow-soft)] ring-1 ring-white/80">
+            <img src="/brand/hero-oils.webp" srcset="/brand/hero-oils-640.webp 640w, /brand/hero-oils.webp 1122w"
+              sizes="(min-width: 1024px) 384px, (min-width: 640px) 288px, 240px"
+              alt="زيت الحبة السوداء وزيت السمسم من أوركيديا، معصوران على البارد" width="1122" height="1402"
+              decoding="async" fetchpriority="high" class="aspect-[4/5] w-full rounded-t-full rounded-b-[1.6rem] object-cover">
+          </div>
+          <div class="absolute -bottom-4 -start-4 flex items-center gap-2 rounded-2xl bg-white px-3 py-2 shadow-[var(--shadow-soft)] motion-safe:animate-float sm:-start-8">
+            <span class="grid size-9 place-items-center rounded-full bg-gradient-brand"><img src="/brand/flower-white.png" alt="" width="20" height="20" class="size-5"></span>
+            <span class="text-start text-sm leading-tight"><span class="block font-bold text-ink">معصور على البارد</span><span class="text-ink-soft">مكوّن واحد طبيعي</span></span>
           </div>
         </div>
       </div>
@@ -115,10 +128,10 @@ useSeoMeta({
     <!-- Categories -->
     <section id="categories" tabindex="-1" aria-labelledby="categories-heading" class="mt-12 scroll-mt-4 sm:mt-16">
       <SectionHeader v-reveal id="categories-heading" title="تسوقي" highlight="حسب الفئة" eyebrow="الفئات" />
-      <div class="mt-6 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-        <CategoryCard v-reveal.zoom name="كل المنتجات" to="/#catalogue-heading" />
+      <div class="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:justify-center sm:gap-5 sm:*:w-56 lg:*:w-64">
+        <CategoryCard v-reveal.zoom name="كل المنتجات" to="/#catalogue-heading" image="/brand/cat-all.webp" />
         <CategoryCard v-for="(category, i) in data?.categories ?? []" :key="category.id" v-reveal.zoom="(i + 1) * 80" :name="category.name"
-          :to="`/?categoryId=${category.id}#catalogue-heading`" />
+          :to="`/?categoryId=${category.id}#catalogue-heading`" :image="categoryImage(category.name)" />
       </div>
       <nav v-if="data?.categories?.length" aria-label="فئات المنتجات"
         class="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0">
