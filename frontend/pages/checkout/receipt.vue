@@ -18,6 +18,28 @@ async function loadReceipt() {
   }
 }
 
+// Order help goes through WhatsApp with the order number filled in; hidden when no number is configured.
+const whatsappDigits = String(useRuntimeConfig().public.whatsappNumber ?? '').replace(/\D/g, '')
+const whatsappLink = computed(() => whatsappDigits && receipt.value
+  ? 'https://wa.me/' + whatsappDigits + '?text=' + encodeURIComponent('السلام عليكم، عندي سؤال على طلب رقم ' + receipt.value.orderId)
+  : '')
+const copied = ref(false)
+async function copyOrderId() {
+  if (!receipt.value) return
+  try {
+    await navigator.clipboard.writeText(String(receipt.value.orderId))
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 2000)
+  } catch {
+    copied.value = false
+  }
+}
+const nextSteps = [
+  { icon: 'shield', title: 'احتفظي برقم الطلب', text: 'تحتاجيه لو بغيتي تسألي على طلبك أو تعدّليه.' },
+  { icon: 'truck', title: 'نجهزوا طلبك ونوصلوه', text: 'حسب الوجهة وطريقة التوصيل اللي اخترتيها.' },
+  { icon: 'cash', title: 'الدفع عند الاستلام', text: 'تدفعي لما يوصلك الطلب، بدون دفع مسبق.' }
+] as const
+
 onMounted(loadReceipt)
 useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchive' })
 </script>
@@ -41,7 +63,12 @@ useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchi
       <div class="card-glass animate-fade-in-up p-4 sm:p-6">
         <div class="grid gap-4 sm:grid-cols-2">
           <section aria-label="بيانات الطلب" class="min-w-0 rounded-2xl bg-cream p-4 text-ink">
-            <h2 class="text-xl font-bold wrap-anywhere">طلب رقم <bdi>{{ receipt.orderId }}</bdi></h2>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h2 class="text-xl font-bold wrap-anywhere">طلب رقم <bdi>{{ receipt.orderId }}</bdi></h2>
+              <button type="button" class="btn-ghost min-h-11 gap-1.5 text-sm" @click="copyOrderId">
+                <AppIcon v-if="copied" name="check" :size="16" />{{ copied ? 'تم النسخ' : 'نسخ الرقم' }}
+              </button>
+            </div>
             <dl class="mt-4 space-y-3 text-sm">
               <div class="flex flex-wrap justify-between gap-2"><dt>حالة الطلب</dt><dd class="font-semibold">{{ receipt.statusLabel }}</dd></div>
               <div class="flex flex-wrap justify-between gap-2"><dt>القطع</dt><dd><bdi>{{ receipt.quantity }}</bdi></dd></div>
@@ -60,6 +87,24 @@ useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchi
           </section>
         </div>
       </div>
+      <section aria-labelledby="next-steps" class="card-glass mt-5 p-4 sm:p-6">
+        <h2 id="next-steps" class="mb-4 text-lg font-bold text-ink">شن الخطوة الجاية؟</h2>
+        <ol class="grid gap-3 sm:grid-cols-3">
+          <li v-for="(step, index) in nextSteps" :key="step.title" class="flex gap-3 rounded-2xl bg-white p-4 sm:flex-col">
+            <span class="grid size-10 shrink-0 place-items-center rounded-full bg-lavender text-brand" aria-hidden="true"><AppIcon :name="step.icon" :size="20" /></span>
+            <span>
+              <span class="block font-bold text-ink"><span class="sr-only">{{ index + 1 }}. </span>{{ step.title }}</span>
+              <span class="text-sm text-ink-soft">{{ step.text }}</span>
+            </span>
+          </li>
+        </ol>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer" class="btn-secondary gap-2">
+            <AppIcon name="whatsapp" :size="18" />سؤال على طلبك؟ كلّمينا
+          </a>
+          <NuxtLink to="/order-and-delivery" class="btn-ghost underline underline-offset-4">سياسة الطلب والتوصيل</NuxtLink>
+        </div>
+      </section>
       <OrderRatingCard />
     </template>
     <template v-else>
@@ -68,7 +113,11 @@ useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchi
         <p role="alert" class="text-danger">تعذر تحميل الإيصال. حاولي فتحه مرة أخرى.</p>
         <button type="button" class="btn-secondary mt-3" @click="loadReceipt">إعادة المحاولة</button>
       </div>
-      <p v-else role="status" class="card-glass p-5">الإيصال غير متاح في الجلسة الحالية.</p>
+      <div v-else role="status" class="card-glass p-5">
+        <p class="font-semibold text-ink">الإيصال يظهر على نفس الجهاز بعد إتمام الطلب مباشرة.</p>
+        <p class="mt-1 text-sm text-ink-soft">لو عندك سؤال على طلب سابق، تواصلي معنا واذكري رقم الطلب.</p>
+        <NuxtLink to="/#contact" class="btn-secondary mt-3">تواصلي معنا</NuxtLink>
+      </div>
     </template>
     <div class="mt-6 flex justify-center">
       <NuxtLink to="/" class="storefront-action btn-primary">
