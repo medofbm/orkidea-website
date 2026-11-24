@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { cart, pulse, load } = useCart()
+const { account, refresh: refreshAccount } = useAccount()
 const route = useRoute()
 const { facebookUrl, instagramUrl, whatsappNumber } = useRuntimeConfig().public
 const whatsappHref = computed(() => {
@@ -87,6 +88,8 @@ onMounted(() => {
   window.addEventListener('resize', onResize, { passive: true })
   onScroll()
   if (!cart.value && route.path !== '/cart') void load().catch(() => undefined)
+  // The account page loads the session itself and shares it through useAccount().
+  if (!account.value && route.path !== '/account') void refreshAccount().catch(() => undefined)
 })
 onUnmounted(() => {
   removePageFinishHook()
@@ -164,14 +167,26 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="mt-auto flex flex-col gap-2 border-t border-lavender p-4 sm:order-1 sm:mt-0 sm:flex-row sm:items-center sm:border-0 sm:p-0 lg:justify-self-start">
-            <NuxtLink to="/account/register" class="btn-secondary storefront-action text-sm whitespace-nowrap sm:min-h-11! sm:px-4! sm:max-lg:hidden" @click="menuOpen = false">
-              <AppIcon name="user-plus" :size="18" class="sm:hidden" />
-              إنشاء حساب
-            </NuxtLink>
-            <NuxtLink to="/account" class="btn-primary storefront-action text-sm whitespace-nowrap sm:min-h-11! sm:px-5!" @click="menuOpen = false">
-              <AppIcon name="login" :size="18" class="sm:hidden" />
-              دخول
-            </NuxtLink>
+            <template v-if="account?.signedIn">
+              <NuxtLink v-if="account.isAdmin" to="/admin" class="btn-secondary storefront-action text-sm whitespace-nowrap sm:min-h-11! sm:px-4! sm:max-lg:hidden" @click="menuOpen = false">
+                <AppIcon name="shield" :size="18" class="sm:hidden" />
+                لوحة الإدارة
+              </NuxtLink>
+              <NuxtLink to="/account" class="btn-primary storefront-action text-sm whitespace-nowrap sm:min-h-11! sm:px-5!" @click="menuOpen = false">
+                <AppIcon name="user" :size="18" />
+                حسابي
+              </NuxtLink>
+            </template>
+            <template v-else>
+              <NuxtLink to="/account/register" class="btn-secondary storefront-action text-sm whitespace-nowrap sm:min-h-11! sm:px-4! sm:max-lg:hidden" @click="menuOpen = false">
+                <AppIcon name="user-plus" :size="18" class="sm:hidden" />
+                إنشاء حساب
+              </NuxtLink>
+              <NuxtLink to="/account" class="btn-primary storefront-action text-sm whitespace-nowrap sm:min-h-11! sm:px-5!" @click="menuOpen = false">
+                <AppIcon name="login" :size="18" class="sm:hidden" />
+                دخول
+              </NuxtLink>
+            </template>
             <NuxtLink to="/cart" class="storefront-action relative inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-lavender-deep px-3 hover:bg-lavender/60 max-sm:hidden md:px-4">
               <AppIcon name="bag" :size="20" :class="pulse ? 'motion-safe:animate-pulse-once' : ''" :key="'bag-' + pulse" />
               <span class="max-md:sr-only">السلة</span>
