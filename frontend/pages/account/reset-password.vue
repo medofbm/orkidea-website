@@ -12,14 +12,7 @@ const done = ref('')
 const message = ref('')
 const errors = ref<string[]>([])
 
-// Same rules as registration: 8+ chars, upper, lower, digit, symbol.
-const rules = computed(() => [
-  { ok: fields.password.length >= 8, text: 'ثمانية أحرف على الأقل' },
-  { ok: /[A-Z]/.test(fields.password), text: 'حرف إنجليزي كبير' },
-  { ok: /[a-z]/.test(fields.password), text: 'حرف إنجليزي صغير' },
-  { ok: /\d/.test(fields.password), text: 'رقم' },
-  { ok: /[^A-Za-z0-9]/.test(fields.password), text: 'رمز' }
-])
+const rules = usePasswordRules(() => fields.password)
 const mismatch = computed(() => fields.confirmation.length > 0 && fields.password !== fields.confirmation)
 const hasError = computed(() => Boolean(message.value) || errors.value.length > 0)
 
