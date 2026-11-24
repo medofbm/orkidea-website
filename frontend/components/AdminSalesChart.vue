@@ -5,9 +5,10 @@ const options = [{ value: 7, label: 'آخر 7 أيام' }, { value: 30, label: '
 const query = computed(() => ({ days: days.value }))
 const { data, status, error, refresh } = useFetch<Chart>('/api/admin/sales-chart', { query, server: false, cache: 'no-store' })
 
-const W = 600
-const H = 220
-const pad = { top: 16, bottom: 28, side: 8 }
+// Wide and short so the chart stays readable without filling the screen.
+const W = 1000
+const H = 240
+const pad = { top: 26, bottom: 28, side: 8 }
 const nf = new Intl.NumberFormat('ar-LY', { maximumFractionDigits: 2 })
 const points = computed(() => {
   const labels = data.value?.labels ?? []
@@ -56,6 +57,8 @@ const summary = computed(() => `إجمالي المبيعات خلال ${days.va
           <rect :x="p.x" :y="p.y" :width="p.w" :height="p.h" rx="3" fill="url(#sales-bar)">
             <title>{{ p.label }}: {{ nf.format(p.value) }} د.ل</title>
           </rect>
+          <text v-if="p.value > 0 && (days === 7 || p.h > 18)" :x="p.cx" :y="p.y - 6" text-anchor="middle" font-size="12" font-weight="700"
+            fill="var(--color-brand-deep)" aria-hidden="true">{{ nf.format(p.value) }}</text>
           <text v-if="i % labelEvery === 0" :x="p.cx" :y="H - 8" text-anchor="middle" font-size="11" fill="var(--color-ink-soft)">{{ p.label }}</text>
         </g>
       </svg>
