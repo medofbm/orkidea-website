@@ -40,4 +40,37 @@ public sealed class DashboardMetrics(ApplicationDbContext context, DateTime nowU
     }
 
     public Task<decimal> ThirtyDaysAsync() => ValueAsync(nowUtc.Date.AddDays(-29), nowUtc.Date.AddDays(1));
+
+    // Non-cancelled orders in the same 30-day calendar window as ThirtyDaysAsync.
+    public Task<int> ThirtyDayOrdersAsync() => Orders(nowUtc.Date.AddDays(-29), nowUtc.Date.AddDays(1)).CountAsync();
+
+    // Today's non-cancelled orders and their merchandise value (UTC calendar day, like the chart).
+    public async Task<(int Orders, decimal Value)> TodayAsync()
+    {
+        var today = Orders(nowUtc.Date, nowUtc.Date.AddDays(1));
+        return (await today.CountAsync(), await today.SumAsync(o => o.TotalAmount - o.ShippingCost));
+    }
+
+    // All-time order count per status, for the dashboard status strip.
+    public Task<Dictionary<string, int>> StatusCountsAsync() => context.Orders.AsNoTracking()
+        .GroupBy(o => o.Status).Select(g => new { g.Key, Count = g.Count() })
+        .ToDictionaryAsync(x => x.Key, x => x.Count);
+
+    // Best sellers by quantity over the 30-day window, cancelled orders excluded.
+    public async Task<IReadOnlyList<TopProduct>> TopProductsAsync(int take)
+    {
+        var start = nowUtc.Date.AddDays(-29);
+        var end = nowUtc.Date.AddDays(1);
+        var rows = await (from item in context.OrderItems.AsNoTracking()
+                          join order in Orders(start, end) on item.OrderId equals order.OrderId
+                          group item by item.ProductId into g
+                          select new { ProductId = g.Key, Quantity = g.Sum(i => i.Quantity), Value = g.Sum(i => i.Quantity * i.UnitPrice) })
+            .OrderByDescending(x => x.Quantity).ThenByDescending(x => x.Value).Take(take).ToListAsync();
+        var ids = rows.Select(r => r.ProductId).ToList();
+        var names = await context.Products.AsNoTracking().Where(p => ids.Contains(p.ProductId))
+            .ToDictionaryAsync(p => p.ProductId, p => p.Name);
+        return rows.Select(r => new TopProduct(r.ProductId, names.GetValueOrDefault(r.ProductId), r.Quantity, r.Value)).ToList();
+    }
 }
+
+public sealed record TopProduct(int ProductId, string? Name, int Quantity, decimal Value);

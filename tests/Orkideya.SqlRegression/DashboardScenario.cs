@@ -29,6 +29,14 @@ internal static class DashboardScenario
         await db.SaveChangesAsync();
         check(await metrics.PendingAsync() == pendingBefore + 2,
             "Pending count filters actual status and includes older unresolved orders");
+        var today = await metrics.TodayAsync();
+        check(today.Orders == 1 && today.Value == 2,
+            "Today counts only today's non-cancelled orders and excludes shipping");
+        check(await metrics.ThirtyDayOrdersAsync() == 3,
+            "Thirty-day order count uses the same window and skips cancelled orders");
+        var counts = await metrics.StatusCountsAsync();
+        check(counts.GetValueOrDefault("Cancelled") >= 1 && counts.GetValueOrDefault("Processing") >= 2,
+            "Status counts group every order by its stored status");
         var chart = await metrics.ChartAsync(30);
         check(await metrics.ThirtyDaysAsync() == 107 && chart.Data.Sum() == 107,
             "Dashboard card/chart agree: exclude shipping, cancelled and outside calendar window");
