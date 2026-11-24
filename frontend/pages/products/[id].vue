@@ -168,6 +168,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
                   <input v-model="selectedVariant" type="radio" name="variant" :value="index"
                     class="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed">
                   <span>{{ variant.size }}</span>
+                  <span v-if="product.variants.length > 1" class="ms-1.5 text-xs font-semibold opacity-80">· <bdi>{{ variant.price }}</bdi> د.ل</span>
                 </label>
               </div>
             </fieldset>
@@ -200,6 +201,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
 
         <ul class="mt-4 flex flex-wrap gap-2 text-sm font-semibold">
           <li class="inline-flex items-center gap-1.5 rounded-full bg-lavender px-3.5 py-1.5 text-brand"><AppIcon name="cash" :size="16" />الدفع عند الاستلام</li>
+          <li class="inline-flex items-center gap-1.5 rounded-full bg-lavender px-3.5 py-1.5 text-brand"><AppIcon name="truck" :size="16" />توصيل لباب البيت</li>
         </ul>
 
         <section v-if="paragraphs.length" aria-labelledby="description-heading" class="mt-6">
@@ -221,7 +223,11 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
 
     <section v-if="product && related.length" aria-labelledby="related-heading" class="mt-12">
       <SectionHeader v-reveal id="related-heading" title="منتجات" highlight="مشابهة" class="mb-6" />
-      <AppCarousel :items="related" label="منتجات مشابهة" :per-view="{ base: 1, sm: 2, lg: 4 }" arrows>
+      <!-- A few items sit in a centred grid; a carousel only when there is something to scroll. -->
+      <div v-if="related.length <= 4" class="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:justify-center sm:gap-5 sm:*:w-60">
+        <ProductCard v-for="item in related" :key="item.id" :product="item" />
+      </div>
+      <AppCarousel v-else :items="related" label="منتجات مشابهة" :per-view="{ base: 1, sm: 2, lg: 4 }" arrows>
         <template #item="{ item }">
           <ProductCard :product="item" />
         </template>
