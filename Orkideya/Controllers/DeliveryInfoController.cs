@@ -20,17 +20,25 @@ public sealed class DeliveryInfoController(ApplicationDbContext context, SabilCh
 
         var rows = await context.ShippingRates.AsNoTracking()
             .Where(rate => rate.Price >= 0 && rate.CityName != "")
-            .Select(rate => new { city = rate.CityName, price = rate.Price })
+            .Select(rate => new { city = rate.CityName, region = rate.Region, price = rate.Price })
             .ToListAsync(cancellationToken);
         var rates = rows.OrderBy(r => r.price).ThenBy(r => r.city, StringComparer.Ordinal)
             .Select(r => new { r.city, price = Money(r.price) }).ToList();
+        var groups = DeliveryRateGroups.Build(rows.Select(r => (r.region, r.city, r.price)))
+            .Select(g => new
+            {
+                city = g.City, minPrice = Money(g.MinPrice), maxPrice = Money(g.MaxPrice),
+                areas = g.Areas.Select(a => new { area = a.Area, price = Money(a.Price) }).ToList()
+            }).ToList();
         return Ok(new
         {
             mode = "rates",
             minPrice = Money(rows.Count == 0 ? 0m : rows.Min(r => r.price)),
             maxPrice = Money(rows.Count == 0 ? 0m : rows.Max(r => r.price)),
-            cities = rates.Count,
-            rates
+            cities = groups.Count,
+            areas = rows.Count,
+            rates,
+            groups
         });
     }
 

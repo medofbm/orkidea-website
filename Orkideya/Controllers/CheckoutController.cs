@@ -240,7 +240,7 @@ public partial class CheckoutController : Controller
         HomeDestinations = _quotes?.CheckoutEnabled == true ? _quotes.HomeDestinations : null,
         ShippingRates = _quotes?.CheckoutEnabled == true ? [] : await _context.ShippingRates.AsNoTracking()
             .Where(rate => rate.Price >= 0 && rate.CityName != "")
-            .OrderBy(rate => rate.CityName).ToListAsync()
+            .OrderBy(rate => rate.Region).ThenBy(rate => rate.Price).ThenBy(rate => rate.CityName).ToListAsync()
     };
 
     private OrderShippingQuote? ReadCurrentQuote(CheckoutInput input, List<CartItem> cart)

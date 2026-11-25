@@ -25,6 +25,9 @@ x-backend-env: &backend-env
   Notifications__WhatsAppEnabled: "false"
   Notifications__OutboxWorkerEnabled: "false"
   Carriers__Sabil__QuoteEnabled: "false"
+  Carriers__Sabil__ReadEnabled: ${ORKIDEA_SABIL_READ_ENABLED:-false}
+  Carriers__Sabil__ApiKey: ${ORKIDEA_SABIL_API_KEY:-}
+  Carriers__Sabil__AccountId: ${ORKIDEA_SABIL_ACCOUNT_ID:-}
   DataProtection__KeysPath: /var/orkidea/keys
   DataProtection__ApplicationName: Orkidea.VuePreview
 
