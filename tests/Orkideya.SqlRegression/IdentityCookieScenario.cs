@@ -38,8 +38,6 @@ internal static class IdentityCookieScenario
                 {
                     ["ConnectionStrings:DefaultConnection"] = connection,
                     ["Initialization:Run"] = "false",
-                    ["Notifications:WhatsAppEnabled"] = "false",
-                    ["Notifications:OutboxWorkerEnabled"] = "false",
                     ["AllowedHosts"] = "localhost",
                     ["Logging:LogLevel:Default"] = "Warning"
                 });

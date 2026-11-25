@@ -64,7 +64,7 @@ internal static class ManualOrderScenario
                 "Manual provenance and timestamp are recorded by the server atomically");
             check(order.Items.Single().StockUnitsPerItem==120 && order.Items.Single().UnitPrice==14 && order.Items.Single().Quantity==2,
                 "Manual item retains the reviewed price and consumption snapshot");
-            check(order.Notifications is [{State:"Pending",Attempts:0,ProviderMessageId:null}],"Manual order creates one unsent notification intent only");
+            check(order.Notifications.Count==0,"Manual order writes no notification outbox row");
             var stock=await db.StockAccounts.FindAsync(productId);
             check(stock!.OnHand==1000 && stock.Reserved==0 && !await db.StockMovements.AnyAsync(m=>m.OrderId==id) && !await db.OrderDeliveries.AnyAsync(d=>d.OrderId==id),
                 "Manual creation neither reserves, consumes, ships nor infers collection");
@@ -84,8 +84,8 @@ internal static class ManualOrderScenario
         await using(var db=open())
         {
             var raceId=results[0].OrderId;
-            check(await db.OrderCreations.CountAsync(c=>c.OrderId==raceId)==1 && await db.OrderNotifications.CountAsync(n=>n.OrderId==raceId)==1,
-                "Concurrent manual saves retain exactly one provenance row and one notification");
+            check(await db.OrderCreations.CountAsync(c=>c.OrderId==raceId)==1,
+                "Concurrent manual saves retain exactly one provenance row");
         }
         var failure=(await Preview(Input())).Draft!;
         await using(var db=open())await db.Database.ExecuteSqlRawAsync("ALTER TABLE OrderCreations WITH NOCHECK ADD CONSTRAINT CK_SyntheticOriginFailure CHECK ([Source]<>'FacebookManual')");

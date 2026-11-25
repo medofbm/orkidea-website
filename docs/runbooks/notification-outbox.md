@@ -1,3 +1,9 @@
+# Order notification outbox (REMOVED)
+
+Removed 2026-11-25, owner decision: the store no longer sends automatic WhatsApp messages to customers, so the Twilio transport, dispatcher and background worker were deleted and checkout no longer writes `OrderNotifications` rows. The `OrderNotifications` table, entity and any existing rows are kept untouched (no migration); rows are never read or sent. Customer-facing `wa.me` links in the frontend are unrelated and stay. Everything below is historical and describes the old design.
+
+---
+
 # Order notification outbox
 
 Checkout commits the order, its items and one notification intent in the same EF transaction. It never calls Twilio from the checkout request. A filtered checkout retry key protects order creation; a unique OrderId index protects notification intent. The additive migration creates an empty outbox and does not send or backfill historical orders.
