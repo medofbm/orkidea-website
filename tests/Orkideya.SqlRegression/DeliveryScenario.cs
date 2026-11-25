@@ -236,8 +236,6 @@ internal static class DeliveryScenario
             var sums=await db.StockMovements.Where(m=>m.StockAccountId==product).GroupBy(m=>m.StockAccountId)
                 .Select(g=>new{Physical=g.Sum(m=>m.OnHandDelta),Reserved=g.Sum(m=>m.ReservedDelta)}).SingleAsync();
             check(account.OnHand==sums.Physical && account.Reserved==sums.Reserved,"Delivery suite preserves stock ledger reconciliation");
-            check(!await db.OrderNotifications.AnyAsync(n=>db.OrderDeliveries.Any(d=>d.OrderId==n.OrderId) && (n.Attempts!=0 || n.ProviderMessageId!=null)),
-                "Delivery operations never attempt a provider notification");
             var blocked=false;
             try{await db.GetService<IMigrator>().MigrateAsync("20261031155358_BulkStockReservations");}catch(SqlException ex)when(ex.Number == 51007){blocked=true;}
             await db.Database.MigrateAsync(); // Reapply later empty additive migrations after the delivery guard refused downgrade.

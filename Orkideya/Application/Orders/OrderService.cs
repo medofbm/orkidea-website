@@ -70,10 +70,9 @@ public sealed class OrderService(ApplicationDbContext context)
                 throw new ArgumentException("Invalid carrier shipping snapshot.",nameof(order));
             quote.AcceptedAtUtc=accepted;
         }
-        if (order.Notifications.Count != 0) throw new ArgumentException("New order notifications are managed by the order service.", nameof(order));
+        if (order.Notifications.Count != 0) throw new ArgumentException("Order notifications were removed (2026-11-25); orders must not carry any.", nameof(order));
         var createdAt = DateTime.UtcNow;
         if (order.Creation is not null) order.Creation.RecordedAtUtc = createdAt;
-        order.Notifications.Add(new OrderNotification { CreatedAtUtc = createdAt, NextAttemptAtUtc = createdAt });
         context.Orders.Add(order);
         try
         {
@@ -83,9 +82,8 @@ public sealed class OrderService(ApplicationDbContext context)
         }
         catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 2601 or 2627 })
         {
-            // A concurrent request may have committed this token first. Do not replay its notification.
+            // A concurrent request may have committed this token first. Return that order instead.
             foreach (var item in order.Items.ToArray()) context.Entry(item).State = EntityState.Detached;
-            foreach (var notification in order.Notifications.ToArray()) context.Entry(notification).State = EntityState.Detached;
             if (order.Creation is not null) context.Entry(order.Creation).State = EntityState.Detached;
             if (order.ShippingQuote is not null) context.Entry(order.ShippingQuote).State = EntityState.Detached;
             context.Entry(order).State = EntityState.Detached;
