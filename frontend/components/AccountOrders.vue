@@ -62,7 +62,7 @@ onMounted(load)
             <span class="font-semibold">طلب رقم {{ order.id }}</span>
             <span class="badge" :class="badge[order.status]">{{ order.statusLabel }}</span>
             <span class="w-full text-sm text-ink-soft">{{ formatDate(order.orderDate) }}</span>
-            <span class="text-sm">{{ order.total }} د.ل</span>
+            <span class="text-sm">{{ formatPrice(order.total) }} د.ل</span>
             <span class="text-sm text-ink-soft">{{ order.itemsCount }} قطعة</span>
           </button>
           <div v-if="openId === order.id" :id="'order-' + order.id" class="mt-3 border-t border-ink/10 pt-3 text-sm">
@@ -76,13 +76,13 @@ onMounted(load)
                 <li v-for="(line, index) in (details[order.id] as OrderDetails).lines" :key="index"
                   class="flex flex-wrap justify-between gap-x-3 gap-y-1">
                   <span class="min-w-0 break-words">{{ line.productName }}<template v-if="line.size"> ({{ line.size }})</template> × {{ line.quantity }}</span>
-                  <span>{{ line.subtotal }} د.ل</span>
+                  <span>{{ formatPrice(line.subtotal) }} د.ل</span>
                 </li>
               </ul>
               <dl class="mt-3 space-y-1 border-t border-ink/10 pt-3">
-                <div class="flex justify-between"><dt class="text-ink-soft">المنتجات</dt><dd>{{ (details[order.id] as OrderDetails).productsTotal }} د.ل</dd></div>
-                <div class="flex justify-between"><dt class="text-ink-soft">التوصيل ({{ (details[order.id] as OrderDetails).city }})</dt><dd>{{ (details[order.id] as OrderDetails).shippingFee }} د.ل</dd></div>
-                <div class="flex justify-between font-bold"><dt>الإجمالي</dt><dd>{{ (details[order.id] as OrderDetails).total }} د.ل</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-soft">المنتجات</dt><dd>{{ formatPrice((details[order.id] as OrderDetails).productsTotal) }} د.ل</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-soft">التوصيل ({{ (details[order.id] as OrderDetails).city }})</dt><dd>{{ formatPrice((details[order.id] as OrderDetails).shippingFee) }} د.ل</dd></div>
+                <div class="flex justify-between font-bold"><dt>الإجمالي</dt><dd>{{ formatPrice((details[order.id] as OrderDetails).total) }} د.ل</dd></div>
               </dl>
             </template>
           </div>
