@@ -70,7 +70,7 @@ useSeoMeta({ title: 'سلة أوركيديا', robots: 'noindex, nofollow' })
           <dl class="text-ink"><div class="flex flex-wrap justify-between gap-2">
             <dt>إجمالي المنتجات</dt><dd class="price"><bdi>{{ formatPrice(cart.productsTotal) }}</bdi> د.ل</dd>
           </div></dl>
-          <p class="mt-2 text-sm text-brand-deep">تُضاف تكلفة التوصيل عند إتمام الطلب.</p>
+          <DeliveryEstimate />
           <NuxtLink v-if="cart.items.every(item => item.available)" to="/checkout"
             class="storefront-action btn-primary mt-4 hidden w-full lg:flex">إتمام الطلب</NuxtLink>
         </section>
