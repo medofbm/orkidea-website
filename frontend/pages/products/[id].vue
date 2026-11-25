@@ -12,12 +12,19 @@ const quantity = ref(1)
 const failedImages = ref<string[]>([])
 const images = computed(() => product.value?.images.filter(image => image !== '/images/logo.jpg') ?? [])
 const currentImage = computed(() => images.value[selectedImage.value])
+// WebP copies when they exist; a copy that fails to load falls back to the original before the image counts as failed.
+const variantFailed = ref<string[]>([])
+const srcsetFor = (image: string) => variantFailed.value.includes(image) ? undefined : productImageSrcset(image)
+function onImageError(image: string) {
+  if (srcsetFor(image)) variantFailed.value.push(image)
+  else markFailedImage(image)
+}
 function markFailedImage(image: string) {
   if (!failedImages.value.includes(image)) failedImages.value.push(image)
 }
 function checkLoadedImage(element: unknown, image: string) {
   if (element instanceof HTMLImageElement && element.complete && !element.naturalWidth) {
-    markFailedImage(image)
+    onImageError(image)
   }
 }
 watch(() => product.value?.id, () => {
@@ -163,11 +170,12 @@ useHead({
       <section aria-label="صور المنتج" class="min-w-0 motion-safe:animate-fade-in-up">
         <div class="relative grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-(--radius-card) border border-lavender bg-gradient-to-b from-lavender/60 to-cream shadow-(--shadow-soft)">
           <img v-if="currentImage && !failedImages.includes(currentImage)" :key="currentImage"
-            :src="currentImage" :alt="product.name + ' - صورة ' + (selectedImage + 1)"
+            :src="currentImage" :srcset="srcsetFor(currentImage)" sizes="(min-width: 768px) 50vw, 100vw"
+            :alt="product.name + ' - صورة ' + (selectedImage + 1)"
             class="absolute inset-0 size-full object-contain p-4"
             :class="{ 'gallery-image-selected': imageSelectedByUser }"
             width="800" height="1000" @vue:mounted="checkLoadedImage($event.el, currentImage)"
-            @error="markFailedImage(currentImage)">
+            @error="onImageError(currentImage)">
           <div v-else class="grid place-items-center gap-2 p-4 text-center text-sm text-ink-soft">
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-10">
               <rect x="3" y="4" width="18" height="16" rx="3" />
@@ -182,9 +190,9 @@ useHead({
             class="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border-2 bg-white p-1.5 hover:border-brand-soft sm:size-20"
             :class="selectedImage === index ? 'border-brand ring-2 ring-brand/40' : 'border-lavender'"
             @click="selectedImage = index; imageSelectedByUser = true">
-            <img v-if="!failedImages.includes(image)" :src="image" alt="" class="size-full rounded-full object-contain"
+            <img v-if="!failedImages.includes(image)" :src="image" :srcset="srcsetFor(image)" sizes="80px" alt="" class="size-full rounded-full object-contain"
               width="80" height="80" loading="lazy" @vue:mounted="checkLoadedImage($event.el, image)"
-              @error="markFailedImage(image)">
+              @error="onImageError(image)">
             <span v-else aria-hidden="true" class="text-sm text-ink-soft">{{ index + 1 }}</span>
           </button>
         </div>
@@ -250,6 +258,7 @@ useHead({
         <ul class="mt-4 flex flex-wrap gap-2 text-sm font-semibold">
           <li class="inline-flex items-center gap-1.5 rounded-full bg-lavender px-3.5 py-1.5 text-brand"><AppIcon name="truck" :size="16" />توصيل لباب البيت</li>
         </ul>
+        <DeliveryEstimate class="mt-3" />
 
         <ProductInfo :name="product.name" :description="product.description" :category="product.category" />
       </div>
