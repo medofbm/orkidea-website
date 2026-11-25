@@ -681,6 +681,13 @@ internal static class IdentityCookieScenario
                 !receiptBody.Contains(input.WhatsAppNumber, StringComparison.Ordinal) &&
                 !receiptBody.Contains(key.ToString(), StringComparison.Ordinal),
                 "Checkout API response keeps receipt private");
+            var receiptLines = receiptJson.RootElement.GetProperty("lines");
+            check(receiptLines.GetArrayLength() == 1 && receiptLines[0].GetProperty("quantity").GetInt32() == 2 &&
+                receiptLines[0].GetProperty("unitPrice").GetString() == "3.00" &&
+                receiptLines[0].GetProperty("subtotal").GetString() == "6.00" &&
+                receiptLines[0].GetProperty("size").GetString() == "small" &&
+                receiptLines[0].GetProperty("productName").GetString() == "Synthetic cookie manual product",
+                "Checkout API receipt lists product lines with quantity and subtotal");
             using var replay = await apiCheckout.PostAsJsonAsync("/api/v1/checkout/orders", order);
             check(replay.StatusCode == HttpStatusCode.OK && await db.Orders.CountAsync() == before + 1,
                 "Checkout API retries return the same receipt without duplicate orders");

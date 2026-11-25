@@ -86,6 +86,21 @@ useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchi
             </dl>
           </section>
         </div>
+        <section v-if="receipt.lines?.length" aria-labelledby="receipt-lines" class="mt-4 min-w-0 rounded-2xl bg-white p-4 text-ink">
+          <h2 id="receipt-lines" class="mb-3 text-lg font-bold">منتجات طلبك</h2>
+          <ul class="divide-y divide-lavender-deep">
+            <li v-for="(line, index) in receipt.lines" :key="index" class="flex min-h-11 flex-wrap items-center justify-between gap-2 py-3">
+              <span class="min-w-0 flex-1">
+                <span class="block font-semibold wrap-anywhere">{{ line.productName }}</span>
+                <span class="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-soft">
+                  <span v-if="line.size" class="chip">{{ line.size }}</span>
+                  <span>{{ 'الكمية ' + line.quantity }}</span>
+                </span>
+              </span>
+              <span class="font-semibold">{{ line.subtotal + ' د.ل' }}</span>
+            </li>
+          </ul>
+        </section>
       </div>
       <section aria-labelledby="next-steps" class="card-glass mt-5 p-4 sm:p-6">
         <h2 id="next-steps" class="mb-4 text-lg font-bold text-ink">شن الخطوة الجاية؟</h2>
