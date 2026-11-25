@@ -306,6 +306,10 @@ namespace Orkideya.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("CustomerUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("datetime2");
 
@@ -346,6 +350,8 @@ namespace Orkideya.Migrations
                     b.HasIndex("CheckoutToken")
                         .IsUnique()
                         .HasFilter("[CheckoutToken] IS NOT NULL");
+
+                    b.HasIndex("CustomerUserId");
 
                     b.ToTable("Orders");
                 });
