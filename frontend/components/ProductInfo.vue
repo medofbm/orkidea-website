@@ -18,7 +18,7 @@ const sections = computed(() => {
 
 <template>
   <section aria-labelledby="product-info-heading" class="mt-6">
-    <h2 id="product-info-heading" class="sr-only">معلومات {{ name }}</h2>
+    <h2 id="product-info-heading" class="sr-only">تفاصيل المنتج</h2>
     <div class="divide-y divide-lavender overflow-hidden rounded-2xl border border-lavender bg-white">
       <details v-for="section in sections" :key="section.id" :open="section.open" class="group">
         <summary class="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-lg font-bold text-ink hover:bg-lavender/40 focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-brand [&::-webkit-details-marker]:hidden">
