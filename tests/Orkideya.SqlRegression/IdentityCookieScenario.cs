@@ -690,6 +690,77 @@ internal static class IdentityCookieScenario
             check(denied.StatusCode == HttpStatusCode.NotFound, "Another session cannot read the JSON receipt");
         }
 
+        // "My orders": orders are linked to the signed-in Identity user only; guests and other customers see nothing.
+        {
+            var otherCustomer = await Seed("cookie-customer-b@orkidea.test", false);
+            async Task<string> PlaceOrder(HttpClient client)
+            {
+                var session = await client.GetFromJsonAsync<JsonElement>("/api/v1/session");
+                client.DefaultRequestHeaders.Remove("RequestVerificationToken");
+                client.DefaultRequestHeaders.Add("RequestVerificationToken", session.GetProperty("requestToken").GetString());
+                using var added = await client.PostAsJsonAsync("/api/v1/cart/items",
+                    new { variantId = manualVariant.ProductVariantId, quantity = 2 });
+                check(added.IsSuccessStatusCode, "My orders test: cart accepts the item");
+                var checkout = await client.GetFromJsonAsync<JsonElement>("/api/v1/checkout");
+                var key = checkout.GetProperty("checkoutToken").GetGuid();
+                var input = new CheckoutInput
+                {
+                    CheckoutToken = key, FirstName = "Synthetic", LastName = "My orders",
+                    WhatsAppNumber = "+218000000000", ShippingAddress = "Synthetic address",
+                    ShippingRateId = manualRate.ShippingRateId
+                };
+                using var placed = await client.PostAsJsonAsync("/api/v1/checkout/orders", new
+                {
+                    input, review = new { cartRevision = checkout.GetProperty("cartRevision").GetString(), shippingFee = "2.00" }
+                });
+                var receipt = await placed.Content.ReadFromJsonAsync<JsonElement>();
+                check(placed.StatusCode == HttpStatusCode.OK, "My orders test: checkout succeeds");
+                return receipt.GetProperty("orderId").GetInt32().ToString();
+            }
+            using var customerA = Client();
+            await Login(customerA, customer.Email!);
+            var ownId = await PlaceOrder(customerA);
+            using var guestBuyer = Client();
+            var guestOrderId = await PlaceOrder(guestBuyer);
+            using var customerB = Client();
+            await Login(customerB, otherCustomer.Email!);
+
+            var stored = await db.Orders.AsNoTracking().SingleAsync(o => o.OrderId == int.Parse(ownId));
+            var guestStored = await db.Orders.AsNoTracking().SingleAsync(o => o.OrderId == int.Parse(guestOrderId));
+            check(stored.CustomerUserId == customer.Id && guestStored.CustomerUserId is null,
+                "Signed-in checkout links the order to the Identity user; guest checkout stays unlinked");
+
+            using var listA = await customerA.GetAsync("/api/v1/account/orders");
+            var listJson = await listA.Content.ReadFromJsonAsync<JsonElement>();
+            var rowsA = listJson.GetProperty("items").EnumerateArray().ToList();
+            check(listA.StatusCode == HttpStatusCode.OK && listA.Headers.CacheControl?.NoStore == true &&
+                rowsA.Count(r => r.GetProperty("id").GetInt32().ToString() == ownId) == 1 &&
+                rowsA.All(r => r.GetProperty("id").GetInt32().ToString() != guestOrderId) &&
+                rowsA.First(r => r.GetProperty("id").GetInt32().ToString() == ownId).GetProperty("total").GetString() == "8.00" &&
+                rowsA.First(r => r.GetProperty("id").GetInt32().ToString() == ownId).GetProperty("itemsCount").GetInt32() == 2,
+                "My orders lists the customer's own order with the server total and excludes guest orders");
+            using var detailA = await customerA.GetAsync("/api/v1/account/orders/" + ownId);
+            var detail = await detailA.Content.ReadFromJsonAsync<JsonElement>();
+            check(detailA.StatusCode == HttpStatusCode.OK && detail.GetProperty("total").GetString() == "8.00" &&
+                detail.GetProperty("shippingFee").GetString() == "2.00" && detail.GetProperty("productsTotal").GetString() == "6.00" &&
+                detail.GetProperty("lines").GetArrayLength() == 1 && detail.GetProperty("lines")[0].GetProperty("quantity").GetInt32() == 2,
+                "My orders details return the priced lines for the owner");
+            using var listB = await customerB.GetAsync("/api/v1/account/orders");
+            var listBJson = await listB.Content.ReadFromJsonAsync<JsonElement>();
+            check(listB.StatusCode == HttpStatusCode.OK && listBJson.GetProperty("items").GetArrayLength() == 0,
+                "Another customer's order list does not include it");
+            using var detailB = await customerB.GetAsync("/api/v1/account/orders/" + ownId);
+            using var detailGuestOrder = await customerA.GetAsync("/api/v1/account/orders/" + guestOrderId);
+            using var detailMissing = await customerA.GetAsync("/api/v1/account/orders/999999999");
+            check(detailB.StatusCode == HttpStatusCode.NotFound && detailGuestOrder.StatusCode == HttpStatusCode.NotFound &&
+                detailMissing.StatusCode == HttpStatusCode.NotFound,
+                "Other customers, guest orders and unknown ids all answer 404 on order details");
+            using var anonList = await guest.GetAsync("/api/v1/account/orders");
+            using var anonDetail = await guest.GetAsync("/api/v1/account/orders/" + ownId);
+            check(anonList.StatusCode == HttpStatusCode.Unauthorized && anonDetail.StatusCode == HttpStatusCode.Unauthorized,
+                "Anonymous visitors cannot read My orders");
+        }
+
         foreach (var path in new[] { "/api/v1/admin/dashboard", "/api/v1/admin/delivery", "/api/v1/admin/orders",
             "/api/v1/admin/orders/export", "/api/v1/admin/orders/manual", "/api/v1/admin/orders/" + manualStored.OrderId })
         {

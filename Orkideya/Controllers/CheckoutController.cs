@@ -8,6 +8,7 @@ using Orkideya.Application.Orders;
 using Orkideya.Data;
 using Orkideya.Models;
 using Orkideya.Services;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace Orkideya.Controllers;
@@ -160,6 +161,8 @@ public partial class CheckoutController : Controller
             TotalAmount = cart.Sum(item => item.SubTotal) + (snapshot?.ShippingFee ?? rate!.Price),
             OrderDate = DateTime.UtcNow,
             PaymentMethod = "الدفع عند الاستلام",
+            // Only a signed-in customer's own orders are linked to the account; guest orders stay null.
+            CustomerUserId = User.Identity?.IsAuthenticated == true ? User.FindFirstValue(ClaimTypes.NameIdentifier) : null,
             Status = "Pending",
             Creation = new OrderCreation { Source = OrderSources.Website }
         };
