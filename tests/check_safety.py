@@ -61,9 +61,9 @@ checks['inline variant creation uses same request DTO']='AddVariant(ProductVaria
 checks['review create and edit bind submitted Rating']=reviews.count('Id,CustomerName,Message,Rating,IsVisible') == 2
 checks['new review is hidden by default']='Message = "", IsVisible = false' in reviews
 checks['review views use shared rating script']=all('~/js/review-rating.js' in read('Areas/Admin/Views/Reviews/'+name+'.cshtml') for name in ['Create','Edit'])
-notifications=read('Services/WhatsAppNotificationService.cs')
-checks['WhatsApp requires explicit opt-in']='if (!configuration.GetValue<bool>("Notifications:WhatsAppEnabled")) return new(NotificationOutcome.NotConfigured);' in notifications
-checks['WhatsApp recipient comes from configuration']='configuration["Twilio:AdminNumber"]' in notifications
-checks['WhatsApp does not print exception payload']='Console.WriteLine' not in notifications and 'exception.Message' not in notifications
+checks['Twilio package is absent']='twilio' not in read('Orkideya.csproj').lower()
+checks['WhatsApp notification service and worker are absent']=not (r/'Services'/'WhatsAppNotificationService.cs').exists() and not (r/'Application'/'Notifications').exists()
+checks['Program does not register a notification transport']='Notification' not in read('Program.cs')
+checks['Order placement writes no notification row']='Notifications.Add' not in read('Application/Orders/OrderService.cs')
 for name,passed in checks.items():print(('PASS' if passed else 'FAIL')+': '+name)
 raise SystemExit(0 if all(checks.values()) else 1)

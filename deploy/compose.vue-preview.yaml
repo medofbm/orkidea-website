@@ -22,8 +22,6 @@ x-backend-env: &backend-env
   ASPNETCORE_HTTP_PORTS: "8080"
   ASPNETCORE_HTTPS_PORT: "443"
   AllowedHosts: web;localhost;127.0.0.1
-  Notifications__WhatsAppEnabled: "false"
-  Notifications__OutboxWorkerEnabled: "false"
   Carriers__Sabil__QuoteEnabled: "false"
   Carriers__Sabil__ReadEnabled: ${ORKIDEA_SABIL_READ_ENABLED:-false}
   Carriers__Sabil__ApiKey: ${ORKIDEA_SABIL_API_KEY:-}

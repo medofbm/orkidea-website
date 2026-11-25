@@ -57,7 +57,7 @@ Paths are under `Orkideya/` (backend) or `frontend/`. Line numbers are from the 
 | Users / roles | no controller or UI; only RoleManager in Program.cs:81 | none | none | none | n/a | Admin made by seed/CLI; backend-only |
 
 ## D. Backend-only (no UI in either app)
-- Notification outbox + WhatsApp (Twilio) sending: Application/Notifications/NotificationDispatcher.cs, NotificationWorker.cs, Services/WhatsAppNotificationService.cs. No admin screen for failed/queued messages.
+- Notification outbox + automatic WhatsApp sending: removed 2026-11-25 (owner decision); see docs/runbooks/notification-outbox.md. Customer wa.me links remain in the frontend.
 - Sabil catalogue sync and quote caching (Infrastructure/Shipping/SabilCatalogue.cs); no admin view of cities/rates or sync status.
 - Order revision/stale-update protection, idempotency tokens, stock actor audit (StockService.ValidActor).
 - Admin user and role creation (RoleManager) has no screen.

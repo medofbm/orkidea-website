@@ -134,11 +134,11 @@ try
     await using (var db = Open())
     {
         Check(await db.OrderItems.CountAsync(item => item.OrderId == firstId) == 2, "Order and all items persist together");
-        Check(await db.OrderNotifications.CountAsync(n => n.OrderId == firstId) == 1, "Notification intent commits atomically with the new order");
+        Check(await db.OrderNotifications.CountAsync(n => n.OrderId == firstId) == 0, "Order placement writes no notification outbox row (Twilio removed)");
         var placed = await new OrderService(db).PlaceAsync(Make(token));
-        Check(!placed.IsNew && placed.Order.OrderId == firstId, "Retry returns the original order without a new notification event");
+        Check(!placed.IsNew && placed.Order.OrderId == firstId, "Retry returns the original order");
         Check(await db.Orders.CountAsync(order => order.CheckoutToken == token) == 1, "Retry does not duplicate the order");
-        Check(await db.OrderNotifications.CountAsync(n => n.OrderId == firstId) == 1, "Order replay creates no duplicate notification intent");
+        Check(await db.OrderNotifications.CountAsync(n => n.OrderId == firstId) == 0, "Order replay still creates no notification row");
         var conflicted = false;
         try { await new OrderService(db).PlaceAsync(Make(token, new string('B', 64))); }
         catch (CheckoutConflictException) { conflicted = true; }
@@ -178,7 +178,6 @@ try
         Check((await new OrderService(db).PlaceAsync(Make(failedToken))).IsNew, "A failed request can retry safely after recovery");
     }
     await OrderStatusScenario.Run(Open, Check);
-    await OutboxScenario.Run(options, Check);
     await DashboardScenario.Run(Open, Check);
     await AdminDeleteScenario.Run(Open, Check);
     await ArchiveScenario.Run(Open, Check);
