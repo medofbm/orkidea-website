@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: 'admin', middleware: 'admin' })
 useSeoMeta({ title: 'أسعار التوصيل' })
 
 type Rate = { id: number, region: string, city: string, price: string }

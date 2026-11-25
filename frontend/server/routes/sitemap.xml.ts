@@ -4,7 +4,9 @@ const escapeXml = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')
 
 export default defineEventHandler(async event => {
-  const origin = getRequestURL(event, { xForwardedHost: true, xForwardedProto: true }).origin
+  const config = useRuntimeConfig(event).public
+  // Never derive absolute URLs from request headers (Host / X-Forwarded-Host can be spoofed).
+  const origin = String(config.siteUrl).replace(/\/+$/, '')
   const paths = ['/', '/order-and-delivery', '/privacy']
   let seen = 0
   try {

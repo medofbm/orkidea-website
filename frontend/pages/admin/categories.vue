@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: 'admin', middleware: 'admin' })
 useSeoMeta({ title: 'إدارة الفئات' })
 
 type Category = { categoryId: number, name: string, products: number, isArchived?: boolean }

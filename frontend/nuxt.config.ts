@@ -13,6 +13,8 @@ export default defineNuxtConfig({
     public: {
       apiBase: '/api/v1/catalogue',
       preview: false,
+      // Public origin used for absolute URLs (robots.txt, sitemap.xml). Set NUXT_PUBLIC_SITE_URL per environment.
+      siteUrl: 'https://orkidea.ly',
       whatsappNumber: '',
       facebookUrl: 'https://www.facebook.com/ORKIDEALY/',
       instagramUrl: 'https://www.instagram.com/_orkidea_1/'

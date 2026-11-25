@@ -130,7 +130,20 @@ test('built storefront renders catalogue data and the product gallery on the ser
       try { await fetch(origin); ready = true; break } catch { await delay(100) }
     }
     assert.ok(ready, 'built frontend starts')
-    const listing = await (await fetch(origin)).text()
+    const home = await fetch(origin)
+    const csp = home.headers.get('content-security-policy') ?? ''
+    assert.ok(csp.includes("default-src 'self'") && csp.includes("frame-ancestors 'none'") && csp.includes("object-src 'none'"),
+      'home page enforces a Content-Security-Policy')
+    assert.ok(!csp.includes('unsafe-eval'), 'CSP does not allow eval')
+    assert.equal(home.headers.get('x-content-type-options'), 'nosniff')
+    assert.equal(home.headers.get('x-frame-options'), 'DENY')
+    assert.equal(home.headers.get('referrer-policy'), 'strict-origin-when-cross-origin')
+    assert.equal(home.headers.get('strict-transport-security'), null, 'no HSTS over plain http')
+    const httpsHome = await fetch(origin, { headers: { 'X-Forwarded-Proto': 'https' } })
+    assert.match(httpsHome.headers.get('strict-transport-security') ?? '', /max-age=15552000/, 'HSTS when forwarded as https')
+    const robots = await (await fetch(origin + '/robots.txt', { headers: { 'X-Forwarded-Host': 'evil.example' } })).text()
+    assert.ok(!robots.includes('evil.example'), 'robots.txt ignores X-Forwarded-Host')
+    const listing = await home.text()
     assert.ok(listing.includes(product.name), 'catalogue is present in initial HTML')
     const filtered = await (await fetch(origin + '/?categoryId=1')).text()
     assert.ok(filtered.includes(product.name), 'matching category retains its product')

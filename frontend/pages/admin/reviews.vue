@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: 'admin', middleware: 'admin' })
 useSeoMeta({ title: 'إدارة التقييمات' })
 
 type Review = { id: number, customerName: string, message: string, rating: number, isVisible: boolean, source?: 'facebook' | 'site', allowName?: boolean, createdAtUtc?: string, orderId?: number | null }

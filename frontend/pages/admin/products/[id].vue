@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AdminProductDetails } from '~/types/admin'
 
-definePageMeta({ layout: 'admin', key: route => route.path })
+definePageMeta({ layout: 'admin', middleware: 'admin', key: route => route.path })
 useSeoMeta({ title: 'تعديل المنتج' })
 
 const id = String(useRoute().params.id)

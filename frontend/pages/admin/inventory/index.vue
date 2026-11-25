@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AdminStockPage } from '~/types/admin'
 
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: 'admin', middleware: 'admin' })
 useSeoMeta({ title: 'المخزون والتعبئة' })
 
 const search = ref('')

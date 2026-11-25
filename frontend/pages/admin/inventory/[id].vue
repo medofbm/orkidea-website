@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AdminStockDetails } from '~/types/admin'
 
-definePageMeta({ layout: 'admin', key: route => route.path })
+definePageMeta({ layout: 'admin', middleware: 'admin', key: route => route.path })
 useSeoMeta({ title: 'تفاصيل المخزون' })
 
 const url = '/api/admin/inventory/' + useRoute().params.id
