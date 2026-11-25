@@ -185,7 +185,7 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
             <select v-model.number="fields.shippingRateId" required class="mt-1 block w-full field">
               <option :value="0" disabled>اختاري المدينة</option>
               <option v-for="shippingRate in state.shippingRates" :key="shippingRate.id" :value="shippingRate.id">
-                {{ shippingRate.city }} — {{ shippingRate.price }} د.ل
+                {{ shippingRate.city }} — {{ formatPrice(shippingRate.price) }} د.ل
               </option>
             </select>
           </label>
@@ -220,18 +220,18 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
               <span class="block font-semibold wrap-anywhere">{{ item.name }}</span>
               <span class="text-ink-soft"><span v-if="item.size">{{ item.size }} · </span>الكمية {{ item.quantity }}</span>
             </span>
-            <span class="shrink-0 text-sm font-semibold">{{ item.subtotal }} د.ل</span>
+            <span class="shrink-0 text-sm font-semibold">{{ formatPrice(item.subtotal) }} د.ل</span>
           </li>
         </ul>
         <dl aria-live="polite" class="space-y-3">
-          <div class="flex flex-wrap justify-between gap-2"><dt>المنتجات</dt><dd class="font-semibold"><bdi>{{ state.productsTotal }}</bdi> د.ل</dd></div>
+          <div class="flex flex-wrap justify-between gap-2"><dt>المنتجات</dt><dd class="font-semibold"><bdi>{{ formatPrice(state.productsTotal) }}</bdi> د.ل</dd></div>
           <div class="flex flex-wrap justify-between gap-2"><dt>التوصيل</dt><dd>
-            <template v-if="shippingFee != null"><bdi>{{ shippingFee }}</bdi> د.ل</template>
+            <template v-if="shippingFee != null"><bdi>{{ formatPrice(shippingFee) }}</bdi> د.ل</template>
             <template v-else-if="state.destinations && fields.carrierDestination">بانتظار حساب التوصيل</template>
             <template v-else>بانتظار اختيار الوجهة</template>
           </dd></div>
           <div v-if="total != null" class="flex flex-wrap justify-between gap-2 border-t border-lavender-deep pt-3 text-lg font-bold">
-            <dt>الإجمالي</dt><dd class="price"><bdi>{{ total }}</bdi> د.ل</dd>
+            <dt>الإجمالي</dt><dd class="price"><bdi>{{ formatPrice(total) }}</bdi> د.ل</dd>
           </div>
         </dl>
         <button type="submit" :disabled="busy || shippingFee == null" class="storefront-action btn-primary mt-5 w-full">

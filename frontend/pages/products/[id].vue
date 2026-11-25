@@ -156,7 +156,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
             <div aria-live="polite" aria-atomic="true">
               <Transition name="price-swap" mode="out-in">
                 <p :key="currentVariant.id" class="price text-[2rem] leading-tight font-extrabold">
-                  <bdi>{{ currentVariant.price }}</bdi> <span class="text-base">د.ل</span>
+                  <bdi>{{ formatPrice(currentVariant.price) }}</bdi> <span class="text-base">د.ل</span>
                 </p>
               </Transition>
             </div>
@@ -168,7 +168,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
                   <input v-model="selectedVariant" type="radio" name="variant" :value="index"
                     class="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed">
                   <span class="pointer-events-none">{{ variant.size }}</span>
-                  <span v-if="product.variants.length > 1" class="pointer-events-none ms-1.5 text-xs font-semibold opacity-80">· <bdi>{{ variant.price }}</bdi> د.ل</span>
+                  <span v-if="product.variants.length > 1" class="pointer-events-none ms-1.5 text-xs font-semibold opacity-80">· <bdi>{{ formatPrice(variant.price) }}</bdi> د.ل</span>
                 </label>
               </div>
             </fieldset>
@@ -212,7 +212,7 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
 
       <div v-if="currentVariant" class="fixed inset-x-0 bottom-0 z-30 flex items-center gap-4 border-t border-lavender bg-cream/95 px-4 pt-3 shadow-[0_-6px_20px_rgb(48_8_26/0.10)] backdrop-blur md:hidden"
         style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))">
-        <p class="price shrink-0 text-xl"><span class="sr-only">السعر </span><bdi>{{ currentVariant.price }}</bdi> <span class="text-sm">د.ل</span></p>
+        <p class="price shrink-0 text-xl"><span class="sr-only">السعر </span><bdi>{{ formatPrice(currentVariant.price) }}</bdi> <span class="text-sm">د.ل</span></p>
         <button type="button" :disabled="busy" :aria-busy="adding" class="btn-primary storefront-action flex-1 gap-2" @click="addToCart">
           <span v-if="adding" class="spinner" aria-hidden="true" />
           <AppIcon v-else-if="justAdded" name="check" :size="18" />
