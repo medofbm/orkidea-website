@@ -5,12 +5,12 @@ const escapeXml = (value: string) =>
 
 export default defineEventHandler(async event => {
   const origin = getRequestURL(event, { xForwardedHost: true, xForwardedProto: true }).origin
-  const backend = useRuntimeConfig(event).backendOrigin
   const paths = ['/', '/order-and-delivery', '/privacy']
   let seen = 0
   try {
     for (let page = 1; page <= 50; page++) {
-      const data = await $fetch<SitemapPage>(backend + '/api/v1/catalogue/products', { query: { page } })
+      // Through Nuxt's own catalogue proxy, which forwards X-Forwarded-Proto; a direct backend call is redirected to HTTPS.
+      const data = await event.$fetch<SitemapPage>('/api/v1/catalogue/products', { query: { page } })
       const items = data.items ?? []
       for (const item of items) paths.push('/products/' + item.id)
       seen += items.length
