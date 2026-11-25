@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Data;
 using Orkideya.Models;
@@ -40,28 +41,32 @@ namespace Orkideya.Controllers
             return View("Index", products);
         }
 
-        // --- الدالة المحدثة هنا ---
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SendMessage(string name, string email, string message, string phoneNumber)
+        [EnableRateLimiting("public-forms")]
+        public async Task<IActionResult> SendMessage(string? name, string? email, string? message, string? phoneNumber)
         {
-            if (ModelState.IsValid)
+            // Same validation as the Vue contact API (length limits, email and phone format).
+            var error = ContactApiController.Validate(
+                new ContactApiController.ContactInput(name, phoneNumber, email, message),
+                out var cleanName, out var cleanPhone, out var cleanEmail, out var cleanMessage);
+            if (error is not null)
             {
-                var contactMessage = new ContactMessage
-                {
-                    Name = name,
-                    Email = email,
-                    Message = message,
-                    PhoneNumber = phoneNumber, // <-- الإضافة الجديدة هنا
-                    ReceivedAt = DateTime.Now
-                };
-
-                _context.ContactMessages.Add(contactMessage);
-                await _context.SaveChangesAsync();
-
-                TempData["MessageSuccess"] = "شكراً لك! لقد تم استلام رسالتك وسنتواصل معك قريباً.";
+                TempData["MessageError"] = error;
+                return RedirectToAction("Index");
             }
 
+            _context.ContactMessages.Add(new ContactMessage
+            {
+                Name = cleanName,
+                Email = cleanEmail,
+                Message = cleanMessage,
+                PhoneNumber = cleanPhone,
+                ReceivedAt = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
+
+            TempData["MessageSuccess"] = "شكراً لك! لقد تم استلام رسالتك وسنتواصل معك قريباً.";
             return RedirectToAction("Index");
         }
         // -------------------------

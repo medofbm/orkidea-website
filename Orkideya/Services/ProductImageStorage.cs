@@ -62,6 +62,9 @@ public sealed class ProductImageStorage
             bytes[2] == 0xff && bytes[^2] == 0xff && bytes[^1] == 0xd9;
         if ((extension == ".png" && !png) || (extension != ".png" && !jpeg))
             throw new InvalidDataException("محتوى الملف لا يطابق نوع الصورة.");
+        // Header only: reject decompression bombs before anything is written or decoded.
+        if (!ProductImageResizer.HeaderWithinLimits(bytes))
+            throw new InvalidDataException("أبعاد الصورة كبيرة جداً (الحد 8000 بكسل)");
         return (bytes, extension == ".jpeg" ? ".jpg" : extension);
     }
 

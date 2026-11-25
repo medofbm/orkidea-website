@@ -11,6 +11,22 @@ public sealed class ProductImageResizer(ILogger<ProductImageResizer> logger)
 {
     public static readonly int[] Widths = [400, 800, 1200];
     public const int Quality = 80;
+    public const int MaxDimension = 8000;       // longest side in pixels
+    public const long MaxPixels = 40_000_000;   // about 160 MB decoded at 4 bytes per pixel
+
+    public static bool IsWithinLimits(int width, int height) =>
+        width > 0 && height > 0 && width <= MaxDimension && height <= MaxDimension &&
+        (long)width * height <= MaxPixels;
+
+    /// <summary>
+    /// Reads only the image header (no pixel allocation) and checks the declared size.
+    /// Returns true when the header cannot be read at all (nothing to allocate; the decoder rejects it later).
+    /// </summary>
+    public static bool HeaderWithinLimits(byte[] bytes)
+    {
+        using var codec = SKCodec.Create(new SKMemoryStream(bytes));
+        return codec is null || IsWithinLimits(codec.Info.Width, codec.Info.Height);
+    }
 
     public static string VariantPath(string originalPath, int width) =>
         Path.Combine(Path.GetDirectoryName(originalPath) ?? "",
@@ -51,6 +67,12 @@ public sealed class ProductImageResizer(ILogger<ProductImageResizer> logger)
 
     private bool CreateVariants(byte[] bytes, string originalPath)
     {
+        if (!HeaderWithinLimits(bytes))
+        {
+            logger.LogWarning("Image {File} is larger than {Max} px per side or {MaxPixels} pixels; variants skipped",
+                Path.GetFileName(originalPath), MaxDimension, MaxPixels);
+            return false;
+        }
         using var source = DecodeOriented(bytes);
         if (source is null || source.Width <= 0 || source.Height <= 0)
         {
@@ -90,6 +112,7 @@ public sealed class ProductImageResizer(ILogger<ProductImageResizer> logger)
     {
         using var codec = SKCodec.Create(new SKMemoryStream(bytes));
         if (codec is null) return null;
+        if (!IsWithinLimits(codec.Info.Width, codec.Info.Height)) return null; // checked before any pixel allocation
         // Decode straight into the platform colour type so grayscale, gray+alpha and indexed PNGs can be encoded as WebP.
         // Like browsers, accept images whose data ends early (IncompleteInput) instead of rejecting them.
         var info = new SKImageInfo(codec.Info.Width, codec.Info.Height, SKImageInfo.PlatformColorType, SKAlphaType.Premul);
