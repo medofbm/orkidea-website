@@ -72,7 +72,7 @@ async function remove(review: Review) {
 </script>
 
 <template>
-  <section aria-labelledby="reviews-title" class="mx-auto max-w-4xl">
+  <section aria-labelledby="reviews-title" class="mx-auto max-w-6xl">
     <h1 id="reviews-title" class="mb-2 text-3xl font-extrabold">التقييمات</h1>
     <p class="mb-5 text-ink-soft">التقييمات الجديدة تظهر في المتجر بعد إظهارها من هنا. اسم العميلة يظهر لك فقط.</p>
 
@@ -89,8 +89,9 @@ async function remove(review: Review) {
       <button type="button" class="btn-secondary mt-3" @click="refresh()">إعادة المحاولة</button>
     </div>
     <p v-else-if="!shown.length" role="status" class="card p-6 text-center text-ink-soft">ما فيش تقييمات هنا.</p>
-    <ul v-else class="grid gap-3">
-      <li v-for="review in shown" :key="review.id" class="card p-4">
+    <ul v-else class="grid gap-3 lg:grid-cols-2">
+      <li v-for="review in shown" :key="review.id" class="card border-s-4 p-4 sm:p-6"
+        :class="review.isVisible ? 'border-success' : 'border-warning bg-status-pending'">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex min-w-0 items-center gap-3">
             <p class="break-words font-bold">{{ review.customerName }}</p>
@@ -104,7 +105,7 @@ async function remove(review: Review) {
           </span>
         </div>
         <p class="mt-2 flex flex-wrap items-center gap-2 text-sm text-ink-soft">
-          <span class="badge">{{ review.source === 'facebook' ? 'فيسبوك' : 'الموقع' }}</span>
+          <span class="chip">{{ review.source === 'facebook' ? 'فيسبوك' : 'الموقع' }}</span>
           <time v-if="created(review.createdAtUtc)" :datetime="review.createdAtUtc">{{ created(review.createdAtUtc) }}</time>
           <NuxtLink v-if="review.orderId" :to="'/admin/orders/' + review.orderId"
             class="inline-flex min-h-11 items-center text-brand underline">طلب <bdi>#{{ review.orderId }}</bdi></NuxtLink>
