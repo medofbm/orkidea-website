@@ -34,11 +34,12 @@ function catalogueQuery(extra: { page?: number, q?: string, sort?: string, categ
   const q = 'q' in extra ? extra.q : search.value
   const s = 'sort' in extra ? extra.sort : sort.value
   const c = 'categoryId' in extra ? extra.categoryId : categoryId.value
+  // Same order as before search existed: page (when a pagination link sets it), then categoryId, then q and sort.
   const query: Record<string, string | number> = {}
+  if (extra.page) query.page = extra.page
   if (c) query.categoryId = c
   if (q) query.q = q
   if (s && s !== 'default') query.sort = s
-  if (extra.page && extra.page > 1) query.page = extra.page
   return query
 }
 function applySearch() {
