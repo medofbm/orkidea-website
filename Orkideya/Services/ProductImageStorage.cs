@@ -5,9 +5,23 @@ public sealed class ProductImageStorage
 {
     public const int MaxBytes = 5 * 1024 * 1024;
     private readonly string _directory;
-    public ProductImageStorage(IWebHostEnvironment environment)
+    private readonly ProductImageResizer? _resizer;
+    public ProductImageStorage(IWebHostEnvironment environment, ProductImageResizer? resizer = null)
     {
         _directory = Path.Combine(environment.WebRootPath, "images", "products");
+        _resizer = resizer;
+    }
+
+    /// <summary>Deletes a stored product image and its WebP variants. Ignores non-local or unknown URLs.</summary>
+    public void Delete(string? url)
+    {
+        const string prefix = "/images/products/";
+        if (string.IsNullOrEmpty(url) || !url.StartsWith(prefix, StringComparison.Ordinal)) return;
+        var name = url[prefix.Length..];
+        if (name != Path.GetFileName(name) || name.Contains("..")) return;
+        var path = Path.Combine(_directory, name);
+        try { if (File.Exists(path)) File.Delete(path); } catch { /* best effort */ }
+        ProductImageResizer.DeleteVariants(path);
     }
 
     public static bool IsAllowedReference(string? value)
@@ -75,6 +89,8 @@ public sealed class ProductImageStorage
             if (created && File.Exists(path)) File.Delete(path);
             throw;
         }
+        // Variants are an optimisation only; they must never fail the upload.
+        try { _resizer?.TryCreateVariants(image.Bytes, path); } catch { }
         return "/images/products/" + name;
     }
 }

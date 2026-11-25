@@ -146,6 +146,18 @@ internal static class IdentityCookieScenario
             check(delete.StatusCode == HttpStatusCode.OK && emptyPayload.GetProperty("count").GetInt32() == 0,
                 "Cart API removes the selected variant");
         }
+        using (var delivery = Client())
+        {
+            using var response = await delivery.GetAsync("/api/v1/delivery/summary");
+            var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var mode = payload.GetProperty("mode").GetString();
+            check(response.StatusCode == HttpStatusCode.OK && response.Headers.CacheControl?.MaxAge == TimeSpan.FromMinutes(5),
+                "Delivery summary is anonymous and cacheable for five minutes");
+            check(mode == "carrier" || (mode == "rates" &&
+                decimal.Parse(payload.GetProperty("minPrice").GetString()!, System.Globalization.CultureInfo.InvariantCulture) <=
+                decimal.Parse(payload.GetProperty("maxPrice").GetString()!, System.Globalization.CultureInfo.InvariantCulture)),
+                "Delivery summary reports a valid mode and min <= max");
+        }
         using (var accountClient = Client())
         {
             var credentials = new { email = adminUser.Email, password, rememberMe = false };

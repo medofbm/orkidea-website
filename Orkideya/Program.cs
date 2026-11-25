@@ -136,7 +136,9 @@ builder.Services.Configure<DataProtectionTokenProviderOptions>(options => option
 // Application Services
 Orkideya.Infrastructure.Shipping.ShippingRegistration.AddCarrierReadGateway(builder.Services, builder.Configuration);
 builder.Services.AddSingleton<ExcelExportService>();
+builder.Services.AddSingleton<ProductImageResizer>();
 builder.Services.AddSingleton<ProductImageStorage>();
+builder.Services.AddHostedService<ProductImageBackfillService>();
 builder.Services.AddScoped<Orkideya.Application.Products.ProductEditor>();
 builder.Services.AddScoped<WhatsAppNotificationService>();
 builder.Services.AddScoped<Orkideya.Application.Notifications.IOrderNotificationTransport>(services => services.GetRequiredService<WhatsAppNotificationService>());

@@ -98,7 +98,7 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
     await page.getByLabel('اسم المنتج').fill('زيت اختبار المتصفح')
     await page.getByLabel('الفئة', { exact: true }).selectOption({ label: 'فئة اختبار المتصفح' })
 
-    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jN0sAAAAASUVORK5CYII=', 'base64')
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP4/x8AAwAB//wl3FEAAAAASUVORK5CYII=', 'base64')
     const image = name => ({ name, mimeType: 'image/png', buffer: png })
     await page.getByLabel('أو اختر ملف غلاف').setInputFiles(image('cover.png'))
     await page.getByLabel('اختيار الصور').setInputFiles([image('retained.png'), image('removed.png')])
@@ -111,6 +111,14 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
     await page.getByText('تم حفظ الحجم والسعر.', { exact: true }).waitFor()
     const productId = new URL(page.url()).pathname.split('/').at(-1)
     console.log('PASS browser: category, multipart cover, gallery removal and exact variant price')
+    // The upload also writes WebP copies; this proves SkiaSharp's native library loads in the Linux image.
+    const saved = await (await page.request.get(origin + '/api/v1/catalogue/products/' + productId)).json()
+    const coverUrl = saved.images.find(url => /^\/images\/products\/[A-Za-z0-9_-]+\.(png|jpe?g)$/i.test(url))
+    assert.ok(coverUrl, 'uploaded cover is stored under /images/products')
+    const variant = await page.request.get(origin + coverUrl.replace(/\.(png|jpe?g)$/i, '-400.webp'))
+    assert.equal(variant.status(), 200, 'uploaded cover has a 400px WebP copy')
+    assert.match(variant.headers()['content-type'] ?? '', /image\/webp/)
+    console.log('PASS browser: upload writes WebP variants inside the container')
 
     const shop = await browser.newContext(mobile)
     const customer = await shop.newPage()
