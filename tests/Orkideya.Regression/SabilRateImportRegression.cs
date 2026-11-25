@@ -57,6 +57,28 @@ internal static class SabilRateImportRegression
         var bad = await SabilRatePlanner.BuildAsync(new FakeGateway(CarrierReadState.Success, "{\"nope\":1}"));
         check(!bad.Succeeded && bad.State == CarrierReadState.InvalidResponse, "Unparseable catalogue yields InvalidResponse");
 
+        // Pickup rows, zero rates and the surcharge.
+        var pick = (await SabilRatePlanner.BuildAsync(new FakeGateway(CarrierReadState.Success, Page(
+            Branch("a", "Benghazi", Area("بنغازي - استلام من المكتب", "0") + "," + Area("حي الأندلس - إستلام مكتب", "5") + "," + Area("Free", "0")
+                + "," + Area("أستلام", "4") + "," + Area("Ain Zara", "5") + "," + Area("NoRate", null)))))).Plan!;
+        check(pick.Rows.Count == 1 && pick.Rows[0].Area == "Ain Zara" && pick.SkippedPickup == 4 && pick.SkippedNoRate == 1,
+            "Pickup areas (both spellings) and zero rates are skipped and counted; null rate stays SkippedNoRate");
+
+        var sur = (await SabilRatePlanner.BuildAsync(new FakeGateway(CarrierReadState.Success, Page(
+            Branch("a", "T", Area("C", "8") + "," + Area("C", "12") + "," + Area("P", "5.5")),
+            Branch("b", "T", Area("C", "10")))), 10m)).Plan!;
+        check(sur.Surcharge == 10m && sur.Rows.Single(r => r.Area == "P").Price == 15.5m && sur.Rows.Single(r => r.Area == "C").Price == 22m && sur.Conflicts == 1,
+            "Surcharge is added to every rate, including conflicts with highest-wins");
+        var none = (await SabilRatePlanner.BuildAsync(new FakeGateway(CarrierReadState.Success, Page(Branch("a", "T", Area("P", "5")))))).Plan!;
+        check(none.Surcharge == 0m && none.Rows[0].Price == 5m, "Default surcharge is zero");
+
+        check(!SabilSurcharge.TryParse("-1", out _) && !SabilSurcharge.TryParse("101", out _) && !SabilSurcharge.TryParse("1.234", out _)
+            && !SabilSurcharge.TryParse("abc", out _) && !SabilSurcharge.IsValid(-1m) && !SabilSurcharge.IsValid(101m) && !SabilSurcharge.IsValid(1.234m),
+            "Surcharge validation rejects -1, 101, 1.234 and non-numbers");
+        check(SabilSurcharge.TryParse("0", out var s0) && s0 == 0m && SabilSurcharge.TryParse("10.5", out var s1) && s1 == 10.5m
+            && SabilSurcharge.TryParse("100", out var s2) && s2 == 100m && SabilSurcharge.TryParse(null, out var s3) && s3 == 0m,
+            "Surcharge validation accepts 0, 10.5, 100 and empty");
+
         // Delivery summary grouping and area label.
         check(DeliveryRateGroups.AreaLabel("Tripoli", "Tripoli — Center") == "Center", "Area label drops the leading region");
         check(DeliveryRateGroups.AreaLabel("Tripoli", "Misrata") == "Misrata" && DeliveryRateGroups.AreaLabel("Tripoli", "Tripoli — ") == "Tripoli — ",
