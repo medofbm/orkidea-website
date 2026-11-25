@@ -34,9 +34,11 @@ public sealed class AdminShippingRatesController(ApplicationDbContext db, SabilR
     }
 
     [HttpPost("import-sabil"), ValidateAntiForgeryToken, Orkideya.Infrastructure.Http.Idempotent]
-    public async Task<IActionResult> ImportSabil(CancellationToken ct, bool dryRun = true)
+    public async Task<IActionResult> ImportSabil(CancellationToken ct, bool dryRun = true, string? surcharge = null)
     {
-        var result = await import.PlanAsync(ct);
+        if (!SabilSurcharge.TryParse(surcharge, out var extra))
+            return BadRequest(new { error = "قيمة الإضافة غير صحيحة" });
+        var result = await import.PlanAsync(extra, ct);
         if (result.State == CarrierReadState.Disabled)
             return Conflict(new { error = "ربط درب السبيل غير مفعّل على الخادم" });
         if (!result.Succeeded)
@@ -56,6 +58,7 @@ public sealed class AdminShippingRatesController(ApplicationDbContext db, SabilR
         {
             applied,
             cities = plan.Cities, areas = plan.Areas, conflicts = plan.Conflicts, skippedNoRate = plan.SkippedNoRate,
+            skippedPickup = plan.SkippedPickup, surcharge = Money(plan.Surcharge),
             sample = plan.Rows.Take(10).Select(r => new { region = r.City, area = r.Area, price = Money(r.Price) })
         });
     }
