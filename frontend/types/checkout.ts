@@ -13,7 +13,7 @@ export interface CheckoutState {
   shippingFee: string | null
   total: string | null
   cartRevision: string
-  shippingRates: { id: number; city: string; price: string; total: string }[]
+  shippingRates: { id: number; city: string; price: string; total: string; region?: string | null; area?: string | null }[]
   destinations: CheckoutDestination[] | null
   errors: string[]
 }
