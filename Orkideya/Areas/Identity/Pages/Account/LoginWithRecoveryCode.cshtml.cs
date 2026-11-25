@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 namespace Orkideya.Areas.Identity.Pages.Account
 {
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("account-sign-in")] // POSTs only; see Program.cs
     public class LoginWithRecoveryCodeModel : PageModel
     {
         private readonly SignInManager<IdentityUser> _signInManager;

@@ -30,6 +30,7 @@ async function reload() {
   if (!needsRefresh.value) edit()
 }
 
+const creation = useIdempotencyKey()
 async function save() {
   const value = name.value.trim()
   if (disabled.value || !value) return
@@ -42,7 +43,9 @@ async function save() {
     const response = await $fetch.raw<{ success?: boolean, message?: string }>(
       category ? url + '/' + category.categoryId : url, {
         method: 'POST', retry: 0, ignoreResponseError: true,
-        headers: { RequestVerificationToken: session.requestToken },
+        // Creating a category carries an Idempotency-Key so a repeat never makes a duplicate.
+        headers: category ? { RequestVerificationToken: session.requestToken }
+          : { RequestVerificationToken: session.requestToken, 'Idempotency-Key': creation.get({ name: value }) },
         body: category ? { name: value, expectedName: category.name } : { name: value }
       })
     if (!response.ok || response._data?.success !== true) {
@@ -51,6 +54,7 @@ async function save() {
       return
     }
 
+    if (!category) creation.reset()
     notice.value = category ? 'تم تعديل اسم الفئة.' : 'تمت إضافة الفئة.'
     await reload()
   } catch {

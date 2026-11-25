@@ -122,6 +122,7 @@ public sealed class AccountController(SignInManager<IdentityUser> signInManager,
 
     [HttpPost("register")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("account-sign-up")]
     public async Task<IActionResult> Register(AccountRegistration input)
     {
         if (User.Identity?.IsAuthenticated == true)
@@ -179,6 +180,7 @@ public sealed class AccountController(SignInManager<IdentityUser> signInManager,
 
     [HttpPost("login")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("account-sign-in")]
     public async Task<IActionResult> Login(AccountLogin input)
     {
         var result = await signInManager.PasswordSignInAsync(
@@ -189,6 +191,7 @@ public sealed class AccountController(SignInManager<IdentityUser> signInManager,
 
     [HttpPost("verify")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("account-sign-in")]
     public async Task<IActionResult> Verify(AccountVerification input)
     {
         var code = input.Code.Trim().Replace(" ", "", StringComparison.Ordinal);

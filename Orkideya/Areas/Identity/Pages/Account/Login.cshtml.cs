@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Orkideya.Areas.Identity.Pages.Account
 {
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("account-sign-in")] // POSTs only; see Program.cs
     public class LoginModel : PageModel
     {
         private readonly SignInManager<IdentityUser> _signInManager;

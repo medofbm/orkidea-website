@@ -40,7 +40,7 @@ public sealed class AdminCategoriesController(ApplicationDbContext db) : Control
     public sealed record CreateInput([Required, StringLength(150)] string Name);
     public sealed record EditInput([Required, StringLength(150)] string Name, [Required] string ExpectedName);
 
-    [HttpPost, ValidateAntiForgeryToken]
+    [HttpPost, ValidateAntiForgeryToken, Orkideya.Infrastructure.Http.Idempotent]
     public Task<IActionResult> Create(CreateInput input, CancellationToken ct) =>
         Save(null, input.Name.Trim(), null, ct);
 
