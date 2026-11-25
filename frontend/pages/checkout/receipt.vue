@@ -78,10 +78,10 @@ useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchi
           <section aria-labelledby="receipt-summary" class="min-w-0 rounded-2xl border border-lavender-deep bg-white p-4 text-ink">
             <h2 id="receipt-summary" class="mb-4 text-lg font-bold">ملخص المبلغ</h2>
             <dl class="space-y-3">
-              <div class="flex flex-wrap justify-between gap-2"><dt>المنتجات</dt><dd class="font-semibold"><bdi>{{ receipt.productsTotal }}</bdi> د.ل</dd></div>
-              <div class="flex flex-wrap justify-between gap-2"><dt>التوصيل</dt><dd class="font-semibold"><bdi>{{ receipt.shippingFee }}</bdi> د.ل</dd></div>
+              <div class="flex flex-wrap justify-between gap-2"><dt>المنتجات</dt><dd class="font-semibold"><bdi>{{ formatPrice(receipt.productsTotal) }}</bdi> د.ل</dd></div>
+              <div class="flex flex-wrap justify-between gap-2"><dt>التوصيل</dt><dd class="font-semibold"><bdi>{{ formatPrice(receipt.shippingFee) }}</bdi> د.ل</dd></div>
               <div class="flex flex-wrap justify-between gap-2 border-t border-lavender-deep pt-3 text-lg font-bold">
-                <dt>الإجمالي</dt><dd class="price"><bdi>{{ receipt.total }}</bdi> د.ل</dd>
+                <dt>الإجمالي</dt><dd class="price"><bdi>{{ formatPrice(receipt.total) }}</bdi> د.ل</dd>
               </div>
             </dl>
           </section>
@@ -97,7 +97,7 @@ useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchi
                   <span>{{ 'الكمية ' + line.quantity }}</span>
                 </span>
               </span>
-              <span class="font-semibold">{{ line.subtotal + ' د.ل' }}</span>
+              <span class="font-semibold">{{ formatPrice(line.subtotal) + ' د.ل' }}</span>
             </li>
           </ul>
         </section>
