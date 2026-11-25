@@ -25,6 +25,9 @@ namespace Orkideya.Models
         public decimal ShippingCost { get; set; }
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; }
+        /// <summary>Identity user id of the signed-in customer who placed the order. Null for guest and legacy orders.</summary>
+        [MaxLength(450)]
+        public string? CustomerUserId { get; set; }
         public string? PaymentMethod { get; set; }
         public DateTime OrderDate { get; set; }
         

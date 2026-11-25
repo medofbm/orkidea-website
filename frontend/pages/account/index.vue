@@ -65,6 +65,7 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
       <p v-if="account.name" class="my-2 break-all" dir="ltr">{{ account.name }}</p>
       <button type="button" :disabled="pending" class="btn-secondary mt-4" @click="submit('logout')">تسجيل الخروج</button>
       <NuxtLink v-if="account.isAdmin" to="/admin" class="btn-ghost ms-2 mt-4 underline">لوحة الإدارة</NuxtLink>
+      <AccountOrders />
       <AccountSettings :phone-number="account.phoneNumber" />
     </template>
     <form v-else-if="account && !loading" @submit.prevent="submit(verification ? 'verify' : 'login')">
