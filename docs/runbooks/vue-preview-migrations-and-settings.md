@@ -1,6 +1,8 @@
 # Vue preview: applying migrations and runtime settings
 
-The CI job `deploy-vue-preview` only swaps images on the server (`orkidea-preview-deploy`). It does **not** run EF migrations. When a release adds a migration, the new backend image fails its health check and the host script restores the previous images. Apply the migration first, then re-run the deploy.
+Migrations now run automatically. `web` depends on the one-shot `migrate` service (`service_completed_successfully`), so every `compose up` of `web` first runs `migrate` with the new backend image. It uses the `orkidea_preview_migrate` database user, applies pending EF migrations, creates no users, seeds nothing (`Initialization__SeedPreviewData=false`, default shipping rates are opt-in and stay off) and exits 0. When nothing is pending it is a quick no-op, and EF Core takes a SQL Server migration lock, so concurrent runs are safe. `web` keeps the least-privilege app user. If `migrate` fails, `web` is not started and the host script rolls back.
+
+Sections 1 to 3 below are the manual fallback only (for example if `migrate` itself fails and you need to see why). Do not skip `depends_on` when deploying: avoid `docker compose up --no-deps web`.
 
 All commands run on the server as root, in the live preview directory. Never paste secrets into chat or git.
 
@@ -11,26 +13,26 @@ compose() { docker compose --project-name orkidea-vue-preview --env-file .previe
 compose config --quiet && echo config-ok
 ```
 
-## 2. Apply migrations with the new backend image
+## 2. Fallback: apply migrations by hand with the new backend image
 The failed deploy already pulled the new images by digest, and compose uses `pull_policy: never`, so a tag reference is not found. Find the local image id by its revision label (backend runs as user `1654`, frontend as `node`):
 ```bash
 SHA=<full master commit sha>
 docker images -q --no-trunc | sort -u | while read id; do echo "$id $(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}} {{.Config.User}}' $id)"; done | grep "$SHA"
 ```
-Then run the initializer with the backend id (the line ending in `1654`):
+Then run the migration service with the backend id (the line ending in `1654`):
 ```bash
-ORKIDEA_PREVIEW_BACKEND_IMAGE=sha256:<backend image id> compose --profile maintenance run --rm initialize
+ORKIDEA_PREVIEW_BACKEND_IMAGE=sha256:<backend image id> compose run --rm migrate
 ```
 If no line appears, pull the image first: `docker pull ghcr.io/medofbm/orkidea-website:preview-backend-sha-$SHA`.
-`initialize` applies pending migrations only to `OrkideaStaging`, skips preview seeding when products already exist, and exits. Migrations in this project are additive, so the running (older) image keeps working while this runs.
+`migrate` applies pending migrations only to `OrkideaStaging` and exits. (The `initialize` service under the `maintenance` profile still exists for first-time setup: it also seeds preview data and creates the bootstrap admin.) Migrations in this project are additive, so the running (older) image keeps working while this runs.
 
-## 3. Re-run the deploy
+## 3. Re-run the deploy (fallback)
 GitHub → Actions → the master run of that commit → **Re-run failed jobs**. The deploy job is skipped if a newer master commit exists; in that case deploy the newest commit instead.
 
 ## 4. Runtime settings for the web and frontend containers
 The compose file passes only the variables listed in each service's `environment`. Values in `.preview.env` alone do not reach the containers.
 
-Add to the `web` service `environment` (under the existing entries):
+These settings are now in `compose.vue-preview.yaml` (reference copy below). The keys match `EmailOptions` (`Email:Smtp:*`, `Email:FromEmail`, `Email:FromName`) and `AppOptions` (`App:PublicBaseUrl`). `web` environment:
 ```yaml
       Email__Smtp__Host: ${ORKIDEA_EMAIL_SMTP_HOST:-}
       Email__Smtp__Port: ${ORKIDEA_EMAIL_SMTP_PORT:-587}
@@ -40,11 +42,11 @@ Add to the `web` service `environment` (under the existing entries):
       Email__FromName: "أوركيديا"
       App__PublicBaseUrl: ${ORKIDEA_PUBLIC_BASE_URL:-https://vue-preview.orkidea.ly}
 ```
-Add to the `frontend` service `environment`:
+`frontend` environment (matches `runtimeConfig.public.whatsappNumber` in `nuxt.config.ts`):
 ```yaml
       NUXT_PUBLIC_WHATSAPP_NUMBER: ${ORKIDEA_PUBLIC_WHATSAPP_NUMBER:-}
 ```
-Add the values to `.preview.env` (mode 600):
+Only the values need adding to `.preview.env` (mode 600):
 ```
 ORKIDEA_EMAIL_SMTP_HOST=smtp-relay.brevo.com
 ORKIDEA_EMAIL_SMTP_PORT=587
