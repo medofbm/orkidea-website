@@ -28,8 +28,14 @@ watch(() => product.value?.id, () => {
   failedImages.value = []
 })
 const currentVariant = computed(() => product.value?.variants[selectedVariant.value])
-const paragraphs = computed(() =>
-  (product.value?.description ?? '').split(/\r?\n+/).map(p => p.trim()).filter(Boolean))
+const highlights = computed(() => {
+  const description = product.value?.description ?? ''
+  const chips: string[] = []
+  if ((product.value?.name ?? '').includes('معصور على البارد') || description.includes('معصور على البارد')) chips.push('معصور على البارد')
+  if (description.includes('للاستخدام الخارجي')) chips.push('للاستخدام الخارجي')
+  chips.push('الدفع عند الاستلام')
+  return chips
+})
 const whatsappNumber = String(useRuntimeConfig().public.whatsappNumber ?? '').replace(/\D/g, '')
 const whatsappLink = computed(() => {
   if (!whatsappNumber || !product.value) return ''
@@ -80,7 +86,46 @@ const related = computed(() => {
         lowest === undefined || Number(variant.price) < Number(lowest) ? variant.price : lowest, undefined)
     }))
 })
-useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: () => product.value?.description ?? '' })
+const origin = useRequestURL().origin
+const absolute = (path: string) => new URL(path, origin).href
+const productUrl = computed(() => origin + '/products/' + route.params.id)
+const seoDescription = computed(() => (product.value?.description ?? '').replace(/\s+/g, ' ').trim().slice(0, 160))
+const seoImages = computed(() => images.value.map(absolute))
+useSeoMeta({
+  title: () => product.value?.name ?? 'المنتج',
+  description: () => product.value?.description ?? '',
+  ogTitle: () => product.value?.name ?? 'المنتج',
+  ogDescription: () => seoDescription.value,
+  ogImage: () => seoImages.value[0],
+  ogType: 'product' as never,
+  ogUrl: () => productUrl.value,
+  twitterCard: 'summary_large_image',
+  twitterTitle: () => product.value?.name ?? 'المنتج',
+  twitterDescription: () => seoDescription.value,
+  twitterImage: () => seoImages.value[0]
+})
+const jsonLd = computed(() => {
+  const p = product.value
+  if (!p) return ''
+  const prices = p.variants.map(v => Number(v.price)).filter(n => Number.isFinite(n))
+  const offerBase = { priceCurrency: 'LYD', availability: 'https://schema.org/InStock', url: productUrl.value }
+  const offers = !prices.length ? undefined
+    : prices.length > 1
+      ? { '@type': 'AggregateOffer', ...offerBase, lowPrice: String(Math.min(...prices)), highPrice: String(Math.max(...prices)), offerCount: prices.length }
+      : { '@type': 'Offer', ...offerBase, price: p.variants[0]!.price }
+  const data = {
+    '@context': 'https://schema.org', '@type': 'Product',
+    name: p.name, description: p.description ?? undefined, image: seoImages.value,
+    sku: String(p.id), productID: String(p.id),
+    brand: { '@type': 'Organization', name: 'أوركيديا' }, offers
+  }
+  // Escape "<" so no description text can close the script element.
+  return JSON.stringify(data).replace(/</g, '\\u003c')
+})
+useHead({
+  link: [{ rel: 'canonical', href: () => productUrl.value }],
+  script: [{ type: 'application/ld+json', key: 'product-jsonld', innerHTML: () => jsonLd.value }]
+})
 </script>
 
 <template>
@@ -149,6 +194,9 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
         <header>
           <p v-if="product.category" class="mb-2 text-sm font-semibold wrap-anywhere text-brand-soft">{{ product.category }}</p>
           <h1 id="product-heading" class="text-3xl leading-tight font-extrabold wrap-anywhere text-ink lg:text-4xl">{{ product.name }}</h1>
+          <ul class="mt-3 flex flex-wrap gap-2 text-sm font-semibold">
+            <li v-for="chip in highlights" :key="chip" class="inline-flex items-center gap-1.5 rounded-full bg-lavender px-3.5 py-1.5 text-brand">{{ chip }}</li>
+          </ul>
         </header>
 
         <section aria-label="خيارات الشراء" class="mt-5">
@@ -200,14 +248,10 @@ useSeoMeta({ title: () => product.value?.name ?? 'المنتج', description: ()
         </section>
 
         <ul class="mt-4 flex flex-wrap gap-2 text-sm font-semibold">
-          <li class="inline-flex items-center gap-1.5 rounded-full bg-lavender px-3.5 py-1.5 text-brand"><AppIcon name="cash" :size="16" />الدفع عند الاستلام</li>
           <li class="inline-flex items-center gap-1.5 rounded-full bg-lavender px-3.5 py-1.5 text-brand"><AppIcon name="truck" :size="16" />توصيل لباب البيت</li>
         </ul>
 
-        <section v-if="paragraphs.length" aria-labelledby="description-heading" class="mt-6">
-          <h2 id="description-heading" class="mb-2 text-lg font-bold text-ink">عن المنتج</h2>
-          <p v-for="(paragraph, index) in paragraphs" :key="index" class="mb-3 leading-8 wrap-anywhere text-ink">{{ paragraph }}</p>
-        </section>
+        <ProductInfo :name="product.name" :description="product.description" :category="product.category" />
       </div>
 
       <div v-if="currentVariant" class="fixed inset-x-0 bottom-0 z-30 flex items-center gap-4 border-t border-lavender bg-cream/95 px-4 pt-3 shadow-[0_-6px_20px_rgb(48_8_26/0.10)] backdrop-blur md:hidden"
