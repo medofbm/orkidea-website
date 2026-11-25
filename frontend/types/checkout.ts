@@ -18,6 +18,14 @@ export interface CheckoutState {
   errors: string[]
 }
 
+export interface CheckoutReceiptLine {
+  productName: string
+  size: string | null
+  quantity: number
+  unitPrice: string
+  subtotal: string
+}
+
 export interface CheckoutReceipt {
   orderId: number
   quantity: number
@@ -26,4 +34,6 @@ export interface CheckoutReceipt {
   total: string
   statusLabel: string
   paymentMethod: string
+  // Optional so an older API without product lines still renders.
+  lines?: CheckoutReceiptLine[]
 }

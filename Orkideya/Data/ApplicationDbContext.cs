@@ -78,6 +78,7 @@ namespace Orkideya.Data
             builder.Entity<OrderStatusChange>().HasIndex(change => new { change.OrderId, change.Revision }).IsUnique();
             builder.Entity<Order>().HasIndex(order => order.CheckoutToken).IsUnique()
                 .HasFilter("[CheckoutToken] IS NOT NULL");
+            builder.Entity<Order>().HasIndex(order => order.CustomerUserId);
             builder.Entity<Order>().HasMany(order => order.Items).WithOne()
                 .HasForeignKey(item => item.OrderId).OnDelete(DeleteBehavior.Cascade);
             builder.Entity<Order>().HasMany(order => order.Notifications).WithOne(notification => notification.Order)

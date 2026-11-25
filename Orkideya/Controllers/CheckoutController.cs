@@ -8,6 +8,7 @@ using Orkideya.Application.Orders;
 using Orkideya.Data;
 using Orkideya.Models;
 using Orkideya.Services;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace Orkideya.Controllers;
@@ -160,6 +161,8 @@ public partial class CheckoutController : Controller
             TotalAmount = cart.Sum(item => item.SubTotal) + (snapshot?.ShippingFee ?? rate!.Price),
             OrderDate = DateTime.UtcNow,
             PaymentMethod = "الدفع عند الاستلام",
+            // Only a signed-in customer's own orders are linked to the account; guest orders stay null.
+            CustomerUserId = User.Identity?.IsAuthenticated == true ? User.FindFirstValue(ClaimTypes.NameIdentifier) : null,
             Status = "Pending",
             Creation = new OrderCreation { Source = OrderSources.Website }
         };
@@ -206,7 +209,17 @@ public partial class CheckoutController : Controller
                 order.Items.Sum(item => item.Quantity * item.UnitPrice), order.ShippingCost, order.TotalAmount,
                 order.Status, order.PaymentMethod)).SingleOrDefaultAsync(HttpContext.RequestAborted);
         if (receipt == null) return RedirectToAction("Index", "Home");
-        return View(receipt);
+        // Current product name (it may have been renamed since); archived or deleted products fall back to the id.
+        var rows = await (from item in _context.OrderItems.AsNoTracking()
+                where item.OrderId == receipt.OrderId
+                join product in _context.Products.AsNoTracking() on item.ProductId equals product.ProductId into products
+                from product in products.DefaultIfEmpty()
+                orderby item.OrderItemId
+                select new { item.ProductId, Name = product == null ? null : product.Name, item.VariantSize, item.Quantity, item.UnitPrice })
+            .ToListAsync(HttpContext.RequestAborted);
+        var lines = rows.Select(row => new CheckoutReceiptLine(
+            string.IsNullOrWhiteSpace(row.Name) ? "منتج #" + row.ProductId : row.Name, row.VariantSize, row.Quantity, row.UnitPrice)).ToList();
+        return View(receipt with { Lines = lines });
     }
 
     private void MarkCheckoutComplete(Guid token)
