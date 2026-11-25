@@ -6,10 +6,28 @@ using Orkideya.Models;
 namespace Orkideya.Infrastructure.Shipping;
 
 public sealed record SabilRateRow(string City, string Area, decimal Price);
-public sealed record SabilRatePlan(IReadOnlyList<SabilRateRow> Rows, int Cities, int Areas, int Conflicts, int SkippedNoRate);
+public sealed record SabilRatePlan(IReadOnlyList<SabilRateRow> Rows, int Cities, int Areas, int Conflicts, int SkippedNoRate,
+    int SkippedPickup = 0, decimal Surcharge = 0m);
 public sealed record SabilRatePlanResult(CarrierReadState State, SabilRatePlan? Plan)
 {
     public bool Succeeded => State == CarrierReadState.Success && Plan is not null;
+}
+
+/// <summary>Validation of the admin-chosen surcharge (LYD added to every imported rate): 0 to 100, at most 2 decimals.</summary>
+public static class SabilSurcharge
+{
+    public const decimal Max = 100m;
+
+    public static bool IsValid(decimal value) => value >= 0m && value <= Max && decimal.Round(value, 2) == value;
+
+    /// <summary>Empty or missing means 0. Invariant culture, plain decimal text only.</summary>
+    public static bool TryParse(string? raw, out decimal value)
+    {
+        value = 0m;
+        if (string.IsNullOrWhiteSpace(raw)) return true;
+        return decimal.TryParse(raw.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint | System.Globalization.NumberStyles.AllowLeadingSign,
+            System.Globalization.CultureInfo.InvariantCulture, out value) && IsValid(value);
+    }
 }
 
 /// <summary>
@@ -23,10 +41,16 @@ public static class SabilRatePlanner
     public const string Country = "lby";
     public const string Currency = "lyd";
 
-    public static async Task<SabilRatePlanResult> BuildAsync(ICarrierReadGateway gateway, CancellationToken ct = default)
+    /// <summary>True for office-pickup pseudo-areas (name contains استلام / إستلام; hamza forms are normalised).</summary>
+    public static bool IsPickupArea(string name) =>
+        name.Replace('أ', 'ا').Replace('إ', 'ا').Replace('آ', 'ا').Contains("استلام", StringComparison.Ordinal);
+
+    public static async Task<SabilRatePlanResult> BuildAsync(ICarrierReadGateway gateway, decimal surcharge = 0m, CancellationToken ct = default)
     {
+        if (!SabilSurcharge.IsValid(surcharge)) throw new ArgumentOutOfRangeException(nameof(surcharge));
         var prices = new Dictionary<(string City, string Area), (decimal Price, bool Conflict)>();
         var skipped = 0;
+        var skippedPickup = 0;
         var offset = 0;
         for (var page = 0; ; page++)
         {
@@ -44,8 +68,12 @@ public static class SabilRatePlanner
                 foreach (var area in branch.Areas)
                 {
                     var name = area.Name.Trim();
-                    if (city.Length == 0 || name.Length == 0 || area.DeliveryRate is not { } rate) { skipped++; continue; }
-                    var price = Math.Ceiling(rate * 100m) / 100m; // never round a price down
+                    if (city.Length == 0 || name.Length == 0) { skipped++; continue; }
+                    // Office pickup is not home delivery, and a zero or negative rate is not a usable price.
+                    if (IsPickupArea(name)) { skippedPickup++; continue; }
+                    if (area.DeliveryRate is not { } rate) { skipped++; continue; }
+                    if (rate <= 0m) { skippedPickup++; continue; }
+                    var price = Math.Ceiling(rate * 100m) / 100m + surcharge; // never round a price down
                     var key = (city, name);
                     if (!prices.TryGetValue(key, out var existing)) prices[key] = (price, false);
                     else if (existing.Price != price) prices[key] = (Math.Max(existing.Price, price), true);
@@ -59,14 +87,14 @@ public static class SabilRatePlanner
         var rows = prices.Select(p => new SabilRateRow(p.Key.City, p.Key.Area, p.Value.Price))
             .OrderBy(r => r.City, StringComparer.Ordinal).ThenBy(r => r.Price).ThenBy(r => r.Area, StringComparer.Ordinal).ToList();
         var plan = new SabilRatePlan(rows, rows.Select(r => r.City).Distinct(StringComparer.Ordinal).Count(), rows.Count,
-            prices.Values.Count(p => p.Conflict), skipped);
+            prices.Values.Count(p => p.Conflict), skipped, skippedPickup, surcharge);
         return new(CarrierReadState.Success, plan);
     }
 }
 
 public sealed class SabilRateImport(ICarrierReadGateway gateway, ApplicationDbContext db)
 {
-        public Task<SabilRatePlanResult> PlanAsync(CancellationToken ct = default) => SabilRatePlanner.BuildAsync(gateway, ct);
+        public Task<SabilRatePlanResult> PlanAsync(decimal surcharge = 0m, CancellationToken ct = default) => SabilRatePlanner.BuildAsync(gateway, surcharge, ct);
 
     /// <summary>Replaces every ShippingRates row with the plan in one transaction. An empty plan is refused.</summary>
     public async Task<bool> ApplyAsync(SabilRatePlan plan, CancellationToken ct = default)

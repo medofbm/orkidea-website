@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Orkideya.Application.Inventory;
 using Orkideya.Data;
 using Orkideya.Models;
 using System.Globalization;
@@ -45,7 +46,8 @@ public sealed class CatalogueController(ApplicationDbContext context) : Controll
         };
         var products = await ordered.Include(product => product.ProductVariants.Where(variant => !variant.IsArchived)).Include(product => product.Category)
             .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
-        return Ok(new { items = products.Select(ToResponse), page, pageSize, total, categories });
+        var tracked = await VariantOrderability.TrackedProductsAsync(context, products.Select(product => product.ProductId).ToArray(), cancellationToken);
+        return Ok(new { items = products.Select(product => ToResponse(product, tracked)), page, pageSize, total, categories });
     }
 
     [HttpGet("products/{id:int}")]
@@ -53,10 +55,11 @@ public sealed class CatalogueController(ApplicationDbContext context) : Controll
     {
         var product = await context.Products.AsNoTracking().Include(product => product.ProductVariants.Where(variant => !variant.IsArchived))
             .Include(product => product.Category).SingleOrDefaultAsync(product => product.ProductId == id && !product.IsArchived, cancellationToken);
-        return product is null ? NotFound(new ProblemDetails { Title = "المنتج غير موجود." }) : Ok(ToResponse(product));
+        if (product is null) return NotFound(new ProblemDetails { Title = "المنتج غير موجود." });
+        return Ok(ToResponse(product, await VariantOrderability.TrackedProductsAsync(context, [product.ProductId], cancellationToken)));
     }
 
-    private static object ToResponse(Product product) => new
+    private static object ToResponse(Product product, ISet<int> tracked) => new
     {
         id = product.ProductId,
         name = product.Name,
@@ -66,6 +69,7 @@ public sealed class CatalogueController(ApplicationDbContext context) : Controll
             .Where(url => !string.IsNullOrWhiteSpace(url)).Distinct().ToArray(),
         variants = product.ProductVariants.Where(variant => !variant.IsArchived && variant.Price > 0).OrderBy(variant => variant.Price).ThenBy(variant => variant.ProductVariantId)
             .Select(variant => new { id = variant.ProductVariantId, size = variant.Size,
-                price = variant.Price.ToString("0.00", CultureInfo.InvariantCulture), currency = "LYD" }).ToArray()
+                price = variant.Price.ToString("0.00", CultureInfo.InvariantCulture), currency = "LYD",
+                orderable = VariantOrderability.IsOrderable(variant, tracked) }).ToArray()
     };
 }

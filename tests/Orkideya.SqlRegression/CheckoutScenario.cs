@@ -87,6 +87,36 @@ internal static class CheckoutScenario
             "Checkout snapshots configured consumption and unit but does not reserve or consume");
         check(await controller.PlaceOrder(trackedInput) is RedirectToActionResult {ActionName:"Confirmation"} &&
             !await db.StockMovements.AnyAsync(m=>m.OrderId==tracked.OrderId),"Checkout retry does not create stock movements");
+        // Inventory opened but no consumption amount set: the size is not orderable anywhere.
+        var gapProduct = new Product { Name = "Synthetic unconfigured stock product" };
+        var gapVariant = new ProductVariant { Product = gapProduct, Size = "100 ml", Price = 20m };
+        var okVariant = new ProductVariant { Product = gapProduct, Size = "50 ml", Price = 12m, StockUnitsPerItem = 50 };
+        db.ProductVariants.AddRange(gapVariant, okVariant);
+        await db.SaveChangesAsync();
+        check(await inventory.OpenAsync(gapProduct.ProductId, "ml", "synthetic-checkout-admin") == StockResult.Changed, "Unconfigured-size fixture opens inventory");
+        var gapDetail = JsonSerializer.SerializeToElement(((OkObjectResult)await new CatalogueController(db).Product(gapProduct.ProductId, default)).Value);
+        var gapFlags = gapDetail.GetProperty("variants").EnumerateArray()
+            .ToDictionary(v => v.GetProperty("id").GetInt32(), v => v.GetProperty("orderable").GetBoolean());
+        check(!gapFlags[gapVariant.ProductVariantId] && gapFlags[okVariant.ProductVariantId], "Catalogue marks a size without consumption as not orderable");
+        var gapSession = new MemorySession();
+        var gapCart = new CartController(db) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { Session = gapSession } } };
+        var refused = JsonSerializer.SerializeToElement(((JsonResult)await gapCart.AddToCartAjax(gapVariant.ProductVariantId, 1)).Value);
+        check(!refused.GetProperty("success").GetBoolean() && refused.GetProperty("message").GetString() == VariantOrderability.UnavailableMessage &&
+            string.IsNullOrEmpty(gapSession.GetString("Cart")), "Cart refuses a size that is not orderable");
+        check(JsonSerializer.SerializeToElement(((JsonResult)await gapCart.AddToCartAjax(okVariant.ProductVariantId, 1)).Value).GetProperty("success").GetBoolean(),
+            "Cart accepts a configured size of the same product");
+        var staleCart = new List<CartItem> { new() { ProductVariantId = gapVariant.ProductVariantId, ProductId = gapProduct.ProductId,
+            ProductName = gapProduct.Name, Price = gapVariant.Price, Quantity = 1 } };
+        gapSession.SetString("Cart", JsonSerializer.Serialize(staleCart));
+        var cartJson = JsonSerializer.SerializeToElement(((JsonResult)await gapCart.ApiCart(default)).Value);
+        check(!cartJson.GetProperty("items")[0].GetProperty("available").GetBoolean(), "Cart API reports a not-orderable line as unavailable");
+        var gapCheckout = new CheckoutController(db, new OrderService(db)) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { Session = gapSession } } };
+        var gapView = (CheckoutViewModel)((ViewResult)await gapCheckout.Index()).Model!;
+        var gapInput = Customer(gapView);
+        var gapResult = await gapCheckout.PlaceOrder(gapInput);
+        check(gapResult is ViewResult && !await db.Orders.AnyAsync(o => o.CheckoutToken == gapInput.CheckoutToken), "Checkout keeps refusing a not-orderable size and creates no order");
+        check((await VariantOrderability.UnorderableSizesAsync(db)).Any(x => x.ProductId == gapProduct.ProductId && x.Size == "100 ml") &&
+            !(await VariantOrderability.UnorderableSizesAsync(db)).Any(x => x.Size == "50 ml" && x.ProductId == gapProduct.ProductId), "Admin warning lists only the unconfigured size");
         var carrierProduct = new Product { Name = "Synthetic carrier checkout product" };
         var carrierVariant = new ProductVariant { Product = carrierProduct, Size = "100 ml", Price = 25m };
         db.ProductVariants.Add(carrierVariant);

@@ -29,8 +29,6 @@ services:
       AllowedHosts: staging.orkidea.ly;localhost;127.0.0.1
       ConnectionStrings__DefaultConnection: ${ORKIDEA_APP_CONNECTION:?Set the dedicated staging application connection}
       Initialization__Run: "false"
-      Notifications__WhatsAppEnabled: "false"
-      Notifications__OutboxWorkerEnabled: "false"
       DataProtection__KeysPath: /var/orkidea/keys
       DataProtection__ApplicationName: Orkidea.Staging
       ReverseProxy__KnownProxies__0: ${ORKIDEA_PROXY_IP:?Inspect the actual Docker gateway first}
@@ -47,8 +45,6 @@ services:
       Initialization__SeedPreviewData: "true"
       Bootstrap__AdminEmail: ${ORKIDEA_ADMIN_EMAIL:-}
       Bootstrap__AdminPassword: ${ORKIDEA_ADMIN_PASSWORD:-}
-      Notifications__WhatsAppEnabled: "false"
-      Notifications__OutboxWorkerEnabled: "false"
       DataProtection__KeysPath: /var/orkidea/keys
       DataProtection__ApplicationName: Orkidea.Staging
     depends_on:

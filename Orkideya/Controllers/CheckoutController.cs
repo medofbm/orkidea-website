@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Application.Cart;
+using Orkideya.Application.Inventory;
 using Orkideya.Application.Shipping;
 using Orkideya.Infrastructure.Shipping;
 using Microsoft.AspNetCore.RateLimiting;
@@ -143,8 +144,12 @@ public partial class CheckoutController : Controller
         var productIds = variants.Values.Select(v => v.ProductId).Distinct().ToArray();
         var stock = await _context.StockAccounts.AsNoTracking().Where(s => productIds.Contains(s.ProductId))
             .ToDictionaryAsync(s => s.ProductId);
-        if (variants.Values.Any(v => stock.ContainsKey(v.ProductId) && v.StockUnitsPerItem is null or <= 0) ||
-            stock.Count > 0 && variants.Values.Any(v => !stock.ContainsKey(v.ProductId)))
+        if (variants.Values.Any(v => !VariantOrderability.IsOrderable(stock.ContainsKey(v.ProductId), v.StockUnitsPerItem)))
+        {
+            ModelState.AddModelError("", "أحد الأحجام في سلتك غير متاح للطلب حالياً. احذفيه من السلة وكملي.");
+            return View("Index", await BuildViewModel(cart, input));
+        }
+        if (stock.Count > 0 && variants.Values.Any(v => !stock.ContainsKey(v.ProductId)))
         {
             ModelState.AddModelError("", "تعذر تأكيد بيانات أحد الأحجام. راجع السلة أو تواصل معنا.");
             return View("Index", await BuildViewModel(cart, input));

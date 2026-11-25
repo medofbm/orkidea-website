@@ -3,6 +3,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Orkideya.Application.Inventory;
 
 namespace Orkideya.Controllers;
 
@@ -27,10 +28,12 @@ public partial class CartController
         var variants = await _context.ProductVariants.AsNoTracking().Include(variant => variant.Product)
             .Where(variant => ids.Contains(variant.ProductVariantId))
             .ToDictionaryAsync(variant => variant.ProductVariantId, cancellationToken);
+        var tracked = await VariantOrderability.TrackedProductsAsync(_context, variants.Values.Select(variant => variant.ProductId).Distinct().ToArray(), cancellationToken);
         var items = cart.Select(item =>
         {
             variants.TryGetValue(item.ProductVariantId, out var variant);
-            var available = variant?.Product is not null && variant.Price > 0 && !variant.IsArchived && !variant.Product.IsArchived;
+            var available = variant?.Product is not null && variant.Price > 0 && !variant.IsArchived && !variant.Product.IsArchived &&
+                VariantOrderability.IsOrderable(variant, tracked);
             var price = available ? variant!.Price : item.Price;
             return new
             {

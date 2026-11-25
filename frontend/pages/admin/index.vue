@@ -89,6 +89,21 @@ function stockTone(available: string) {
         </ul>
       </nav>
 
+      <!-- Sizes customers cannot order until their stock consumption is set -->
+      <section v-if="data.unorderableSizes?.length" aria-labelledby="unorderable-sizes" role="alert"
+        class="mb-6 rounded-2xl border border-warning/40 bg-status-pending p-4">
+        <h2 id="unorderable-sizes" class="text-lg font-bold text-warning">أحجام غير متاحة للطلب: حدد كمية الاستهلاك لكل حجم</h2>
+        <ul class="mt-3 grid gap-2 sm:grid-cols-2">
+          <li v-for="row in data.unorderableSizes" :key="row.productId + '-' + row.size">
+            <NuxtLink :to="'/admin/inventory/' + row.productId"
+              class="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-warning/30 bg-white px-3 py-2 text-sm font-semibold text-ink hover:bg-lavender">
+              <span class="min-w-0 truncate">{{ row.name }}</span>
+              <bdi class="shrink-0 rounded-full bg-status-pending px-2 py-0.5 text-xs text-warning">{{ row.size }}</bdi>
+            </NuxtLink>
+          </li>
+        </ul>
+      </section>
+
       <!-- Main figures -->
       <h2 class="sr-only">الأرقام الرئيسية</h2>
       <dl class="grid grid-cols-2 gap-3 lg:grid-cols-4">

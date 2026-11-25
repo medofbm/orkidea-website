@@ -4,7 +4,7 @@ The store charges the `ShippingRates` price the customer picks at checkout (rate
 
 ## What the import does
 - Reads the branch catalogue from Sabil (read-only, pages of 100, at most 30 pages) through the existing read gateway.
-- Keeps only country `lby`, currency `lyd`, and areas that have a delivery rate. Pickup rates are ignored.
+- Keeps only country `lby`, currency `lyd`, and areas that have a delivery rate. Office-pickup pseudo-areas (name contains «استلام» or «إستلام») and any rate of 0 or less are skipped and counted as `skippedPickup`; they are never home delivery.
 - Key = city + area. If the same key appears with different rates, the highest rate is used (never undercharge) and it is counted as a conflict.
 - Apply replaces ALL rows of `ShippingRates` in one transaction: `CityName = "city — area"`, `Region = city`, `Price = rate`. An empty result is refused. Orders keep their own copy of city and cost, so old orders are not affected. No migration.
 - Nothing is stored from the provider except these prices. Errors never show provider text.
@@ -19,8 +19,12 @@ The secrets stay on the server only. Editing `deploy/compose.vue-preview.yaml` c
 
 ## Use (admin API, Admin role, antiforgery, optional Idempotency-Key)
 - `GET /api/v1/admin/shipping-rates` returns `{ readEnabled, total, rates: [{ id, region, city, price }] }`.
-- `POST /api/v1/admin/shipping-rates/import-sabil?dryRun=true` shows what would change (`applied: false`, counts, 10 sample rows). Check it first.
-- `POST /api/v1/admin/shipping-rates/import-sabil?dryRun=false` applies it.
+- `POST /api/v1/admin/shipping-rates/import-sabil?dryRun=true&surcharge=10` shows what would change (`applied: false`, counts incl. `skippedPickup`, `surcharge`, 10 sample rows incl. the surcharge). Check it first.
+- `POST /api/v1/admin/shipping-rates/import-sabil?dryRun=false&surcharge=10` applies it. Use the same surcharge as the preview.
+- `surcharge` (LYD, 0 to 100, at most 2 decimals, default 0) is added to every imported rate; anything else returns 400 `{ error: "قيمة الإضافة غير صحيحة" }`. The backend never assumes a value: the admin types it.
+
+## Surcharge for the women service
+The catalogue `deliveryRate` is what Sabil lists, but the «نساء» service adds 10 LYD on top (a real quote for عين زارة was 15 while the catalogue said 5). If the store ships with the women service, enter 10 in the admin field «إضافة على كل سعر (د.ل)». The page leaves it empty so the choice is conscious (0 is allowed).
 - 409 means the Sabil link is disabled on the server. 502 means Sabil could not be read now (`state` says why); nothing was changed.
 
 ## When Sabil changes prices

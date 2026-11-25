@@ -18,7 +18,6 @@
     </PackageReference>
     <PackageReference Include="SkiaSharp" Version="3.119.0" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.0" />
-    <PackageReference Include="Twilio" Version="7.13.1" />
     <!-- Override the vulnerable transitive PKCS dependency until upstream updates its minimum. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
   </ItemGroup>
