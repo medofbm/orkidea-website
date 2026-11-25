@@ -26,21 +26,16 @@ const groups = computed<DeliveryGroup[]>(() => {
 })
 const cityCount = computed(() => summary.value?.cities || groups.value.length)
 
-// Arabic-friendly matching: ignore diacritics and unify alef, taa marbuta and alef maqsura forms.
-function normalise(text: string) {
-  return text.toLowerCase().replace(/[ً-ْـ]/g, '')
-    .replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim()
-}
 const query = ref('')
-const needle = computed(() => normalise(query.value))
+const needle = computed(() => normaliseArabic(query.value))
 const visible = computed(() => {
   const n = needle.value
   if (!n) return groups.value.map(group => ({ group, areas: group.areas, forced: false }))
   const result: { group: DeliveryGroup, areas: DeliveryGroup['areas'], forced: boolean }[] = []
   for (const group of groups.value) {
-    if (normalise(group.city).includes(n)) result.push({ group, areas: group.areas, forced: false })
+    if (normaliseArabic(group.city).includes(n)) result.push({ group, areas: group.areas, forced: false })
     else {
-      const areas = group.areas.filter(area => normalise(area.area).includes(n))
+      const areas = group.areas.filter(area => normaliseArabic(area.area).includes(n))
       if (areas.length) result.push({ group, areas, forced: true })
     }
   }
