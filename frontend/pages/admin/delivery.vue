@@ -21,17 +21,24 @@ function reset() {
   apply()
 }
 
+function deliveryBadge(state: string) {
+  if (state === 'Delivered') return 'badge-status-delivered'
+  if (state === 'Returned') return 'badge-status-cancelled'
+  if (state === 'Returning') return 'badge-status-pending'
+  return 'badge-status-shipped'
+}
+
 function changePage(page: number) {
   filters.value = { ...filters.value, page }
 }
 </script>
 
 <template>
-  <section aria-labelledby="delivery-title">
+  <section aria-labelledby="delivery-title" class="mx-auto max-w-6xl">
     <h1 id="delivery-title" class="text-3xl font-bold">التوصيل والرواجع</h1>
     <p class="mb-6 mt-2 text-ink-soft">تابع الشحنات المفتوحة والرواجع. تسوية المحفظة في تطبيق شركة التوصيل.</p>
 
-    <form class="mb-6 flex flex-wrap items-end gap-3 rounded-xl bg-white p-4" @submit.prevent="apply">
+    <form class="card mb-6 flex flex-wrap items-end gap-3 p-4 sm:p-6" @submit.prevent="apply">
       <label class="min-w-52 flex-1">
         <span class="block font-semibold">بحث عن شحنة</span>
         <input v-model="fields.search" type="search" maxlength="100"
@@ -46,32 +53,42 @@ function changePage(page: number) {
           <option v-for="state in states" :key="state" :value="state">{{ adminDeliveryState(state) }}</option>
         </select>
       </label>
-      <button type="submit" class="min-h-11 btn-primary">بحث</button>
-      <button type="button" class="min-h-11 btn-secondary" @click="reset">
-        إعادة ضبط
-      </button>
+      <div class="flex w-full gap-3 sm:w-auto">
+        <button type="submit" class="min-h-11 flex-1 btn-primary sm:flex-none">بحث</button>
+        <button type="button" class="min-h-11 flex-1 btn-secondary sm:flex-none" @click="reset">
+          إعادة ضبط
+        </button>
+      </div>
     </form>
 
-    <p v-if="status === 'idle' || status === 'pending'" role="status">جاري تحميل الشحنات…</p>
+    <p v-if="status === 'idle' || status === 'pending'" role="status" class="text-ink-soft">جاري تحميل الشحنات…</p>
     <template v-else-if="error">
       <p v-if="error.statusCode === 400" role="alert">راجع حالة التوصيل أو نص البحث وأعد المحاولة.</p>
       <AdminReadError v-else :status-code="error.statusCode" />
       <button v-if="!error.statusCode || error.statusCode >= 500" type="button"
-        class="mt-3 min-h-11 rounded-lg border px-4" @click="refresh()">إعادة المحاولة</button>
+        class="mt-3 min-h-11 btn-secondary" @click="refresh()">إعادة المحاولة</button>
     </template>
     <template v-else-if="data">
-      <p class="mb-3" role="status">{{ data.total }} شحنة مطابقة</p>
-      <p v-if="!data.items.length" class="rounded-xl bg-white p-4">
-        لا توجد شحنات مطابقة. تقدر تسجّل الشحنة من تفاصيل الطلب بعد تجهيزه.
-      </p>
+      <p class="mb-3 font-semibold text-ink-soft" role="status">{{ data.total }} شحنة مطابقة</p>
+      <div v-if="!data.items.length" class="card flex flex-col items-center p-6 text-center sm:p-10">
+        <span class="flex size-16 items-center justify-center rounded-full bg-lavender text-brand" aria-hidden="true">
+          <AppIcon name="truck" :size="28" />
+        </span>
+        <p class="mt-4 max-w-md">
+          لا توجد شحنات مطابقة. تقدر تسجّل الشحنة من تفاصيل الطلب بعد تجهيزه.
+        </p>
+        <NuxtLink to="/admin/orders?status=processing" class="mt-4 inline-flex min-h-11 items-center btn-secondary">
+          الطلبات قيد التجهيز
+        </NuxtLink>
+      </div>
       <ul v-else class="grid gap-3 lg:grid-cols-2">
-        <li v-for="shipment in data.items" :key="shipment.orderId" class="min-w-0 rounded-xl bg-white p-4">
+        <li v-for="shipment in data.items" :key="shipment.orderId" class="card min-w-0 p-4 sm:p-6">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <NuxtLink :to="'/admin/orders/' + shipment.orderId"
               class="inline-flex min-h-11 items-center font-bold text-brand underline">
               الطلب <bdi class="ms-1">#{{ shipment.orderId }}</bdi>
             </NuxtLink>
-            <span class="rounded-full bg-lavender px-3 py-1 text-sm font-semibold text-brand-deep">
+            <span class="badge" :class="deliveryBadge(shipment.state)">
               {{ adminDeliveryState(shipment.state) }}
             </span>
           </div>
@@ -84,16 +101,16 @@ function changePage(page: number) {
               <dd>{{ adminHandoffMode(shipment.handoffMode) }}</dd></div>
             <div v-if="shipment.shipmentReference" class="flex flex-wrap gap-x-2"><dt class="font-semibold">مرجع الشحنة</dt>
               <dd class="break-all"><bdi>{{ shipment.shipmentReference }}</bdi></dd></div>
-            <div class="flex flex-wrap gap-x-2"><dt class="font-semibold">آخر تحديث</dt>
-              <dd><time :datetime="shipment.updatedAtUtc" dir="ltr">{{ shipment.updatedAtUtc.replace('T', ' ').slice(0, 16) }} UTC</time></dd></div>
+            <div class="flex flex-wrap gap-x-2 text-ink-soft"><dt class="font-semibold">آخر تحديث</dt>
+              <dd><time :datetime="shipment.updatedAtUtc">{{ adminOrderDate(shipment.updatedAtUtc) }}</time></dd></div>
           </dl>
         </li>
       </ul>
       <nav v-if="data.pages > 1" class="mt-5 flex flex-wrap items-center justify-between gap-3" aria-label="صفحات الشحنات">
-        <button type="button" :disabled="data.page <= 1" class="min-h-11 rounded-lg border px-4 disabled:opacity-50"
+        <button type="button" :disabled="data.page <= 1" class="min-h-11 btn-secondary disabled:opacity-50"
           @click="changePage(data.page - 1)">السابق</button>
         <span>{{ data.page }} من {{ data.pages }}</span>
-        <button type="button" :disabled="data.page >= data.pages" class="min-h-11 rounded-lg border px-4 disabled:opacity-50"
+        <button type="button" :disabled="data.page >= data.pages" class="min-h-11 btn-secondary disabled:opacity-50"
           @click="changePage(data.page + 1)">التالي</button>
       </nav>
     </template>
