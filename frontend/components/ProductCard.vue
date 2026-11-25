@@ -7,6 +7,13 @@ const toast = useToast()
 const uid = useId()
 
 const imageFailed = ref(false)
+// WebP copies (400/800/1200) when they exist; if one fails to load, fall back to the original photo.
+const variantFailed = ref(false)
+const imageSrcset = computed(() => variantFailed.value ? undefined : productImageSrcset(props.product.images[0]))
+function onImageError() {
+  if (imageSrcset.value) variantFailed.value = true
+  else imageFailed.value = true
+}
 watch(() => props.product.images[0], () => { imageFailed.value = false })
 const brandImage = '/images/logo.jpg'
 const showImage = computed(() => !!props.product.images[0] && props.product.images[0] !== brandImage && !imageFailed.value)
@@ -60,8 +67,9 @@ async function add() {
 <template>
   <article class="product-card card relative flex h-full min-w-0 flex-col overflow-hidden">
     <div class="relative aspect-[4/5] overflow-hidden rounded-t-2xl bg-gradient-to-br from-lavender to-white">
-      <img v-if="showImage" :src="product.images[0]" :alt="'عبوة ' + product.name" loading="lazy" decoding="async"
-        width="320" height="400" class="product-img absolute inset-0 size-full object-cover" @error="imageFailed = true">
+      <img v-if="showImage" :src="product.images[0]" :srcset="imageSrcset" sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+        :alt="'عبوة ' + product.name" loading="lazy" decoding="async"
+        width="320" height="400" class="product-img absolute inset-0 size-full object-cover" @error="onImageError">
       <div v-else class="absolute inset-0 grid place-items-center bg-gradient-to-br from-lavender to-white" role="img" :aria-label="'صورة ' + product.name + ' غير متاحة حالياً'">
         <img src="/brand/flower-purple.png" alt="" aria-hidden="true" width="96" height="96" loading="lazy" class="size-16 object-contain opacity-80 sm:size-24">
       </div>
