@@ -49,7 +49,12 @@ public partial class CheckoutController
         {
             receipt.OrderId, receipt.CreatedAtUtc, receipt.Quantity, receipt.StatusLabel, receipt.PaymentMethod,
             productsTotal = Money(receipt.ProductsTotal), shippingFee = Money(receipt.ShippingCost),
-            total = Money(receipt.TotalAmount)
+            total = Money(receipt.TotalAmount),
+            lines = receipt.Lines.Select(line => new
+            {
+                productName = line.ProductName, size = line.Size, quantity = line.Quantity,
+                unitPrice = Money(line.UnitPrice), subtotal = Money(line.Subtotal)
+            })
         });
     }
 
