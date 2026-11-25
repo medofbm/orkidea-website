@@ -47,7 +47,7 @@ public partial class CheckoutController
         if (await Confirmation() is not ViewResult { Model: CheckoutReceipt receipt }) return NotFound();
         return Ok(new
         {
-            receipt.OrderId, receipt.CreatedAtUtc, receipt.Quantity, receipt.StatusLabel, receipt.PaymentMethod,
+            receipt.OrderId, CreatedAtUtc = DateTime.SpecifyKind(receipt.CreatedAtUtc, DateTimeKind.Utc), receipt.Quantity, receipt.StatusLabel, receipt.PaymentMethod,
             productsTotal = Money(receipt.ProductsTotal), shippingFee = Money(receipt.ShippingCost),
             total = Money(receipt.TotalAmount),
             lines = receipt.Lines.Select(line => new
@@ -125,7 +125,9 @@ public partial class CheckoutController
             cartRevision = CartRevision(model.CartItems),
             shippingRates = model.ShippingRates.Select(rate => new
             {
-                id = rate.ShippingRateId, city = rate.CityName, price = Money(rate.Price),
+                id = rate.ShippingRateId, city = rate.CityName, region = rate.Region,
+                area = Orkideya.Infrastructure.Shipping.DeliveryRateGroups.AreaLabel(rate.Region, rate.CityName),
+                price = Money(rate.Price),
                 total = Money(model.CartTotal + rate.Price)
             }),
             destinations = model.HomeDestinations?.Select(pair => new

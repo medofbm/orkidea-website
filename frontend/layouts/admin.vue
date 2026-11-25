@@ -13,7 +13,8 @@ const groups: { title: string, links: NavLink[] }[] = [
     links: [
       { to: '/admin/orders', label: 'الطلبات', icon: 'cart', badge: 'orders' },
       { to: '/admin/orders/manual', label: 'طلب من فيسبوك', icon: 'facebook' },
-      { to: '/admin/delivery', label: 'التوصيل والرواجع', icon: 'truck' }
+      { to: '/admin/delivery', label: 'التوصيل والرواجع', icon: 'truck' },
+      { to: '/admin/shipping-rates', label: 'أسعار التوصيل', icon: 'cash' }
     ]
   },
   {

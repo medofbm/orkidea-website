@@ -25,6 +25,9 @@ x-backend-env: &backend-env
   Notifications__WhatsAppEnabled: "false"
   Notifications__OutboxWorkerEnabled: "false"
   Carriers__Sabil__QuoteEnabled: "false"
+  Carriers__Sabil__ReadEnabled: ${ORKIDEA_SABIL_READ_ENABLED:-false}
+  Carriers__Sabil__ApiKey: ${ORKIDEA_SABIL_API_KEY:-}
+  Carriers__Sabil__AccountId: ${ORKIDEA_SABIL_ACCOUNT_ID:-}
   DataProtection__KeysPath: /var/orkidea/keys
   DataProtection__ApplicationName: Orkidea.VuePreview
 
@@ -47,6 +50,7 @@ services:
     environment:
       NUXT_BACKEND_ORIGIN: http://web:8080
       NUXT_PUBLIC_PREVIEW: "true"
+      NUXT_PUBLIC_WHATSAPP_NUMBER: ${ORKIDEA_PUBLIC_WHATSAPP_NUMBER:-}
     networks:
       front:
         ipv4_address: ${ORKIDEA_PREVIEW_PROXY_IP:?Set an address within the preview subnet}
@@ -59,8 +63,29 @@ services:
     environment:
       <<: *backend-env
       Initialization__Run: "false"
+      Email__Smtp__Host: ${ORKIDEA_EMAIL_SMTP_HOST:-}
+      Email__Smtp__Port: ${ORKIDEA_EMAIL_SMTP_PORT:-587}
+      Email__Smtp__Username: ${ORKIDEA_EMAIL_SMTP_USERNAME:-}
+      Email__Smtp__Password: ${ORKIDEA_EMAIL_SMTP_PASSWORD:-}
+      Email__FromEmail: ${ORKIDEA_EMAIL_FROM:-noreply@orkidea.ly}
+      Email__FromName: "أوركيديا"
+      App__PublicBaseUrl: ${ORKIDEA_PUBLIC_BASE_URL:-https://vue-preview.orkidea.ly}
       ReverseProxy__KnownProxies__0: ${ORKIDEA_PREVIEW_PROXY_IP:?Set the frontend address}
       ConnectionStrings__DefaultConnection: Server=db;Database=OrkideaStaging;User Id=orkidea_preview_app;Password=${ORKIDEA_PREVIEW_APP_PASSWORD:?Set a preview-only app password};Encrypt=True;TrustServerCertificate=True
+    depends_on:
+      db: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+  # Runs on every `up` of web: applies pending EF migrations as the migration user, then exits 0.
+  # No seeding, no users (SeedPreviewData and SeedDefaultShippingRates are off, no Bootstrap variables).
+  migrate:
+    <<: *backend
+    restart: "no"
+    networks: [data]
+    environment:
+      <<: *backend-env
+      Initialization__Run: "true"
+      Initialization__SeedPreviewData: "false"
+      ConnectionStrings__DefaultConnection: Server=db;Database=OrkideaStaging;User Id=orkidea_preview_migrate;Password=${ORKIDEA_PREVIEW_MIGRATION_PASSWORD:?Set a preview-only migration password};Encrypt=True;TrustServerCertificate=True
     depends_on:
       db: {condition: service_healthy}
   initialize:

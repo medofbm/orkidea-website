@@ -148,6 +148,7 @@ test('built storefront renders catalogue data and the product gallery on the ser
     assert.ok(detail.includes('25.00'), 'decimal price remains exact')
     assert.ok(detail.includes('/images/back.png'), 'gallery includes additional photo')
     assert.ok(detail.includes('100 مل'), 'variant is rendered')
+    assert.ok(!detail.includes('عرض السلة'), 'product page has no extra view-cart link')
     const unavailable = await (await fetch(origin + '/products/2')).text()
     assert.ok(unavailable.includes('صورة غير متاحة'), 'brand-only cover uses the gallery placeholder')
     assert.ok(unavailable.includes('المنتج غير متاح للطلب حاليًا.'), 'missing variants explain why ordering is unavailable')

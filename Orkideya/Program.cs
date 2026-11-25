@@ -135,6 +135,7 @@ builder.Services.Configure<DataProtectionTokenProviderOptions>(options => option
 
 // Application Services
 Orkideya.Infrastructure.Shipping.ShippingRegistration.AddCarrierReadGateway(builder.Services, builder.Configuration);
+builder.Services.AddScoped<Orkideya.Infrastructure.Shipping.SabilRateImport>();
 builder.Services.AddSingleton<ExcelExportService>();
 builder.Services.AddSingleton<ProductImageResizer>();
 builder.Services.AddSingleton<ProductImageStorage>();

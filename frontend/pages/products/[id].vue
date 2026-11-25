@@ -252,7 +252,6 @@ useHead({
           </template>
           <p v-else class="font-semibold text-ink">المنتج غير متاح للطلب حاليًا.</p>
           <p role="status" :class="{ 'mt-3': message }" class="text-sm font-semibold text-brand">{{ message }}</p>
-          <NuxtLink to="/cart" class="mt-1 inline-flex min-h-11 items-center font-semibold text-brand underline underline-offset-4">عرض السلة</NuxtLink>
         </section>
 
         <ul class="mt-4 flex flex-wrap gap-2 text-sm font-semibold">
@@ -277,7 +276,7 @@ useHead({
     <section v-if="product && related.length" aria-labelledby="related-heading" class="mt-12">
       <SectionHeader v-reveal id="related-heading" title="منتجات" highlight="مشابهة" class="mb-6" />
       <!-- A few items sit in a centred grid; a carousel only when there is something to scroll. -->
-      <div v-if="related.length <= 4" class="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:justify-center sm:gap-5 sm:*:w-60">
+      <div v-if="related.length <= 4" class="grid grid-cols-2 items-stretch gap-3 sm:grid-cols-[repeat(auto-fit,minmax(13rem,15rem))] sm:justify-center sm:gap-5">
         <ProductCard v-for="item in related" :key="item.id" :product="item" />
       </div>
       <AppCarousel v-else :items="related" label="منتجات مشابهة" :per-view="{ base: 1, sm: 2, lg: 4 }" arrows>

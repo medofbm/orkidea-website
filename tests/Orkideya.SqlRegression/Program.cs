@@ -191,6 +191,7 @@ try
     // The delivery scenario records handoff evidence that guards subsequent downgrades.
     await DeliveryScenario.Run(Open, Check);
     await IdentityCookieScenario.Run(server.ConnectionString, Check);
+    await ShippingRateImportScenario.Run(Open, Check);
     Console.WriteLine("SQL SERVER VERIFICATION COMPLETE: dedicated generated test database only.");
 }
 finally
