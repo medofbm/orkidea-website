@@ -3,29 +3,38 @@ import type { CatalogueProduct } from '~/types/catalogue'
 
 const props = defineProps<{ product: CatalogueProduct & { startingPrice?: string } }>()
 const { busy, mutate, message } = useCart()
+const toast = useToast()
+const uid = useId()
+
 const imageFailed = ref(false)
 watch(() => props.product.images[0], () => { imageFailed.value = false })
 const brandImage = '/images/logo.jpg'
 const showImage = computed(() => !!props.product.images[0] && props.product.images[0] !== brandImage && !imageFailed.value)
-const sizes = computed(() => [...new Set(props.product.variants.map(v => v.size).filter(Boolean))])
-const single = computed(() => props.product.variants.length === 1)
 const target = computed(() => '/products/' + props.product.id)
-const toast = useToast()
+
+const variants = computed(() => props.product.variants)
+const multiple = computed(() => variants.value.length > 1)
+// Pre-select the cheapest size (only used to pick a default; the price shown is always the server value).
+const cheapestId = computed(() => {
+  let best = variants.value[0]
+  for (const v of variants.value) if (Number(v.price) < Number(best?.price)) best = v
+  return best?.id
+})
+const pickedId = ref<number | null>(null)
+const selected = computed(() => variants.value.find(v => v.id === (pickedId.value ?? cheapestId.value)) ?? variants.value[0])
+const priceText = computed(() => selected.value?.price ?? props.product.startingPrice)
+const sizeLabel = (size: string) => size || 'الحجم الأساسي'
+
 const adding = ref(false)
 const justAdded = ref(false)
 const failed = ref(false)
 const errorText = ref('')
-const overlayText = computed(() => {
-  if (props.product.category) return props.product.category
-  const s = sizes.value
-  if (!s.length) return ''
-  return s.length > 1 ? s[0] + ' - ' + s[s.length - 1] : s[0]
-})
 let resetTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(resetTimer))
+
 async function add() {
-  const variant = props.product.variants[0]
-  if (!variant) return
+  const variant = selected.value
+  if (!variant || adding.value) return
   clearTimeout(resetTimer)
   justAdded.value = false
   failed.value = false
@@ -49,33 +58,45 @@ async function add() {
 </script>
 
 <template>
-  <article class="product-card card relative flex min-w-0 flex-col">
-    <div class="image-well relative grid aspect-[4/5] place-items-center overflow-hidden bg-lavender/60 p-2 sm:p-3">
+  <article class="product-card card relative flex h-full min-w-0 flex-col overflow-hidden">
+    <div class="relative aspect-[4/5] overflow-hidden rounded-t-2xl bg-gradient-to-br from-lavender to-white">
       <img v-if="showImage" :src="product.images[0]" :alt="'عبوة ' + product.name" loading="lazy" decoding="async"
-        width="320" height="400" class="product-img size-full object-contain" @error="imageFailed = true">
-      <div v-else class="grid size-full place-items-center bg-lavender" role="img" :aria-label="'صورة ' + product.name + ' غير متاحة حالياً'">
-        <img src="/brand/flower-icon.webp" alt="" aria-hidden="true" width="96" height="96" loading="lazy" class="size-16 rounded-2xl opacity-90 sm:size-24">
+        width="320" height="400" class="product-img absolute inset-0 size-full object-cover" @error="imageFailed = true">
+      <div v-else class="absolute inset-0 grid place-items-center bg-gradient-to-br from-lavender to-white" role="img" :aria-label="'صورة ' + product.name + ' غير متاحة حالياً'">
+        <img src="/brand/flower-purple.png" alt="" aria-hidden="true" width="96" height="96" loading="lazy" class="size-16 object-contain opacity-80 sm:size-24">
       </div>
-      <span v-if="overlayText" class="card-glass pointer-events-none absolute inset-x-2 bottom-2 truncate px-3 py-1.5 text-center text-xs font-semibold text-brand sm:inset-x-3 sm:bottom-3" style="border-radius: 9999px">{{ overlayText }}</span>
+      <span v-if="product.category" class="pointer-events-none absolute start-2 top-2 max-w-[calc(100%-1rem)] truncate rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-brand shadow-soft backdrop-blur-sm sm:start-3 sm:top-3">{{ product.category }}</span>
     </div>
-    <div class="flex flex-1 flex-col gap-1.5 p-3 sm:p-4">
+
+    <div class="flex flex-1 flex-col gap-2 p-3 sm:p-4">
       <h3 class="line-clamp-2 min-h-[2.75em] text-sm leading-snug font-bold text-ink sm:text-base">
         <NuxtLink :to="target" class="stretched rounded-md focus-visible:outline-offset-4">{{ product.name }}</NuxtLink>
       </h3>
-      <ul v-if="sizes.length" class="flex flex-wrap gap-1" aria-label="الأحجام">
-        <li v-for="s in sizes" :key="s" class="rounded-full bg-lavender px-2.5 py-0.5 text-xs font-semibold text-brand">{{ s }}</li>
-      </ul>
-      <p v-if="product.startingPrice !== undefined" class="price mt-auto pt-1 text-base sm:text-lg">
-        <span v-if="product.variants.length > 1" class="text-sm font-semibold text-ink-soft">من </span><bdi>{{ formatPrice(product.startingPrice) }}</bdi> د.ل
+
+      <div v-if="multiple" role="group" :aria-label="'اختاري الحجم لـ ' + product.name" class="relative z-10 flex min-h-[2.75rem] flex-wrap content-start gap-1.5">
+        <button v-for="v in variants" :key="v.id" type="button" :aria-pressed="selected?.id === v.id" :disabled="busy || adding"
+          class="grid min-h-11 cursor-pointer place-items-center rounded-full border border-brand/25 bg-white px-3 text-xs font-semibold text-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand aria-pressed:bg-brand aria-pressed:text-white sm:text-sm"
+          @click="pickedId = v.id">
+          <!-- Hidden copy reserves the width of the "size · price" text so chips never change width on selection. -->
+          <span class="invisible col-start-1 row-start-1 whitespace-nowrap" aria-hidden="true">{{ sizeLabel(v.size) }}&nbsp;·&nbsp;<bdi>{{ formatPrice(v.price) }}</bdi>&nbsp;د.ل</span>
+          <span class="col-start-1 row-start-1 whitespace-nowrap">{{ sizeLabel(v.size) }}<template v-if="selected?.id === v.id">&nbsp;·&nbsp;<bdi>{{ formatPrice(v.price) }}</bdi>&nbsp;د.ل</template></span>
+        </button>
+      </div>
+
+      <p v-if="priceText !== undefined && variants.length" class="price mt-auto pt-1 text-base sm:text-lg" aria-live="polite">
+        <bdi>{{ formatPrice(priceText) }}</bdi> د.ل
       </p>
-      <button v-if="single" type="button" :aria-label="'أضيفي ' + product.name + ' للسلة'" class="btn-primary relative z-10 mt-2 w-full gap-1.5 whitespace-nowrap px-3 text-sm" :disabled="busy" :aria-busy="adding" @click="add">
-        <span v-if="adding" class="spinner" aria-hidden="true" />
-        <AppIcon v-else :name="justAdded ? 'check' : 'cart'" :size="18" aria-hidden="true" />
-        <span>{{ adding ? 'جاري الإضافة...' : justAdded ? 'تمت الإضافة ✓' : 'أضيفي للسلة' }}</span>
-      </button>
-      <p v-if="single && failed" role="alert" class="relative z-10 text-xs font-semibold text-danger">{{ errorText }}</p>
-      <span v-else-if="!product.variants.length" class="mt-2 w-full cursor-not-allowed rounded-xl bg-lavender px-4 py-2.5 text-center text-sm font-semibold text-ink-soft opacity-70" aria-disabled="true">غير متاح حالياً</span>
-      <NuxtLink v-else-if="!single" :to="target" tabindex="-1" aria-hidden="true" class="btn-secondary relative z-10 mt-2 w-full whitespace-nowrap px-3 text-sm">اختاري الحجم</NuxtLink>
+
+      <template v-if="variants.length">
+        <button type="button" :aria-label="'أضيفي ' + product.name + ' للسلة'" class="btn-primary relative z-10 min-h-11 w-full gap-1.5 whitespace-nowrap px-3 text-sm"
+          :disabled="busy || adding" :aria-busy="adding" @click="add">
+          <span v-if="adding" class="spinner" aria-hidden="true" />
+          <AppIcon v-else :name="justAdded ? 'check' : 'cart'" :size="18" aria-hidden="true" />
+          <span>{{ adding ? 'جاري الإضافة...' : justAdded ? 'تمت الإضافة' : 'أضيفي للسلة' }}</span>
+        </button>
+        <p v-if="failed" role="alert" class="relative z-10 text-xs font-semibold text-danger">{{ errorText }}</p>
+      </template>
+      <span v-else class="mt-auto min-h-11 w-full cursor-not-allowed rounded-xl bg-lavender px-4 py-2.5 text-center text-sm font-semibold text-ink-soft opacity-70" aria-disabled="true">غير متاح حالياً</span>
     </div>
   </article>
 </template>
@@ -86,10 +107,10 @@ async function add() {
 .product-card:hover { box-shadow: var(--shadow-lift); }
 .spinner { width: 1rem; height: 1rem; border-radius: 9999px; border: 2px solid rgb(255 255 255 / 0.4); border-top-color: #fff; }
 @media (prefers-reduced-motion: no-preference) {
-  .product-card { transition: transform 400ms cubic-bezier(.34, 1.56, .64, 1), box-shadow 400ms cubic-bezier(.34, 1.56, .64, 1), border-color 200ms ease-out; }
-  .product-card:hover { transform: translateY(-8px); }
-  .product-img { transition: transform 400ms cubic-bezier(.34, 1.56, .64, 1); }
-  .product-card:hover .product-img { transform: scale(1.08); }
+  .product-card { transition: transform 300ms ease-out, box-shadow 300ms ease-out, border-color 200ms ease-out; }
+  .product-card:hover { transform: translateY(-4px); }
+  .product-img { transition: transform 500ms ease-out; }
+  .product-card:hover .product-img { transform: scale(1.05); }
   .spinner { animation: pc-spin 0.7s linear infinite; }
   @keyframes pc-spin { to { transform: rotate(360deg); } }
 }
