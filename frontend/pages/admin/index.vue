@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AdminDashboard } from '~/types/admin'
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: 'admin', middleware: 'admin' })
 useSeoMeta({ title: 'لوحة إدارة أوركيديا' })
 const shortcuts = [
   { to: '/admin/orders', label: 'مراجعة الطلبات', icon: 'cart' },

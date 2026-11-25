@@ -15,6 +15,16 @@ obj/
 **/appsettings.json
 **/appsettings.Development.json
 **/appsettings.Production.json
+**/appsettings.Staging.json
+
+## Secrets and certificates (DO NOT COMMIT)
+.env
+.env.*
+!.env.example
+.preview.env
+*.pfx
+*.pem
+*.key
 
 ## Database files
 *.mdf

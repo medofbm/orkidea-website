@@ -1,3 +1,6 @@
+# Optional outer rate limit (F-13). To enable: put the zone line in the http{} context
+# (for example /etc/nginx/conf.d/orkidea-limits.conf) and uncomment the two lines in the server below.
+# limit_req_zone $binary_remote_addr zone=orkidea_api:10m rate=10r/s;
 # Install only after confirming a separate hostname, DNS, TLS certificate and Basic Auth file.
 server {
     listen 80;
@@ -13,7 +16,18 @@ server {
     auth_basic_user_file __PREVIEW_HTPASSWD__;
     client_max_body_size 6m;
     add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    add_header Strict-Transport-Security "max-age=15552000; includeSubDomains" always;
+    # The Nuxt app sets the enforced Content-Security-Policy itself (frontend/server/middleware/security-headers.ts).
 
+    # location /api/ {
+    #     limit_req zone=orkidea_api burst=20 nodelay;
+    #     limit_req_status 429;
+    #     proxy_pass http://127.0.0.1:__LOOPBACK_PORT__;  # same proxy_* lines as "location /" below
+    # }
     location /health/ { return 404; }
     location / {
         proxy_pass http://127.0.0.1:__PREVIEW_LOOPBACK_PORT__;

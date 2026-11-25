@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: 'admin', middleware: 'admin' })
 useSeoMeta({ title: 'رسائل التواصل' })
 
 type Message = { id: number, name: string, email: string, phoneNumber: string, message: string, receivedAt: string, isRead?: boolean }
