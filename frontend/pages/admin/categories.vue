@@ -16,6 +16,7 @@ const failure = ref('')
 const toast = useToast()
 const confirmDialog = useConfirm()
 const notice = ref('')
+const ordered = computed(() => [...(data.value?.items ?? [])].sort((a, b) => Number(!!a.isArchived) - Number(!!b.isArchived)))
 const disabled = computed(() => saving.value || needsRefresh.value || status.value !== 'success')
 
 function edit(category?: Category) {
@@ -115,61 +116,66 @@ async function removeCategory(category: Category) {
 </script>
 
 <template>
-  <section aria-labelledby="categories-title" class="mx-auto max-w-4xl">
+  <section aria-labelledby="categories-title" class="mx-auto max-w-6xl">
     <NuxtLink to="/admin/products" class="inline-flex min-h-11 items-center text-brand underline">العودة للمنتجات</NuxtLink>
     <h1 id="categories-title" class="mb-2 text-3xl font-bold">إدارة الفئات</h1>
-    <p class="mb-5">الفئات هنا تظهر في خيارات المنتج. تغيير الاسم يبقى مرتبط بنفس المنتجات.</p>
+    <p class="mb-5 text-ink-soft">الفئات هنا تظهر في خيارات المنتج. تغيير الاسم يبقى مرتبط بنفس المنتجات.</p>
 
     <p v-if="notice" role="status" class="mb-3 text-success">{{ notice }}</p>
     <p v-if="failure" role="alert" class="mb-3 text-danger">{{ failure }}</p>
     <button v-if="needsRefresh" type="button" :disabled="saving || status === 'pending'"
-      class="mb-4 min-h-11 rounded-lg border px-4" @click="reload()">تحديث قائمة الفئات</button>
+      class="btn-secondary mb-4" @click="reload()">تحديث قائمة الفئات</button>
 
-    <form class="mb-6 rounded-xl bg-white p-4" @submit.prevent="save">
-      <fieldset :disabled="disabled" class="flex flex-wrap items-end gap-3">
-        <legend class="mb-3 text-xl font-bold">{{ selected ? 'تعديل اسم الفئة' : 'إضافة فئة' }}</legend>
-        <label class="min-w-40 flex-1">اسم الفئة
-          <input v-model="name" maxlength="150" required class="mt-1 block min-h-11 w-full rounded-lg border px-3">
+    <div class="mb-6 grid gap-4 lg:grid-cols-2">
+      <form class="card p-4 sm:p-6" @submit.prevent="save">
+        <fieldset :disabled="disabled" class="flex flex-wrap items-end gap-3">
+          <legend class="mb-3 text-xl font-bold">{{ selected ? 'تعديل اسم الفئة' : 'إضافة فئة' }}</legend>
+          <label class="min-w-40 flex-1 font-medium">اسم الفئة
+            <input v-model="name" maxlength="150" required class="field mt-1 block min-h-11 w-full">
+          </label>
+          <button type="submit" :disabled="!name.trim()" class="btn-primary min-h-11 disabled:opacity-60">
+            {{ saving ? 'جاري الحفظ…' : 'حفظ الفئة' }}
+          </button>
+          <button v-if="selected" type="button" class="btn-secondary min-h-11" @click="edit()">إلغاء التعديل</button>
+        </fieldset>
+      </form>
+
+      <form class="card flex flex-wrap items-end gap-3 p-4 sm:p-6"
+        @submit.prevent="query = { search: search.trim(), page: 1 }">
+        <label class="min-w-40 flex-1 font-medium">بحث في الفئات
+          <input v-model="search" type="search" maxlength="100" class="field mt-1 block min-h-11 w-full">
         </label>
-        <button type="submit" :disabled="!name.trim()" class="min-h-11 btn-primary disabled:opacity-60">
-          {{ saving ? 'جاري الحفظ…' : 'حفظ الفئة' }}
-        </button>
-        <button v-if="selected" type="button" class="min-h-11 rounded-lg border px-4" @click="edit()">إلغاء التعديل</button>
-      </fieldset>
-    </form>
+        <button type="submit" :disabled="saving" class="btn-secondary min-h-11">بحث</button>
+      </form>
+    </div>
 
-    <form class="mb-4 flex flex-wrap items-end gap-3 rounded-xl bg-white p-4"
-      @submit.prevent="query = { search: search.trim(), page: 1 }">
-      <label class="min-w-40 flex-1">بحث في الفئات
-        <input v-model="search" type="search" maxlength="100" class="mt-1 block min-h-11 w-full rounded-lg border px-3">
-      </label>
-      <button type="submit" :disabled="saving" class="min-h-11 rounded-lg border px-4">بحث</button>
-    </form>
     <p v-if="status === 'idle' || status === 'pending'" role="status">جاري تحميل الفئات…</p>
     <AdminReadError v-else-if="error" :status-code="error.statusCode" />
     <template v-else-if="data">
-      <p class="mb-3" role="status">{{ data.total ? data.total + ' فئة' : 'ما فيش فئات مطابقة.' }}</p>
-      <ul class="grid gap-3 sm:grid-cols-2">
-        <li v-for="category in data.items" :key="category.categoryId"
-          class="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl bg-white p-4">
+      <p class="mb-3 text-ink-soft" role="status">{{ data.total ? data.total + ' فئة' : 'ما فيش فئات مطابقة.' }}</p>
+      <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <li v-for="category in ordered" :key="category.categoryId"
+          class="card flex min-w-0 flex-col gap-3 p-4" :class="category.isArchived ? 'opacity-60' : ''">
           <div class="min-w-0">
-            <p class="break-words font-semibold">{{ category.name }}
+            <p class="break-words font-bold">{{ category.name }}
               <span v-if="category.isArchived" class="badge badge-status-pending ms-1">مؤرشفة</span></p>
-            <p class="text-sm">{{ category.products }} منتج مرتبط</p>
+            <span class="chip mt-2 inline-flex text-sm">{{ category.products }} {{ category.products === 1 ? 'منتج' : 'منتجات' }}</span>
           </div>
-          <button type="button" :disabled="disabled" :aria-label="'تعديل فئة ' + category.name"
-            class="min-h-11 px-2 text-brand underline disabled:opacity-60" @click="edit(category)">تعديل الاسم</button>
-          <button type="button" :disabled="disabled" :aria-label="(category.isArchived ? 'إلغاء أرشفة فئة ' : 'أرشفة فئة ') + category.name"
-            class="min-h-11 px-2 text-brand underline disabled:opacity-60" @click="toggleArchive(category)">{{ category.isArchived ? 'إلغاء الأرشفة' : 'أرشفة' }}</button>
-          <button type="button" :disabled="disabled" :aria-label="'حذف فئة ' + category.name"
-            class="min-h-11 px-2 text-danger underline disabled:opacity-60" @click="removeCategory(category)">حذف</button>
+          <div class="mt-auto flex flex-wrap gap-1">
+            <button type="button" :disabled="disabled" :aria-label="'تعديل فئة ' + category.name"
+              class="btn-ghost min-h-11 px-3 text-sm disabled:opacity-60" @click="edit(category)">تعديل الاسم</button>
+            <button type="button" :disabled="disabled" :aria-label="(category.isArchived ? 'إلغاء أرشفة فئة ' : 'أرشفة فئة ') + category.name"
+              class="btn-ghost min-h-11 px-3 text-sm disabled:opacity-60" @click="toggleArchive(category)">{{ category.isArchived ? 'إلغاء الأرشفة' : 'أرشفة' }}</button>
+            <button type="button" :disabled="disabled" :aria-label="'حذف فئة ' + category.name"
+              class="btn-ghost min-h-11 px-3 text-sm !text-danger disabled:opacity-60" @click="removeCategory(category)">حذف</button>
+          </div>
         </li>
       </ul>
       <nav v-if="data.pages > 1" aria-label="صفحات الفئات" class="mt-4 flex items-center justify-between gap-3">
-        <button type="button" :disabled="saving || data.page <= 1" class="min-h-11 rounded-lg border px-4 disabled:opacity-50"
+        <button type="button" :disabled="saving || data.page <= 1" class="btn-secondary min-h-11 disabled:opacity-50"
           @click="query.page = data.page - 1">السابق</button>
         <span>{{ data.page }} من {{ data.pages }}</span>
-        <button type="button" :disabled="saving || data.page >= data.pages" class="min-h-11 rounded-lg border px-4 disabled:opacity-50"
+        <button type="button" :disabled="saving || data.page >= data.pages" class="btn-secondary min-h-11 disabled:opacity-50"
           @click="query.page = data.page + 1">التالي</button>
       </nav>
     </template>
