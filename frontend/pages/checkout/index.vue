@@ -40,7 +40,8 @@ const regionRates = computed(() => (state.value?.shippingRates ?? [])
   .sort((a, b) => (a.area ?? a.city).localeCompare(b.area ?? b.city, 'ar')))
 function chooseRateRegion(event: Event) {
   rateRegion.value = (event.target as HTMLSelectElement).value
-  fields.shippingRateId = 0
+  // A city with a single delivery area needs no second choice.
+  fields.shippingRateId = regionRates.value.length === 1 ? regionRates.value[0]!.id : 0
 }
 const hasDeliveryOptions = computed(() => state.value?.destinations
   ? services.value.length > 0 || serviceDestinations.value.length > 0

@@ -70,6 +70,12 @@ function onClosed() {
 }
 function onBackdrop(event: MouseEvent) { if (event.target === dialog.value) closePanel() }
 onBeforeUnmount(() => { if (import.meta.client) document.documentElement.classList.remove('overflow-hidden') })
+const citiesLabel = computed(() => {
+  const n = cityCount.value
+  if (n === 1) return 'مدينة واحدة'
+  if (n === 2) return 'مدينتين'
+  return n <= 10 ? `${n} مدن` : `${n} مدينة`
+})
 </script>
 
 <template>
@@ -77,13 +83,13 @@ onBeforeUnmount(() => { if (import.meta.client) document.documentElement.classLi
     <template v-if="summary.mode === 'rates'">
       <p class="flex items-center gap-2">
         <AppIcon name="truck" :size="18" />
-        <span>التوصيل من <bdi class="font-bold tabular-nums">{{ formatPrice(summary.minPrice) }}</bdi> د.ل<template v-if="cityCount"> · {{ cityCount }} مدينة</template></span>
+        <span>التوصيل من <bdi class="font-bold tabular-nums">{{ formatPrice(summary.minPrice) }}</bdi> د.ل<template v-if="cityCount"> · {{ citiesLabel }}</template></span>
       </p>
       <button ref="trigger" type="button" aria-haspopup="dialog"
         class="inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-brand/30 bg-lavender/60 px-4 font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         @click="openPanel">
         <span>أسعار التوصيل حسب منطقتك</span>
-        <span aria-hidden="true">‹</span>
+        <AppIcon name="chevron-left" :size="16" />
       </button>
 
       <dialog ref="dialog" :aria-labelledby="headingId" class="delivery-dialog" @close="onClosed" @click="onBackdrop">
@@ -112,7 +118,7 @@ onBeforeUnmount(() => { if (import.meta.client) document.documentElement.classLi
                       <template v-if="exact(item.group)"><bdi>{{ formatPrice(item.group.minPrice) }}</bdi> د.ل</template>
                       <template v-else>من <bdi>{{ formatPrice(item.group.minPrice) }}</bdi> د.ل</template>
                     </span>
-                    <span v-if="expandable(item.group)" aria-hidden="true" class="text-xs transition-transform" :class="isOpen(item.group.city, item.forced) ? 'rotate-90' : '-rotate-90'">▸</span>
+                    <AppIcon v-if="expandable(item.group)" name="chevron-left" :size="16" class="transition-transform" :class="isOpen(item.group.city, item.forced) ? '-rotate-90' : ''" />
                   </span>
                 </component>
                 <ul v-if="expandable(item.group) && isOpen(item.group.city, item.forced)" class="divide-y divide-lavender border-t border-lavender bg-cream/60">
