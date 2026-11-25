@@ -73,14 +73,14 @@ async function add() {
         <NuxtLink :to="target" class="stretched rounded-md focus-visible:outline-offset-4">{{ product.name }}</NuxtLink>
       </h3>
 
-      <div v-if="multiple" role="radiogroup" aria-label="الحجم" class="relative z-10 flex min-h-[2.75rem] flex-wrap content-start gap-1.5">
-        <label v-for="v in variants" :key="v.id" class="size-chip relative">
-          <input type="radio" class="peer sr-only" :name="'size-' + uid" :value="v.id" :checked="selected?.id === v.id"
-            :disabled="busy || adding" @change="pickedId = v.id">
-          <span class="flex min-h-11 cursor-pointer items-center justify-center rounded-full border border-brand/25 bg-white px-3 text-xs font-semibold text-ink-soft peer-checked:border-brand peer-checked:bg-brand peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand peer-disabled:cursor-not-allowed peer-disabled:opacity-60 sm:text-sm">
-            {{ sizeLabel(v.size) }}<template v-if="selected?.id === v.id">&nbsp;·&nbsp;<bdi>{{ formatPrice(v.price) }}</bdi>&nbsp;د.ل</template>
-          </span>
-        </label>
+      <div v-if="multiple" role="group" :aria-label="'اختاري الحجم لـ ' + product.name" class="relative z-10 flex min-h-[2.75rem] flex-wrap content-start gap-1.5">
+        <button v-for="v in variants" :key="v.id" type="button" :aria-pressed="selected?.id === v.id" :disabled="busy || adding"
+          class="grid min-h-11 cursor-pointer place-items-center rounded-full border border-brand/25 bg-white px-3 text-xs font-semibold text-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand aria-pressed:bg-brand aria-pressed:text-white sm:text-sm"
+          @click="pickedId = v.id">
+          <!-- Hidden copy reserves the width of the "size · price" text so chips never change width on selection. -->
+          <span class="invisible col-start-1 row-start-1 whitespace-nowrap" aria-hidden="true">{{ sizeLabel(v.size) }}&nbsp;·&nbsp;<bdi>{{ formatPrice(v.price) }}</bdi>&nbsp;د.ل</span>
+          <span class="col-start-1 row-start-1 whitespace-nowrap">{{ sizeLabel(v.size) }}<template v-if="selected?.id === v.id">&nbsp;·&nbsp;<bdi>{{ formatPrice(v.price) }}</bdi>&nbsp;د.ل</template></span>
+        </button>
       </div>
 
       <p v-if="priceText !== undefined && variants.length" class="price mt-auto pt-1 text-base sm:text-lg" aria-live="polite">
