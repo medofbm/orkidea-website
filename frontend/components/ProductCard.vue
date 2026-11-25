@@ -22,9 +22,13 @@ const target = computed(() => '/products/' + props.product.id)
 const variants = computed(() => props.product.variants)
 const multiple = computed(() => variants.value.length > 1)
 // Pre-select the cheapest size (only used to pick a default; the price shown is always the server value).
+// A size the server marks as not orderable is shown disabled and never pre-selected.
+const isOrderable = (v?: { orderable?: boolean }) => v?.orderable !== false
+const hasOrderable = computed(() => variants.value.some(isOrderable))
 const cheapestId = computed(() => {
-  let best = variants.value[0]
-  for (const v of variants.value) if (Number(v.price) < Number(best?.price)) best = v
+  const pool = hasOrderable.value ? variants.value.filter(isOrderable) : variants.value
+  let best = pool[0]
+  for (const v of pool) if (Number(v.price) < Number(best?.price)) best = v
   return best?.id
 })
 const pickedId = ref<number | null>(null)
@@ -41,7 +45,7 @@ onBeforeUnmount(() => clearTimeout(resetTimer))
 
 async function add() {
   const variant = selected.value
-  if (!variant || adding.value) return
+  if (!variant || adding.value || !isOrderable(variant)) return
   clearTimeout(resetTimer)
   justAdded.value = false
   failed.value = false
@@ -82,15 +86,16 @@ async function add() {
       </h3>
 
       <div v-if="variants.length === 1" class="relative z-10 flex min-h-[2.75rem] flex-wrap content-start gap-1.5">
-        <span class="grid min-h-11 place-items-center rounded-full border border-brand bg-brand px-3 text-xs font-semibold whitespace-nowrap text-white sm:text-sm">{{ sizeLabel(variants[0]!.size) }}</span>
+        <span class="grid min-h-11 place-items-center rounded-full border px-3 text-xs font-semibold whitespace-nowrap sm:text-sm"
+          :class="isOrderable(variants[0]) ? 'border-brand bg-brand text-white' : 'border-brand/25 bg-lavender text-ink-soft opacity-70'">{{ sizeLabel(variants[0]!.size) }}<template v-if="!isOrderable(variants[0])">&nbsp;·&nbsp;غير متاح</template></span>
       </div>
       <div v-else-if="multiple" role="group" :aria-label="'اختاري الحجم لـ ' + product.name" class="relative z-10 flex min-h-[2.75rem] flex-wrap content-start gap-1.5">
-        <button v-for="v in variants" :key="v.id" type="button" :aria-pressed="selected?.id === v.id" :disabled="busy || adding"
+        <button v-for="v in variants" :key="v.id" type="button" :aria-pressed="selected?.id === v.id" :disabled="busy || adding || !isOrderable(v)"
           class="grid min-h-11 cursor-pointer place-items-center rounded-full border border-brand/25 bg-white px-3 text-xs font-semibold text-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand aria-pressed:bg-brand aria-pressed:text-white sm:text-sm"
           @click="pickedId = v.id">
           <!-- Hidden copy reserves the width of the "size · price" text so chips never change width on selection. -->
           <span class="invisible col-start-1 row-start-1 whitespace-nowrap" aria-hidden="true">{{ sizeLabel(v.size) }}&nbsp;·&nbsp;<bdi>{{ formatPrice(v.price) }}</bdi>&nbsp;د.ل</span>
-          <span class="col-start-1 row-start-1 whitespace-nowrap">{{ sizeLabel(v.size) }}<template v-if="selected?.id === v.id">&nbsp;·&nbsp;<bdi>{{ formatPrice(v.price) }}</bdi>&nbsp;د.ل</template></span>
+          <span class="col-start-1 row-start-1 whitespace-nowrap">{{ sizeLabel(v.size) }}<template v-if="!isOrderable(v)">&nbsp;·&nbsp;غير متاح</template><template v-else-if="selected?.id === v.id">&nbsp;·&nbsp;<bdi>{{ formatPrice(v.price) }}</bdi>&nbsp;د.ل</template></span>
         </button>
       </div>
 
@@ -98,7 +103,7 @@ async function add() {
         <bdi>{{ formatPrice(priceText) }}</bdi> د.ل
       </p>
 
-      <template v-if="variants.length">
+      <template v-if="variants.length && hasOrderable">
         <button type="button" :aria-label="'أضيفي ' + product.name + ' للسلة'" class="btn-primary relative z-10 min-h-11 w-full gap-1.5 whitespace-nowrap px-3 text-sm"
           :disabled="busy || adding" :aria-busy="adding" @click="add">
           <span v-if="adding" class="spinner" aria-hidden="true" />

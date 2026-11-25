@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Application.Delivery;
+using Orkideya.Application.Inventory;
 using Orkideya.Application.Orders;
 using Orkideya.Data;
 using Orkideya.Models;
@@ -58,6 +59,8 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
             {
                 row.ProductId, row.Name, row.Unit, available = row.Available.ToString("0.###", CultureInfo.InvariantCulture)
             }),
+            unorderableSizes = (await VariantOrderability.UnorderableSizesAsync(context, cancellationToken))
+                .Select(size => new { size.ProductId, size.Name, size.Size }),
             unreadMessages = await context.ContactMessages.CountAsync(message => !message.IsRead, cancellationToken),
             reviewsCount = reviewCount,
             reviewsAverage = reviewCount == 0 ? (decimal?)null : Math.Round((decimal)await visibleReviews.AverageAsync(review => review.Rating, cancellationToken), 1)
