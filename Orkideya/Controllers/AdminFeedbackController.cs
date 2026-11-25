@@ -60,7 +60,7 @@ public sealed class AdminFeedbackController(ApplicationDbContext db) : Controlle
             .Select(message => new
             {
                 id = message.Id, name = message.Name, email = message.Email, phoneNumber = message.PhoneNumber,
-                message = message.Message, receivedAt = message.ReceivedAt, isRead = message.IsRead
+                message = message.Message, receivedAt = DateTime.SpecifyKind(message.ReceivedAt, DateTimeKind.Utc), isRead = message.IsRead
             }).ToListAsync(ct);
         return Ok(new { items });
     }
