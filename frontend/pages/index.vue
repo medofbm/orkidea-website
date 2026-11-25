@@ -8,10 +8,63 @@ function positiveInteger(value: unknown, max: number) {
 }
 const page = computed(() => positiveInteger(route.query.page, 10000) ?? 1)
 const categoryId = computed(() => positiveInteger(route.query.categoryId, 2147483647))
+const sortOptions = [
+  { value: 'default', label: 'الافتراضي' },
+  { value: 'newest', label: 'الأحدث' },
+  { value: 'price-asc', label: 'السعر: من الأقل' },
+  { value: 'price-desc', label: 'السعر: من الأعلى' },
+  { value: 'name', label: 'الاسم' }
+]
+const search = computed(() => {
+  const q = typeof route.query.q === 'string' ? route.query.q.trim().slice(0, 100) : ''
+  return q || undefined
+})
+const sort = computed(() => {
+  const s = typeof route.query.sort === 'string' ? route.query.sort : ''
+  return sortOptions.some(o => o.value === s) && s !== 'default' ? s : undefined
+})
 const { data, status, error, refresh } = await useFetch<CataloguePage>(
   () => useRuntimeConfig().public.apiBase + '/products',
-  { query: { page, categoryId } }
+  { query: { page, categoryId, search, sort } }
 )
+// Toolbar state lives in the URL (q, sort) next to page and categoryId; changing q or sort resets page.
+const searchText = ref(search.value ?? '')
+watch(search, value => { if ((value ?? '') !== searchText.value.trim()) searchText.value = value ?? '' })
+function catalogueQuery(extra: { page?: number, q?: string, sort?: string, categoryId?: number } = {}) {
+  const q = 'q' in extra ? extra.q : search.value
+  const s = 'sort' in extra ? extra.sort : sort.value
+  const c = 'categoryId' in extra ? extra.categoryId : categoryId.value
+  const query: Record<string, string | number> = {}
+  if (c) query.categoryId = c
+  if (q) query.q = q
+  if (s && s !== 'default') query.sort = s
+  if (extra.page && extra.page > 1) query.page = extra.page
+  return query
+}
+function applySearch() {
+  const q = searchText.value.trim().slice(0, 100)
+  if (q === (search.value ?? '')) return
+  navigateTo({ query: catalogueQuery({ q }), hash: '#catalogue-heading' }, { replace: true })
+}
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+function onSearchInput() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(applySearch, 300)
+}
+function submitSearch() {
+  clearTimeout(searchTimer)
+  applySearch()
+}
+function clearSearch() {
+  clearTimeout(searchTimer)
+  searchText.value = ''
+  applySearch()
+}
+function onSortChange(event: Event) {
+  const value = (event.target as HTMLSelectElement).value
+  navigateTo({ query: catalogueQuery({ sort: value }), hash: '#catalogue-heading' }, { replace: true })
+}
+onBeforeUnmount(() => clearTimeout(searchTimer))
 const products = computed(() => (data.value?.items ?? []).map(product => ({
   ...product,
   startingPrice: product.variants.reduce<string | undefined>((lowest, variant) =>
@@ -135,11 +188,11 @@ useSeoMeta({
       </div>
       <nav v-if="data?.categories?.length" aria-label="فئات المنتجات"
         class="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0">
-        <NuxtLink :to="{ query: {}, hash: '#catalogue-heading' }"
+        <NuxtLink :to="{ query: catalogueQuery({ categoryId: undefined }), hash: '#catalogue-heading' }"
           :aria-current="categoryId === undefined ? 'page' : undefined"
           class="chip shrink-0 whitespace-nowrap aria-[current=page]:bg-brand aria-[current=page]:text-white">كل المنتجات</NuxtLink>
         <NuxtLink v-for="category in data.categories" :key="category.id"
-          :to="{ query: { categoryId: category.id }, hash: '#catalogue-heading' }"
+          :to="{ query: catalogueQuery({ categoryId: category.id }), hash: '#catalogue-heading' }"
           :aria-current="categoryId === category.id ? 'page' : undefined"
           class="chip shrink-0 whitespace-nowrap aria-[current=page]:bg-brand aria-[current=page]:text-white">{{ category.name }}</NuxtLink>
       </nav>
@@ -161,6 +214,25 @@ useSeoMeta({
         <p v-if="data?.items.length && !error" class="text-sm text-ink-soft">عدد المنتجات <bdi class="font-bold">{{ data.total }}</bdi></p>
       </div>
 
+      <form role="search" class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end" @submit.prevent="submitSearch">
+        <div class="min-w-0 flex-1">
+          <label for="catalogue-search" class="mb-1 block text-sm font-semibold text-ink">ابحثي عن منتج</label>
+          <div class="relative">
+            <input id="catalogue-search" v-model="searchText" type="search" maxlength="100" autocomplete="off" enterkeyhint="search"
+              class="field min-h-11 w-full pe-11" @input="onSearchInput">
+            <button v-if="searchText" type="button" aria-label="مسح البحث" class="absolute inset-y-0 end-0 grid min-h-11 w-11 place-items-center text-ink-soft hover:text-brand" @click="clearSearch">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        </div>
+        <div class="sm:w-56">
+          <label for="catalogue-sort" class="mb-1 block text-sm font-semibold text-ink">الترتيب</label>
+          <select id="catalogue-sort" class="field min-h-11 w-full" :value="sort ?? 'default'" @change="onSortChange">
+            <option v-for="option in sortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+          </select>
+        </div>
+      </form>
+
       <div v-if="status === 'pending'" role="status" aria-label="جاري تحميل المنتجات"
         class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
         <div v-for="n in 4" :key="n" class="card" aria-hidden="true">
@@ -178,9 +250,10 @@ useSeoMeta({
       <template v-else>
         <div v-if="!data?.items.length" class="rounded-[var(--radius-card)] bg-lavender p-6 text-center sm:p-10">
           <p class="font-semibold text-ink">
-            {{ categoryId ? 'لا توجد منتجات ضمن الفئة المختارة حاليًا.' : 'المنتجات قريبًا، راجعينا بعد قليل 🌿' }}
+            {{ search ? 'ما لقيناش منتجات تطابق بحثك.' : categoryId ? 'لا توجد منتجات ضمن الفئة المختارة حاليًا.' : 'المنتجات قريبًا، راجعينا بعد قليل 🌿' }}
           </p>
-          <NuxtLink v-if="categoryId" :to="{ query: {}, hash: '#catalogue-heading' }" class="btn-primary mt-4">
+          <button v-if="search" type="button" class="btn-secondary mt-4" @click="clearSearch">مسح البحث</button>
+          <NuxtLink v-else-if="categoryId" :to="{ query: catalogueQuery({ categoryId: undefined }), hash: '#catalogue-heading' }" class="btn-primary mt-4">
             عرض كل المنتجات
           </NuxtLink>
         </div>
@@ -188,11 +261,11 @@ useSeoMeta({
           <ProductCard v-for="product in products" :key="product.id" :product="product" class="reveal" />
         </div>
         <nav v-if="data && data.total > data.pageSize" class="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-lavender-deep/50 pt-5" aria-label="صفحات المنتجات">
-          <NuxtLink v-if="page > 1" :to="{ query: { page: page - 1, categoryId }, hash: '#catalogue-heading' }" class="btn-secondary">السابق</NuxtLink>
+          <NuxtLink v-if="page > 1" :to="{ query: catalogueQuery({ page: page - 1 }), hash: '#catalogue-heading' }" class="btn-secondary">السابق</NuxtLink>
           <p aria-live="polite" aria-atomic="true" class="text-sm text-ink-soft">
             صفحة <bdi class="font-bold">{{ page }}</bdi> من <bdi class="font-bold">{{ Math.ceil(data.total / data.pageSize) }}</bdi>
           </p>
-          <NuxtLink v-if="page * data.pageSize < data.total" :to="{ query: { page: page + 1, categoryId }, hash: '#catalogue-heading' }" class="btn-secondary">التالي</NuxtLink>
+          <NuxtLink v-if="page * data.pageSize < data.total" :to="{ query: catalogueQuery({ page: page + 1 }), hash: '#catalogue-heading' }" class="btn-secondary">التالي</NuxtLink>
         </nav>
       </template>
     </section>

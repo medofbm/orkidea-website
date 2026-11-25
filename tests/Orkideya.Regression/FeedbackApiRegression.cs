@@ -153,6 +153,19 @@ internal static class FeedbackApiRegression
                 "Malformed Idempotency-Key returns 400 with message");
         }
 
+        // Catalogue search/sort validation happens before any database access (a DB touch would throw).
+        using (var factory = Create())
+        using (var client = Client(factory))
+        {
+            foreach (var query in new[] { "sort=bogus", "search=" + new string('a', 101) })
+            {
+                using var response = await client.GetAsync("/api/v1/catalogue/products?" + query);
+                using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                check(response.StatusCode == HttpStatusCode.BadRequest && json.RootElement.TryGetProperty("title", out var title) &&
+                    !string.IsNullOrWhiteSpace(title.GetString()), "Catalogue rejects invalid input with 400 and title before the database: " + query[..Math.Min(query.Length, 11)]);
+            }
+        }
+
         // Sign-in budget: 15 POSTs per 5 minutes per IP, counted before antiforgery so floods are cheap to reject.
         using (var factory = Create())
         using (var client = Client(factory))
