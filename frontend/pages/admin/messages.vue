@@ -64,7 +64,7 @@ async function remove(message: Message) {
 </script>
 
 <template>
-  <section aria-labelledby="messages-title" class="mx-auto max-w-4xl">
+  <section aria-labelledby="messages-title" class="mx-auto max-w-6xl">
     <h1 id="messages-title" class="mb-2 text-3xl font-extrabold">الرسائل</h1>
     <p class="mb-5 text-ink-soft">رسائل نموذج التواصل، الأحدث أولًا.</p>
 
@@ -80,8 +80,9 @@ async function remove(message: Message) {
       <button type="button" class="btn-secondary mt-3" @click="refresh()">إعادة المحاولة</button>
     </div>
     <p v-else-if="!shown.length" role="status" class="card p-6 text-center text-ink-soft">{{ unreadOnly ? 'ما فيش رسائل غير مقروءة.' : 'ما فيش رسائل جديدة.' }}</p>
-    <ul v-else class="grid gap-3">
-      <li v-for="message in shown" :key="message.id" class="card p-4">
+    <ul v-else class="grid gap-3 lg:grid-cols-2">
+      <li v-for="message in shown" :key="message.id" class="card border-s-4 p-4 sm:p-6"
+        :class="message.isRead ? 'border-transparent opacity-90' : 'border-brand'">
         <div class="flex flex-wrap items-start justify-between gap-2">
           <p class="flex min-w-0 items-center gap-2 break-words" :class="message.isRead ? 'font-medium' : 'font-extrabold'">
             <span v-if="!message.isRead" aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-brand" />
@@ -90,12 +91,18 @@ async function remove(message: Message) {
           </p>
           <time class="text-sm text-ink-soft" :datetime="message.receivedAt">{{ when(message.receivedAt) }}</time>
         </div>
-        <p class="mt-1 flex flex-wrap gap-x-4 text-sm">
+        <div class="mt-1 text-sm">
           <a v-if="message.phoneNumber" :href="'tel:' + message.phoneNumber" dir="ltr"
             class="inline-flex min-h-11 items-center text-brand underline">{{ message.phoneNumber }}</a>
+          <div v-if="message.phoneNumber" class="mb-2 flex flex-wrap gap-2">
+            <a :href="'tel:+' + adminPhoneDigits(message.phoneNumber)" class="btn-secondary inline-flex items-center gap-1 text-sm">
+              <AppIcon name="phone" :size="16" />اتصال</a>
+            <a :href="'https://wa.me/' + adminPhoneDigits(message.phoneNumber)" target="_blank" rel="noopener noreferrer"
+              class="btn-secondary inline-flex items-center gap-1 text-sm"><AppIcon name="whatsapp" :size="16" />واتساب</a>
+          </div>
           <a v-if="message.email" :href="'mailto:' + message.email" dir="ltr"
             class="inline-flex min-h-11 items-center break-all text-brand underline">{{ message.email }}</a>
-        </p>
+        </div>
         <p class="whitespace-pre-line break-words" :class="message.isRead ? '' : 'font-bold'">{{ message.message }}</p>
         <div class="mt-3 flex flex-wrap gap-2">
           <button type="button" class="btn-secondary" :disabled="busy.includes(message.id)"
