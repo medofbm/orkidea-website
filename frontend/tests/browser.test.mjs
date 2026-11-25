@@ -98,7 +98,7 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
     await page.getByLabel('اسم المنتج').fill('زيت اختبار المتصفح')
     await page.getByLabel('الفئة', { exact: true }).selectOption({ label: 'فئة اختبار المتصفح' })
 
-    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jN0sAAAAASUVORK5CYII=', 'base64')
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP4/x8AAwAB//wl3FEAAAAASUVORK5CYII=', 'base64')
     const image = name => ({ name, mimeType: 'image/png', buffer: png })
     await page.getByLabel('أو اختر ملف غلاف').setInputFiles(image('cover.png'))
     await page.getByLabel('اختيار الصور').setInputFiles([image('retained.png'), image('removed.png')])

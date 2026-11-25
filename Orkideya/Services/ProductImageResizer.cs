@@ -90,8 +90,17 @@ public sealed class ProductImageResizer(ILogger<ProductImageResizer> logger)
     {
         using var codec = SKCodec.Create(new SKMemoryStream(bytes));
         if (codec is null) return null;
-        var bitmap = SKBitmap.Decode(codec);
-        if (bitmap is null) return null;
+        // Decode straight into the platform colour type so grayscale, gray+alpha and indexed PNGs can be encoded as WebP.
+        // Like browsers, accept images whose data ends early (IncompleteInput) instead of rejecting them.
+        var info = new SKImageInfo(codec.Info.Width, codec.Info.Height, SKImageInfo.PlatformColorType, SKAlphaType.Premul);
+        if (info.Width <= 0 || info.Height <= 0) return null;
+        var bitmap = new SKBitmap(info);
+        var result = codec.GetPixels(info, bitmap.GetPixels());
+        if (result is not (SKCodecResult.Success or SKCodecResult.IncompleteInput))
+        {
+            bitmap.Dispose();
+            return null;
+        }
         var rotation = codec.EncodedOrigin switch
         {
             SKEncodedOrigin.RightTop => 90,

@@ -38,6 +38,11 @@ internal static class ProductImageResizerRegression
             catch { check(false, "Corrupt image threw"); return; }
             check(!ok && !ProductImageResizer.HasAllVariants(corrupt), "Corrupt image does not throw and writes nothing");
 
+            // A valid 1x1 gray+alpha PNG (the browser test uploads the same one): grayscale must still produce WebP copies.
+            var gray = Path.Combine(dir, "gray.png");
+            File.WriteAllBytes(gray, Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP4/x8AAwAB//wl3FEAAAAASUVORK5CYII="));
+            check(resizer.TryCreateVariants(gray) && ProductImageResizer.HasAllVariants(gray), "Grayscale 1x1 PNG produces all WebP variants");
+
             ProductImageResizer.DeleteVariants(big);
             check(!File.Exists(ProductImageResizer.VariantPath(big, 400)), "Variants deleted");
         }
