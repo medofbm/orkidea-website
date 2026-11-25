@@ -58,10 +58,17 @@ public sealed partial class IdempotentAttribute : Attribute, IAsyncActionFilter
 
         try
         {
+            // The first request may have finished between the cache check above and taking the lock.
+            if (cache.TryGetValue(scope, out StoredResult? finished) && finished is not null)
+            {
+                http.Response.Headers["Idempotent-Replay"] = "true";
+                context.Result = finished.ToResult();
+                return;
+            }
             var executed = await next();
             // Only successful results are remembered; a failure can be retried with the same key.
             var result = StoredResult.From(executed.Result);
-            if (executed.Exception is null && result is { Status: >= 200 and < 300 })
+            if (executed.Exception is null && result is { Status: >= 200 and < 300 } && !ReportsFailure(result.Value))
                 cache.Set(scope, result, Lifetime);
         }
         finally
@@ -70,15 +77,26 @@ public sealed partial class IdempotentAttribute : Attribute, IAsyncActionFilter
         }
     }
 
-    internal sealed record StoredResult(int Status, object? Value)
+    // Some older JSON actions (the cart) answer 200 with { success: false } on failure; those are not remembered.
+    internal static bool ReportsFailure(object? value)
+    {
+        if (value is null) return false;
+        var property = value.GetType().GetProperty("success") ?? value.GetType().GetProperty("Success");
+        return property?.GetValue(value) is false;
+    }
+
+    internal sealed record StoredResult(int Status, object? Value, bool Json)
     {
         public static StoredResult? From(IActionResult? result) => result switch
         {
-            ObjectResult o => new(o.StatusCode ?? StatusCodes.Status200OK, o.Value),
-            StatusCodeResult s => new(s.StatusCode, null),
+            ObjectResult o => new(o.StatusCode ?? StatusCodes.Status200OK, o.Value, false),
+            JsonResult j => new(j.StatusCode ?? StatusCodes.Status200OK, j.Value, true),
+            StatusCodeResult s => new(s.StatusCode, null, false),
             _ => null
         };
 
-        public IActionResult ToResult() => Value is null ? new StatusCodeResult(Status) : new ObjectResult(Value) { StatusCode = Status };
+        public IActionResult ToResult() => Json
+            ? new JsonResult(Value) { StatusCode = Status }
+            : Value is null ? new StatusCodeResult(Status) : new ObjectResult(Value) { StatusCode = Status };
     }
 }
