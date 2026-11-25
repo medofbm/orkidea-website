@@ -8,6 +8,7 @@ checks={
  'global MVC antiforgery filter':'options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute())' in read('Program.cs'),
  'initialization requires explicit flag':'GetValue<bool>("Initialization:Run")' in read('Program.cs'),
  'shipping seed does not delete rates':'RemoveRange' not in read('Data/DbInitializer.cs'),
+ 'default shipping seed is opt-in':'GetValue<bool>("Initialization:SeedDefaultShippingRates")' in read('Data/DbInitializer.cs'),
  'bootstrap password comes from configuration':'configuration["Bootstrap:AdminPassword"]' in read('Data/DbInitializer.cs') and 'string adminPassword =' not in read('Data/DbInitializer.cs'),
  'checkout no longer writes public spreadsheet':'AddOrderToSheet' not in read('Controllers/CheckoutController.cs'),
  'export service has no filesystem persistence':'SaveAs(_filePath)' not in read('Services/ExcelExportService.cs') and 'IWebHostEnvironment' not in read('Services/ExcelExportService.cs'),

@@ -50,7 +50,10 @@ public static class DbInitializer
         }
         if (configuration.GetValue<bool>("Initialization:SeedPreviewData"))
             await PreviewDataSeeder.SeedAsync(context, serviceProvider.GetRequiredService<IWebHostEnvironment>());
-        else await SeedShippingRatesAsync(context);
+        // Default shipping rates are opt-in so a routine migration run never re-adds cities that were removed or
+        // replaced by imported carrier rates.
+        else if (configuration.GetValue<bool>("Initialization:SeedDefaultShippingRates"))
+            await SeedShippingRatesAsync(context);
     }
 
     private static void EnsureSucceeded(IdentityResult result)
