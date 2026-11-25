@@ -62,7 +62,7 @@ namespace Orkideya.Areas.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Admin review visibility toggle failed.");
-                return Json(new { success = false, message = "تعذر تنفيذ العملية. حاولي مرة ثانية." });
+                return Json(new { success = false, message = "تعذر تنفيذ العملية. حاول مرة ثانية." });
             }
         }
 
