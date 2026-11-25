@@ -188,7 +188,7 @@ function adminDate(iso: string) {
           <ol v-else class="divide-y divide-lavender-deep">
             <li v-for="move in data.movements" :key="move.stockMovementId" class="py-3">
               <p class="font-semibold">{{ moveKinds[move.kind] ?? move.kind }}</p>
-              <p>تغيّر الفعلي <bdi class="font-semibold" :class="deltaClass(move.onHandDelta)">{{ signed(move.onHandDelta) }}</bdi> · تغيّر المحجوز <bdi class="font-semibold" :class="deltaClass(move.reservedDelta)">{{ signed(move.reservedDelta) }}</bdi></p>
+              <p>تغيّر الفعلي <bdi dir="ltr" class="font-semibold" :class="deltaClass(move.onHandDelta)">{{ signed(move.onHandDelta) }}</bdi> · تغيّر المحجوز <bdi dir="ltr" class="font-semibold" :class="deltaClass(move.reservedDelta)">{{ signed(move.reservedDelta) }}</bdi></p>
               <p class="text-sm text-ink-soft">
                 {{ move.actorName ?? 'حساب إداري سابق' }} ·
                 <time :datetime="move.createdAtUtc">{{ adminDate(move.createdAtUtc) }}</time>
