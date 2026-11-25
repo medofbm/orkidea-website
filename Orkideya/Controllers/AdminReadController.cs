@@ -196,7 +196,8 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
 
     private static object Summary(Order order) => new
     {
-        id = order.OrderId, order.CustomerName, order.City, order.OrderDate, order.Status,
+        id = order.OrderId, order.CustomerName, order.City,
+        OrderDate = DateTime.SpecifyKind(order.OrderDate, DateTimeKind.Utc), order.Status,
         source = OrderSources.Label(order.Creation?.Source),
         total = Money(order.TotalAmount), shippingFee = Money(order.ShippingCost)
     };

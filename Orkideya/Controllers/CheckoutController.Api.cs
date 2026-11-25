@@ -47,7 +47,7 @@ public partial class CheckoutController
         if (await Confirmation() is not ViewResult { Model: CheckoutReceipt receipt }) return NotFound();
         return Ok(new
         {
-            receipt.OrderId, receipt.CreatedAtUtc, receipt.Quantity, receipt.StatusLabel, receipt.PaymentMethod,
+            receipt.OrderId, CreatedAtUtc = DateTime.SpecifyKind(receipt.CreatedAtUtc, DateTimeKind.Utc), receipt.Quantity, receipt.StatusLabel, receipt.PaymentMethod,
             productsTotal = Money(receipt.ProductsTotal), shippingFee = Money(receipt.ShippingCost),
             total = Money(receipt.TotalAmount),
             lines = receipt.Lines.Select(line => new
