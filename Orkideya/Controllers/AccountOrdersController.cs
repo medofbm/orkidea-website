@@ -63,7 +63,7 @@ public sealed class AccountOrdersController(ApplicationDbContext context) : Cont
                 {
                     ProductName = context.Products.Where(product => product.ProductId == item.ProductId)
                         .Select(product => product.Name).FirstOrDefault(),
-                    item.VariantSize, item.Quantity, item.UnitPrice
+                    item.ProductId, item.VariantSize, item.Quantity, item.UnitPrice
                 }).ToList()
             }).SingleOrDefaultAsync(cancel);
         if (order is null) return NotFound();
@@ -79,7 +79,7 @@ public sealed class AccountOrdersController(ApplicationDbContext context) : Cont
             total = Money(order.TotalAmount),
             lines = order.Lines.Select(line => new
             {
-                productName = line.ProductName ?? "",
+                productName = string.IsNullOrWhiteSpace(line.ProductName) ? "منتج #" + line.ProductId : line.ProductName,
                 size = line.VariantSize,
                 quantity = line.Quantity,
                 unitPrice = Money(line.UnitPrice),
