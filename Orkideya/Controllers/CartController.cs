@@ -1,4 +1,5 @@
 using Orkideya.Application.Cart;
+using Orkideya.Application.Inventory;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Data;
@@ -38,6 +39,12 @@ namespace Orkideya.Controllers
             if (variant == null || variant.Price <= 0 || variant.IsArchived || variant.Product.IsArchived)
             {
                 return Json(new { success = false, message = "لم يتم العثور على خيار المنتج." });
+            }
+
+            var tracked = await VariantOrderability.TrackedProductsAsync(_context, [variant.ProductId], HttpContext.RequestAborted);
+            if (!VariantOrderability.IsOrderable(variant, tracked))
+            {
+                return Json(new { success = false, message = VariantOrderability.UnavailableMessage });
             }
 
             List<CartItem> cart = GetCart();

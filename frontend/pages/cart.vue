@@ -8,6 +8,7 @@ async function reload() {
   try { await load() } catch { failed.value = true } finally { loading.value = false }
 }
 onMounted(reload)
+const allAvailable = computed(() => !!cart.value?.items.every(item => item.available))
 useSeoMeta({ title: 'سلة أوركيديا', robots: 'noindex, nofollow' })
 </script>
 
@@ -47,7 +48,7 @@ useSeoMeta({ title: 'سلة أوركيديا', robots: 'noindex, nofollow' })
             <div class="min-w-0 flex-1">
               <NuxtLink :to="'/products/' + item.productId" class="inline-flex min-h-11 items-center font-bold wrap-anywhere text-ink hover:underline">{{ item.name }}</NuxtLink>
               <p class="text-sm text-brand-deep"><span v-if="item.size">{{ item.size }} · </span><bdi>{{ formatPrice(item.price) }}</bdi> د.ل للوحدة</p>
-              <p v-if="!item.available" class="mt-1 text-sm text-danger">هذا الحجم غير متاح حاليًا. احذفيه لمتابعة الطلب.</p>
+              <p v-if="!item.available" class="mt-1 text-sm text-danger">غير متاح للطلب. احذفيه لمتابعة الطلب.</p>
               <div class="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
                 <div class="inline-flex items-center rounded-full border border-lavender-deep bg-white">
                   <button :disabled="busy || item.quantity >= 99" :aria-label="'زيادة كمية ' + item.name"
@@ -71,10 +72,11 @@ useSeoMeta({ title: 'سلة أوركيديا', robots: 'noindex, nofollow' })
             <dt>إجمالي المنتجات</dt><dd class="price"><bdi>{{ formatPrice(cart.productsTotal) }}</bdi> د.ل</dd>
           </div></dl>
           <DeliveryEstimate />
-          <NuxtLink v-if="cart.items.every(item => item.available)" to="/checkout"
+          <p v-if="!allAvailable" role="alert" class="mt-4 rounded-xl bg-danger/10 p-3 text-sm font-semibold text-danger">في سلتك حجم غير متاح للطلب. احذفيه من السلة لتقدري تكملي «إتمام الطلب».</p>
+          <NuxtLink v-if="allAvailable" to="/checkout"
             class="storefront-action btn-primary mt-4 hidden w-full lg:flex">إتمام الطلب</NuxtLink>
         </section>
-        <div v-if="cart.items.every(item => item.available)" class="glass fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-lavender-deep px-4 py-3 lg:hidden">
+        <div v-if="allAvailable" class="glass fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-lavender-deep px-4 py-3 lg:hidden">
           <p class="text-sm text-ink-soft">الإجمالي <span class="price block text-lg"><bdi>{{ formatPrice(cart.productsTotal) }}</bdi> د.ل</span></p>
           <NuxtLink to="/checkout" class="storefront-action btn-primary">إتمام الطلب</NuxtLink>
         </div>

@@ -27,6 +27,7 @@ export interface AdminDashboard {
   unreadMessages?: number
   reviewsCount?: number
   reviewsAverage?: number | null
+  unorderableSizes?: { productId: number; name: string; size: string }[]
 }
 
 export interface AdminOrdersPage {

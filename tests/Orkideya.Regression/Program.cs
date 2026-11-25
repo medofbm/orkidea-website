@@ -47,6 +47,11 @@ using (var workbook = new XLWorkbook(stream))
     Check(sheet.Cell(2, 11).GetValue<decimal>() == order.TotalAmount, "Free delivery preserves merchandise value");
 }
 
+Check(Orkideya.Application.Inventory.VariantOrderability.IsOrderable(false, null), "Untracked product size is orderable without consumption");
+Check(Orkideya.Application.Inventory.VariantOrderability.IsOrderable(true, 100m), "Tracked size with consumption is orderable");
+Check(!Orkideya.Application.Inventory.VariantOrderability.IsOrderable(true, null), "Tracked size without consumption is not orderable");
+Check(!Orkideya.Application.Inventory.VariantOrderability.IsOrderable(true, 0m), "Tracked size with zero consumption is not orderable");
+Check(!Orkideya.Application.Inventory.VariantOrderability.IsOrderable(true, -5m), "Tracked size with negative consumption is not orderable");
 Check(Orkideya.Application.Cart.CartLimits.CanAdd(0, 1), "First item is allowed");
 Check(Orkideya.Application.Cart.CartLimits.CanAdd(98, 1), "Quantity can reach the cap");
 Check(!Orkideya.Application.Cart.CartLimits.CanAdd(99, 1), "Cannot exceed the cap");

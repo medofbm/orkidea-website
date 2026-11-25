@@ -7,7 +7,10 @@ const { data: product, status, error, refresh } = await useFetch<CatalogueProduc
 )
 const selectedImage = ref(0)
 const imageSelectedByUser = ref(false)
-const selectedVariant = ref(0)
+// Sizes the server marks as not orderable are disabled; the first orderable size is pre-selected.
+const isOrderable = (v?: { orderable?: boolean }) => v?.orderable !== false
+const firstOrderableIndex = () => Math.max(0, product.value?.variants.findIndex(isOrderable) ?? 0)
+const selectedVariant = ref(firstOrderableIndex())
 const quantity = ref(1)
 const failedImages = ref<string[]>([])
 const images = computed(() => product.value?.images.filter(image => image !== '/images/logo.jpg') ?? [])
@@ -30,11 +33,12 @@ function checkLoadedImage(element: unknown, image: string) {
 watch(() => product.value?.id, () => {
   selectedImage.value = 0
   imageSelectedByUser.value = false
-  selectedVariant.value = 0
+  selectedVariant.value = firstOrderableIndex()
   quantity.value = 1
   failedImages.value = []
 })
 const currentVariant = computed(() => product.value?.variants[selectedVariant.value])
+const canOrder = computed(() => !!product.value?.variants.some(isOrderable) && isOrderable(currentVariant.value))
 const highlights = computed(() => {
   const description = product.value?.description ?? ''
   const chips: string[] = []
@@ -57,7 +61,7 @@ let resetTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(resetTimer))
 async function addToCart() {
   const variant = currentVariant.value
-  if (!variant || adding.value) return
+  if (!variant || adding.value || !isOrderable(variant)) return
   clearTimeout(resetTimer)
   justAdded.value = false
   adding.value = true
@@ -75,7 +79,7 @@ async function addToCart() {
     toast.error(message.value || 'تعذر تحديث السلة.')
   }
 }
-const addLabel = computed(() => adding.value ? 'جاري الإضافة...' : justAdded.value ? 'تمت الإضافة ✓' : 'أضيفي للسلة')
+const addLabel = computed(() => !canOrder.value ? 'غير متاح حالياً' : adding.value ? 'جاري الإضافة...' : justAdded.value ? 'تمت الإضافة ✓' : 'أضيفي للسلة')
 // Related products: client-only, lazy, and failure-tolerant so SSR and the page never depend on it.
 const { data: catalogue } = useFetch<CataloguePage>(
   () => useRuntimeConfig().public.apiBase + '/products',
@@ -220,11 +224,12 @@ useHead({
               <legend class="mb-2 text-sm font-semibold text-ink">الحجم</legend>
               <div class="flex flex-wrap gap-2">
                 <label v-for="(variant, index) in product.variants" :key="variant.id"
-                  class="chip relative cursor-pointer border-2 border-lavender-deep bg-white text-ink has-checked:border-transparent has-checked:bg-gradient-brand has-checked:text-white has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand motion-safe:transition-colors">
+                  class="chip relative cursor-pointer border-2 has-disabled:cursor-not-allowed has-disabled:opacity-50 border-lavender-deep bg-white text-ink has-checked:border-transparent has-checked:bg-gradient-brand has-checked:text-white has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand motion-safe:transition-colors">
                   <input v-model="selectedVariant" type="radio" name="variant" :value="index"
-                    class="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed">
+                    :disabled="!isOrderable(variant)" class="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed">
                   <span class="pointer-events-none">{{ variant.size }}</span>
-                  <span v-if="product.variants.length > 1" class="pointer-events-none ms-1.5 text-xs font-semibold opacity-80">· <bdi>{{ formatPrice(variant.price) }}</bdi> د.ل</span>
+                  <span v-if="!isOrderable(variant)" class="pointer-events-none ms-1.5 text-xs font-semibold">· غير متاح</span>
+                  <span v-else-if="product.variants.length > 1" class="pointer-events-none ms-1.5 text-xs font-semibold opacity-80">· <bdi>{{ formatPrice(variant.price) }}</bdi> د.ل</span>
                 </label>
               </div>
             </fieldset>
@@ -241,7 +246,7 @@ useHead({
             </div>
 
             <div class="mt-6 hidden gap-3 md:grid">
-              <button type="button" :disabled="busy" :aria-busy="adding" class="btn-primary storefront-action w-full gap-2" @click="addToCart">
+              <button type="button" :disabled="busy || !canOrder" :aria-busy="adding" class="btn-primary storefront-action w-full gap-2" @click="addToCart">
                 <span v-if="adding" class="spinner" aria-hidden="true" />
                 <AppIcon v-else-if="justAdded" name="check" :size="18" />
                 <span>{{ addLabel }}</span>
@@ -265,7 +270,7 @@ useHead({
       <div v-if="currentVariant" class="fixed inset-x-0 bottom-0 z-30 flex items-center gap-4 border-t border-lavender bg-cream/95 px-4 pt-3 shadow-[0_-6px_20px_rgb(48_8_26/0.10)] backdrop-blur md:hidden"
         style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))">
         <p class="price shrink-0 text-xl"><span class="sr-only">السعر </span><bdi>{{ formatPrice(currentVariant.price) }}</bdi> <span class="text-sm">د.ل</span></p>
-        <button type="button" :disabled="busy" :aria-busy="adding" class="btn-primary storefront-action flex-1 gap-2" @click="addToCart">
+        <button type="button" :disabled="busy || !canOrder" :aria-busy="adding" class="btn-primary storefront-action flex-1 gap-2" @click="addToCart">
           <span v-if="adding" class="spinner" aria-hidden="true" />
           <AppIcon v-else-if="justAdded" name="check" :size="18" />
           <span>{{ addLabel }}</span>

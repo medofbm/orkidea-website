@@ -11,6 +11,7 @@ const { data, status, error, refresh } = useFetch<AdminStockDetails>(url, {
 })
 const account = computed(() => data.value?.account)
 const unit = ref<'' | 'ml' | 'piece'>('')
+const unsetVariants = computed(() => account.value ? (data.value?.variants.filter(variant => variant.stockUnitsPerItem == null) ?? []) : [])
 const step = computed(() => account.value?.unit === 'piece' ? 1 : 0.001)
 const delta = ref<number | ''>('')
 const reason = ref('')
@@ -153,14 +154,18 @@ function adminDate(iso: string) {
         <section class="card p-4 sm:p-6" aria-labelledby="stock-variants">
           <h2 id="stock-variants" class="mb-2 text-xl font-bold">استهلاك كل حجم</h2>
           <p class="mb-3 text-sm">اضبط الكمية المستهلكة للوحدة المباعة. الإعداد يسري على الطلبات الجديدة.</p>
+          <p v-if="unsetVariants.length" role="alert" class="mb-3 rounded-xl border border-warning/40 bg-status-pending p-3 text-sm font-semibold text-warning">
+            لازم تحدد كمية الاستهلاك، الزبونة ما تقدرش تطلب {{ unsetVariants.length > 1 ? 'هذه الأحجام' : 'هذا الحجم' }}.
+          </p>
           <p v-if="!data.variants.length">أضف حجم للمنتج قبل ضبط الاستهلاك.</p>
           <form v-else @submit.prevent="configure">
             <ul class="mb-4 grid gap-2 sm:grid-cols-2" aria-label="الاستهلاك الحالي لكل حجم">
               <li v-for="variant in data.variants" :key="variant.productVariantId"
-                class="flex items-center justify-between gap-2 rounded-xl border border-lavender-deep px-3 py-2 text-sm">
+                class="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm"
+                :class="variant.stockUnitsPerItem == null ? 'border-warning bg-status-pending/40' : 'border-lavender-deep'">
                 <span class="font-semibold">{{ variant.size }}</span>
                 <span v-if="variant.stockUnitsPerItem != null"><bdi class="font-bold">{{ variant.stockUnitsPerItem }}</bdi> {{ adminStockUnit(account.unit) }} للقطعة</span>
-                <span v-else class="rounded-full bg-status-pending px-2 py-0.5 text-xs text-warning">غير مضبوط</span>
+                <span v-else class="rounded-full bg-status-pending px-2 py-0.5 text-xs font-bold text-warning">غير مضبوط · غير متاح للطلب</span>
               </li>
             </ul>
             <fieldset :disabled="disabled" class="space-y-3">
