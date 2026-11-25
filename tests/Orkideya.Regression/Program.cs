@@ -131,6 +131,7 @@ var enabledConfiguration = new ConfigurationBuilder().AddInMemoryCollection(new 
 await new WhatsAppNotificationService(enabledConfiguration, notificationLogger).SendAsync(order);
 Check(notificationLogger.Count == 1, "Enabled but incomplete notification configuration returns before provider call");
 
+ProductImageResizerRegression.Run(Check);
 await SabilReadRegression.Run(Check);
 SabilCatalogueRegression.Run(Check);
 SabilQuoteRegression.Run(Check);
