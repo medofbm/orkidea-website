@@ -15,9 +15,26 @@ const returnQuery = computed(() => {
   }
 })
 const orderUrl = '/api/admin/orders/' + route.params.id
-const phoneDigits = computed(() => adminPhoneDigits(data.value?.whatsAppNumber ?? ''))
 const { data, error, status, refresh } = useFetch<AdminOrderDetails>(orderUrl, {
   server: false, cache: 'no-store'
+})
+const phoneDigits = computed(() => adminPhoneDigits(data.value?.whatsAppNumber ?? ''))
+// Ready-made confirmation the owner sends from their own WhatsApp (free, customer-facing, no Twilio template).
+// Amounts are the server's values; nothing is recalculated here.
+const confirmationLink = computed(() => {
+  const order = data.value
+  if (!order || !phoneDigits.value) return ''
+  const lines = order.items.map(item =>
+    `• ${item.productName ?? 'منتج #' + item.productId}${item.variantSize ? ' (' + item.variantSize + ')' : ''} × ${item.quantity}`)
+  const text = [
+    `مرحبا ${order.order.customerName.split(' ')[0] ?? ''}، معاك أوركيديا 🌸`,
+    `وصلنا طلبك رقم ${order.order.id}:`,
+    ...lines,
+    `الإجمالي: ${order.order.total} د.ل (شامل التوصيل ${order.order.shippingFee} د.ل)`,
+    'الدفع عند الاستلام.',
+    'نأكدولك موعد التوصيل قريب. لو فيه أي تعديل ردّي على الرسالة هذي.'
+  ].join('\n')
+  return 'https://wa.me/' + phoneDigits.value + '?text=' + encodeURIComponent(text)
 })
 const statuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
 const selectedStatus = ref('')
@@ -117,6 +134,8 @@ async function updateOrder(action: 'status' | 'stock' | 'delivery', input: Recor
           <dd v-if="phoneDigits" class="mt-2 flex flex-wrap gap-2">
             <a :href="'tel:+' + phoneDigits" class="btn-secondary min-h-11 gap-1.5 px-3 text-sm"><AppIcon name="phone" :size="16" />اتصال</a>
             <a :href="'https://wa.me/' + phoneDigits" target="_blank" rel="noopener noreferrer" class="btn-secondary min-h-11 gap-1.5 px-3 text-sm"><AppIcon name="whatsapp" :size="16" />واتساب</a>
+            <a v-if="confirmationLink" :href="confirmationLink" target="_blank" rel="noopener noreferrer" class="btn-primary min-h-11 gap-1.5 px-3 text-sm"
+              title="يفتح واتساب برسالة تأكيد جاهزة؛ راجعها قبل الإرسال"><AppIcon name="check-circle" :size="16" />إرسال تأكيد الطلب</a>
           </dd>
         </div>
         <div><dt class="font-semibold">المصدر</dt><dd>{{ data.order.source }}</dd></div>
