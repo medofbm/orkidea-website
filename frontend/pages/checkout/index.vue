@@ -27,6 +27,22 @@ const options = computed(() => serviceDestinations.value.filter(destination => d
 const selectedDestination = computed(() => options.value.length === 1 ? options.value[0] :
   options.value.find(destination => destination.key === destinationKey.value))
 const rate = computed(() => state.value?.shippingRates.find(item => item.id === fields.shippingRateId))
+// Rates with regions (carrier price list): pick the city first, then the area. Otherwise one flat select.
+const rateRegions = computed(() => {
+  const rates = state.value?.shippingRates ?? []
+  if (!rates.length || !rates.every(item => item.region)) return []
+  const names = [...new Set(rates.map(item => item.region as string))]
+  return names.length > 1 ? names.sort((a, b) => a.localeCompare(b, 'ar')) : []
+})
+const rateRegion = ref('')
+const regionRates = computed(() => (state.value?.shippingRates ?? [])
+  .filter(item => item.region === rateRegion.value)
+  .sort((a, b) => (a.area ?? a.city).localeCompare(b.area ?? b.city, 'ar')))
+function chooseRateRegion(event: Event) {
+  rateRegion.value = (event.target as HTMLSelectElement).value
+  // A city with a single delivery area needs no second choice.
+  fields.shippingRateId = regionRates.value.length === 1 ? regionRates.value[0]!.id : 0
+}
 const hasDeliveryOptions = computed(() => state.value?.destinations
   ? services.value.length > 0 || serviceDestinations.value.length > 0
   : (state.value?.shippingRates.length ?? 0) > 0)
@@ -180,6 +196,22 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
             <button v-if="selectedDestination && !busy && shippingFee == null" type="button"
               class="btn-secondary"
               @click="send('shipping')">إعادة حساب التوصيل</button>
+          </template>
+          <template v-else-if="rateRegions.length">
+            <label class="block"><span class="inline-flex items-center gap-1.5 font-medium text-ink"><AppIcon name="truck" :size="16" class="text-brand" />المدينة</span>
+              <select :value="rateRegion" required class="mt-1 block w-full field" @change="chooseRateRegion">
+                <option value="" disabled>اختاري المدينة</option>
+                <option v-for="name in rateRegions" :key="name" :value="name">{{ name }}</option>
+              </select>
+            </label>
+            <label v-if="rateRegion" class="block">المنطقة
+              <select v-model.number="fields.shippingRateId" required class="mt-1 block w-full field">
+                <option :value="0" disabled>اختاري المنطقة</option>
+                <option v-for="shippingRate in regionRates" :key="shippingRate.id" :value="shippingRate.id">
+                  {{ shippingRate.area || shippingRate.city }} — {{ formatPrice(shippingRate.price) }} د.ل
+                </option>
+              </select>
+            </label>
           </template>
           <label v-else class="block"><span class="inline-flex items-center gap-1.5 font-medium text-ink"><AppIcon name="truck" :size="16" class="text-brand" />مدينة التوصيل</span>
             <select v-model.number="fields.shippingRateId" required class="mt-1 block w-full field">

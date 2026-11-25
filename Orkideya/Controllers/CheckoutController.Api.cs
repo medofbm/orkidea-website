@@ -125,7 +125,9 @@ public partial class CheckoutController
             cartRevision = CartRevision(model.CartItems),
             shippingRates = model.ShippingRates.Select(rate => new
             {
-                id = rate.ShippingRateId, city = rate.CityName, price = Money(rate.Price),
+                id = rate.ShippingRateId, city = rate.CityName, region = rate.Region,
+                area = Orkideya.Infrastructure.Shipping.DeliveryRateGroups.AreaLabel(rate.Region, rate.CityName),
+                price = Money(rate.Price),
                 total = Money(model.CartTotal + rate.Price)
             }),
             destinations = model.HomeDestinations?.Select(pair => new
