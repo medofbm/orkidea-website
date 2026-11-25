@@ -119,6 +119,9 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
     assert.equal(variant.status(), 200, 'uploaded cover has a 400px WebP copy')
     assert.match(variant.headers()['content-type'] ?? '', /image\/webp/)
     console.log('PASS browser: upload writes WebP variants inside the container')
+    const sitemap = await (await page.request.get(origin + '/sitemap.xml')).text()
+    assert.ok(sitemap.includes('/products/' + productId + '</loc>'), 'sitemap lists the new product')
+    console.log('PASS browser: sitemap lists catalogue products')
 
     const shop = await browser.newContext(mobile)
     const customer = await shop.newPage()
