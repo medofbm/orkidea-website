@@ -38,6 +38,7 @@ internal static class IdentityCookieScenario
                 {
                     ["ConnectionStrings:DefaultConnection"] = connection,
                     ["Initialization:Run"] = "false",
+                    ["DataProtection:KeysPath"] = Path.Combine(Path.GetTempPath(), "orkidea-test-keys"),
                     ["AllowedHosts"] = "localhost",
                     ["Logging:LogLevel:Default"] = "Warning"
                 });

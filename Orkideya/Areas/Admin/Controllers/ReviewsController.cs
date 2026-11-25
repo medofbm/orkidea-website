@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Orkideya.Data;
 using Orkideya.Models;
 using System;
@@ -17,10 +18,12 @@ namespace Orkideya.Areas.Admin.Controllers
     public class ReviewsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<ReviewsController> _logger;
 
-        public ReviewsController(ApplicationDbContext context)
+        public ReviewsController(ApplicationDbContext context, ILogger<ReviewsController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         // GET: Admin/Reviews
@@ -58,7 +61,8 @@ namespace Orkideya.Areas.Admin.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"خطأ: {ex.Message}" });
+                _logger.LogError(ex, "Admin review visibility toggle failed.");
+                return Json(new { success = false, message = "تعذر تنفيذ العملية. حاولي مرة ثانية." });
             }
         }
 

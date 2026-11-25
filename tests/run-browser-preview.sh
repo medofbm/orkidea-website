@@ -28,6 +28,8 @@ export ASPNETCORE_HTTPS_PORT=443
 export AllowedHosts='localhost;127.0.0.1'
 export ConnectionStrings__DefaultConnection="${ORKIDEA_SQL_TEST_CONNECTION/Database=master;/Database=OrkideaStaging;}"
 export Carriers__Sabil__QuoteEnabled=false
+# The browser suite places several orders and many cart writes from one loopback IP; production keeps the defaults.
+export RateLimits__CheckoutPer10Minutes=1000 RateLimits__CartWritesPerMinute=10000
 export DataProtection__KeysPath="$scratch/keys" DataProtection__ApplicationName=Orkidea.BrowserCi
 export ORKIDEA_BROWSER_ADMIN_EMAIL=browser-admin@orkidea.test
 ORKIDEA_BROWSER_ADMIN_PASSWORD="Qa1_$(openssl rand -hex 24)"

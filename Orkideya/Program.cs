@@ -13,12 +13,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddFixedWindowLimiter("shipping-preview", limiter =>
-    {
-        limiter.PermitLimit = 20;
-        limiter.Window = TimeSpan.FromMinutes(1);
-        limiter.QueueLimit = 0;
-    });
+    // Shipping quotes: one budget per client IP (a single script must not block every customer's quote).
+    options.AddPolicy("shipping-preview", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    // Order placement and cart writes: per-IP budgets against fake-order floods. Only writes count, so browsing and
+    // reading the cart never use the budget. CI and test hosts that place many orders from one IP raise them by config.
+    var checkoutLimit = builder.Configuration.GetValue("RateLimits:CheckoutPer10Minutes", 10);
+    var cartWriteLimit = builder.Configuration.GetValue("RateLimits:CartWritesPerMinute", 120);
+    options.AddPolicy("checkout-place", context => HttpMethods.IsPost(context.Request.Method)
+        ? RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = checkoutLimit, Window = TimeSpan.FromMinutes(10), QueueLimit = 0 })
+        : RateLimitPartition.GetNoLimiter("read"));
+    options.AddPolicy("cart-write", context => HttpMethods.IsPost(context.Request.Method) || HttpMethods.IsPut(context.Request.Method) ||
+            HttpMethods.IsPatch(context.Request.Method) || HttpMethods.IsDelete(context.Request.Method)
+        ? RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = cartWriteLimit, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })
+        : RateLimitPartition.GetNoLimiter("read"));
     // Public reviews and contact form share one budget per client IP (spam protection).
     options.AddPolicy("public-forms", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -63,9 +74,31 @@ builder.Services.AddRateLimiter(options =>
             await context.HttpContext.Response.WriteAsJsonAsync(
                 new { message = "وصلنا عدد كبير من الرسائل منك، جربي مرة ثانية بعد ساعة." }, token);
         }
+        else if (path.StartsWithSegments("/api/v1/checkout/orders") || path.StartsWithSegments("/Checkout/PlaceOrder", StringComparison.OrdinalIgnoreCase))
+        {
+            await WriteBusyAsync(context.HttpContext, "محاولات كثيرة لإرسال الطلب من نفس الجهاز. جربي بعد شوية.", token);
+        }
+        else if (path.StartsWithSegments("/api/v1/checkout/shipping") || path.StartsWithSegments("/Checkout/PreviewShipping", StringComparison.OrdinalIgnoreCase))
+        {
+            await WriteBusyAsync(context.HttpContext, "طلبات كثيرة لحساب الشحن. جربي بعد دقيقة.", token);
+        }
+        else if (path.StartsWithSegments("/api/v1/cart") || path.StartsWithSegments("/Cart", StringComparison.OrdinalIgnoreCase))
+        {
+            await WriteBusyAsync(context.HttpContext, "عمليات كثيرة على السلة. جربي بعد دقيقة.", token);
+        }
         else if (previousRejection is not null) await previousRejection(context, token);
     };
 });
+static async Task WriteBusyAsync(HttpContext http, string message, CancellationToken token)
+{
+    http.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+    if (http.Request.Path.StartsWithSegments("/api")) await http.Response.WriteAsJsonAsync(new { message }, token);
+    else
+    {
+        http.Response.ContentType = "text/plain; charset=utf-8";
+        await http.Response.WriteAsync(message, token);
+    }
+}
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -190,6 +223,18 @@ builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
 
 var app = builder.Build();
+// Fail fast outside Development: a missing connection string or key ring must stop startup with a clear message,
+// not surface later as a 500 on the first request or as cookies and reset tokens that die on every restart.
+if (!app.Environment.IsDevelopment())
+{
+    if (string.IsNullOrWhiteSpace(app.Configuration.GetConnectionString("DefaultConnection")))
+        throw new InvalidOperationException(
+            "ConnectionStrings:DefaultConnection is required outside Development. Set it (for example ConnectionStrings__DefaultConnection).");
+    // The one-shot migrate/initialize run does not issue cookies or tokens, so it does not need the key ring.
+    if (!app.Configuration.GetValue<bool>("Initialization:Run") && string.IsNullOrWhiteSpace(app.Configuration["DataProtection:KeysPath"]))
+        throw new InvalidOperationException(
+            "DataProtection:KeysPath is required outside Development so cookies and reset tokens survive restarts. Set it (for example DataProtection__KeysPath).");
+}
 app.UseForwardedHeaders();
 if (app.Environment.IsStaging())
     app.Use(async (context, next) =>
@@ -216,7 +261,15 @@ if (builder.Configuration.GetValue<bool>("Initialization:Run"))
 // Environment-specific Configuration
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    // A 500 under /api returns JSON ProblemDetails; every other path keeps the HTML error page.
+    app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), branch => branch.UseExceptionHandler(errors => errors.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        var problem = new ProblemDetails { Status = StatusCodes.Status500InternalServerError, Title = "حدث خطأ غير متوقع" };
+        problem.Extensions["message"] = problem.Title;
+        await context.Response.WriteAsJsonAsync(problem, (System.Text.Json.JsonSerializerOptions?)null, "application/problem+json");
+    })));
+    app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api"), branch => branch.UseExceptionHandler("/Home/Error"));
     app.UseHsts();
 }
 else

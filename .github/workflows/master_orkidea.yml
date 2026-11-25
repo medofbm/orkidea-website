@@ -163,6 +163,7 @@ jobs:
           docker run --detach --name "$name" --read-only --cap-drop ALL --security-opt no-new-privileges=true \
             --memory 768m --cpus 1 --tmpfs /tmp:rw,nosuid,size=128m --publish 127.0.0.1::8080 \
             --env ASPNETCORE_ENVIRONMENT=Staging --env 'AllowedHosts=localhost;127.0.0.1' \
+            --env 'ConnectionStrings__DefaultConnection=Server=127.0.0.1,1;Database=ImageSmoke;User Id=smoke;Password=unused;Connect Timeout=1' \
             --env DataProtection__KeysPath=/tmp/keys --env DataProtection__ApplicationName=Orkidea.ImageSmoke \
             --env "ReverseProxy__KnownProxies__0=$gateway" --env Initialization__Run=false "$image"
           port="$(docker port "$name" 8080/tcp | awk -F: '{print $NF}')"

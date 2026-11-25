@@ -131,6 +131,7 @@ ProductImageResizerRegression.Run(Check);
 await SabilReadRegression.Run(Check);
 SabilCatalogueRegression.Run(Check);
 await SabilRateImportRegression.Run(Check);
+SecurityHardeningRegressionA.Run(Check);
 SabilQuoteRegression.Run(Check);
 SabilShippingFeeRegression.Run(Check);
 CheckoutQuoteContextRegression.Run(Check);

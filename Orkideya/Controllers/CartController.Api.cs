@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Application.Inventory;
 
@@ -53,6 +54,7 @@ public partial class CartController
     [HttpPost("/api/v1/cart/items")]
     [Orkideya.Infrastructure.Http.Idempotent]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("cart-write")]
     public async Task<IActionResult> ApiAdd([FromBody] CartApiInput input)
     {
         if (!ModelState.IsValid) return BadRequest(new { message = "الكمية المطلوبة يجب أن تكون بين 1 و99." });
@@ -61,6 +63,7 @@ public partial class CartController
 
     [HttpPatch("/api/v1/cart/items/{id:int}")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("cart-write")]
     public IActionResult ApiQuantity(int id, [FromBody] CartApiInput input)
     {
         if (!ModelState.IsValid || id != input.VariantId)
@@ -75,6 +78,7 @@ public partial class CartController
 
     [HttpDelete("/api/v1/cart/items/{id:int}")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("cart-write")]
     public IActionResult ApiRemove(int id)
     {
         var cart = GetCart();
