@@ -46,7 +46,7 @@ useSeoMeta({ title: 'سلة أوركيديا', robots: 'noindex, nofollow' })
             </div>
             <div class="min-w-0 flex-1">
               <NuxtLink :to="'/products/' + item.productId" class="inline-flex min-h-11 items-center font-bold wrap-anywhere text-ink hover:underline">{{ item.name }}</NuxtLink>
-              <p class="text-sm text-brand-deep"><span v-if="item.size">{{ item.size }} · </span><bdi>{{ item.price }}</bdi> د.ل للوحدة</p>
+              <p class="text-sm text-brand-deep"><span v-if="item.size">{{ item.size }} · </span><bdi>{{ formatPrice(item.price) }}</bdi> د.ل للوحدة</p>
               <p v-if="!item.available" class="mt-1 text-sm text-danger">هذا الحجم غير متاح حاليًا. احذفيه لمتابعة الطلب.</p>
               <div class="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
                 <div class="inline-flex items-center rounded-full border border-lavender-deep bg-white">
@@ -56,7 +56,7 @@ useSeoMeta({ title: 'سلة أوركيديا', robots: 'noindex, nofollow' })
                   <button :disabled="busy || item.quantity <= 1" :aria-label="'تقليل كمية ' + item.name"
                     class="min-h-11 min-w-11 rounded-full font-semibold text-ink hover:bg-lavender disabled:opacity-40" @click="mutate('PATCH', item.variantId, item.quantity - 1)">−</button>
                 </div>
-                <span class="price ms-auto"><bdi>{{ item.subtotal }}</bdi> د.ل</span>
+                <span class="price ms-auto"><bdi>{{ formatPrice(item.subtotal) }}</bdi> د.ل</span>
                 <button :disabled="busy" :aria-label="'حذف ' + item.name"
                   class="btn-ghost !text-danger hover:!bg-danger/10" @click="mutate('DELETE', item.variantId)">
                   <AppIcon name="x" :size="16" /> حذف
@@ -68,14 +68,14 @@ useSeoMeta({ title: 'سلة أوركيديا', robots: 'noindex, nofollow' })
         <section aria-labelledby="cart-summary" class="card-glass p-5 lg:sticky lg:top-24">
           <h2 id="cart-summary" class="mb-3 text-lg font-bold text-ink">ملخص السلة</h2>
           <dl class="text-ink"><div class="flex flex-wrap justify-between gap-2">
-            <dt>إجمالي المنتجات</dt><dd class="price"><bdi>{{ cart.productsTotal }}</bdi> د.ل</dd>
+            <dt>إجمالي المنتجات</dt><dd class="price"><bdi>{{ formatPrice(cart.productsTotal) }}</bdi> د.ل</dd>
           </div></dl>
           <p class="mt-2 text-sm text-brand-deep">تُضاف تكلفة التوصيل عند إتمام الطلب.</p>
           <NuxtLink v-if="cart.items.every(item => item.available)" to="/checkout"
             class="storefront-action btn-primary mt-4 hidden w-full lg:flex">إتمام الطلب</NuxtLink>
         </section>
         <div v-if="cart.items.every(item => item.available)" class="glass fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-lavender-deep px-4 py-3 lg:hidden">
-          <p class="text-sm text-ink-soft">الإجمالي <span class="price block text-lg"><bdi>{{ cart.productsTotal }}</bdi> د.ل</span></p>
+          <p class="text-sm text-ink-soft">الإجمالي <span class="price block text-lg"><bdi>{{ formatPrice(cart.productsTotal) }}</bdi> د.ل</span></p>
           <NuxtLink to="/checkout" class="storefront-action btn-primary">إتمام الطلب</NuxtLink>
         </div>
       </div>

@@ -66,7 +66,7 @@ async function add() {
         <li v-for="s in sizes" :key="s" class="rounded-full bg-lavender px-2.5 py-0.5 text-xs font-semibold text-brand">{{ s }}</li>
       </ul>
       <p v-if="product.startingPrice !== undefined" class="price mt-auto pt-1 text-base sm:text-lg">
-        <span v-if="product.variants.length > 1" class="text-sm font-semibold text-ink-soft">من </span><bdi>{{ product.startingPrice }}</bdi> د.ل
+        <span v-if="product.variants.length > 1" class="text-sm font-semibold text-ink-soft">من </span><bdi>{{ formatPrice(product.startingPrice) }}</bdi> د.ل
       </p>
       <button v-if="single" type="button" :aria-label="'أضيفي ' + product.name + ' للسلة'" class="btn-primary relative z-10 mt-2 w-full gap-1.5 whitespace-nowrap px-3 text-sm" :disabled="busy" :aria-busy="adding" @click="add">
         <span v-if="adding" class="spinner" aria-hidden="true" />
