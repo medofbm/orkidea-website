@@ -72,17 +72,23 @@ public sealed class SabilRateImport(ICarrierReadGateway gateway, ApplicationDbCo
     public async Task<bool> ApplyAsync(SabilRatePlan plan, CancellationToken ct = default)
     {
         if (plan.Rows.Count == 0) return false;
-        await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
-        db.ShippingRates.RemoveRange(await db.ShippingRates.ToListAsync(ct));
-        db.ShippingRates.AddRange(plan.Rows.Select(row => new ShippingRate
+        // The app enables SQL retry-on-failure, which only allows a manual transaction inside its execution strategy.
+        var strategy = db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            CityName = row.City + DeliveryRateGroups.AreaSeparator + row.Area,
-            Region = row.City,
-            Price = row.Price,
-            DeliveryDuration = ""
-        }));
-        await db.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
+            db.ChangeTracker.Clear(); // a retry starts from a clean slate
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            db.ShippingRates.RemoveRange(await db.ShippingRates.ToListAsync(ct));
+            db.ShippingRates.AddRange(plan.Rows.Select(row => new ShippingRate
+            {
+                CityName = row.City + DeliveryRateGroups.AreaSeparator + row.Area,
+                Region = row.City,
+                Price = row.Price,
+                DeliveryDuration = ""
+            }));
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+        });
         return true;
     }
 }
