@@ -3,7 +3,7 @@
 Shared brief for Claude, ChatGPT/Codex and humans. Keep it consistent with AGENTS.md. See README.md for commands.
 
 ## Stack
-Backend: ASP.NET Core net10, EF Core + SQL Server, Identity, ClosedXML, Twilio (opt-in), in `Orkideya/`.
+Backend: ASP.NET Core net10, EF Core + SQL Server, Identity, ClosedXML, in `Orkideya/`.
 Frontend: Nuxt 4, Vue 3, TypeScript, Tailwind 4, Arabic RTL, in `frontend/`. Nitro routes proxy to the backend `/api/v1/...`.
 Legacy Razor store and admin still exist; retire only after Vue acceptance.
 

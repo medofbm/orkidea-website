@@ -29,8 +29,8 @@ internal static class ShippingQuoteScenario
             var saved=await db.Orders.Include(o=>o.ShippingQuote).SingleAsync(o=>o.OrderId==id);
             check(saved.ShippingQuote is {ShippingFee:15,Currency:"lyd",Area:"Synthetic area"} && saved.ShippingQuote.AcceptedAtUtc>=saved.ShippingQuote.QuotedAtUtc,
                 "Persisted quote facts and server acceptance time match the accepted order");
-            check(await db.OrderNotifications.CountAsync(n=>n.OrderId==id)==1 && await db.OrderItems.CountAsync(i=>i.OrderId==id)==1,
-                "Snapshot order retains exactly one item and notification intent");
+            check(await db.OrderNotifications.CountAsync(n=>n.OrderId==id)==0 && await db.OrderItems.CountAsync(i=>i.OrderId==id)==1,
+                "Snapshot order retains exactly one item and no notification row");
             var retry=Make(token);retry.ShippingQuote!.QuotedAtUtc=DateTimeOffset.UtcNow.AddHours(-1);retry.ShippingQuote.ExpiresAtUtc=DateTimeOffset.UtcNow.AddMinutes(-30);
             var same=await new OrderService(db).PlaceAsync(retry);
             check(!same.IsNew && same.Order.OrderId==id && await db.OrderShippingQuotes.CountAsync(q=>q.OrderId==id)==1,
@@ -62,8 +62,8 @@ internal static class ShippingQuoteScenario
         await using(var db=open())
         {
             var orderId=parallel[0].Order.OrderId;
-            check(await db.OrderShippingQuotes.CountAsync(q=>q.OrderId==orderId)==1 && await db.OrderNotifications.CountAsync(n=>n.OrderId==orderId)==1,
-                "Concurrent carrier checkout saves one snapshot and notification");
+            check(await db.OrderShippingQuotes.CountAsync(q=>q.OrderId==orderId)==1,
+                "Concurrent carrier checkout saves one snapshot");
             var guarded=false;try{await db.GetService<IMigrator>().MigrateAsync("20261031235949_ManualOrderCreation");}catch(SqlException e)when(e.Number==51006){guarded=true;}
             check(guarded,"Migration rollback refuses to erase recorded shipping quote provenance");
             await db.Database.MigrateAsync();

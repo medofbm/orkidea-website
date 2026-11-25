@@ -73,7 +73,6 @@ internal static class PasswordResetRegression
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Initialization:Run"] = "false",
-                    ["Notifications:WhatsAppEnabled"] = "false",
                     ["AllowedHosts"] = "localhost",
                     ["App:PublicBaseUrl"] = "https://shop.example.test",
                     ["Logging:LogLevel:Default"] = "Warning"

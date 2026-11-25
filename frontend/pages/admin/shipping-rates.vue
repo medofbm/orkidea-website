@@ -5,7 +5,7 @@ useSeoMeta({ title: 'أسعار التوصيل' })
 type Rate = { id: number, region: string, city: string, price: string }
 type RatesPage = { readEnabled: boolean, total: number, rates: Rate[] }
 type ImportResult = {
-  applied: boolean, cities: number, areas: number, conflicts: number, skippedNoRate: number,
+  applied: boolean, cities: number, areas: number, conflicts: number, skippedNoRate: number, skippedPickup: number, surcharge: string,
   sample: { region: string, area: string, price: string }[]
 }
 
@@ -14,6 +14,16 @@ const confirm = useConfirm()
 const { data, status, error, refresh } = useFetch<RatesPage>('/api/admin/shipping-rates', { server: false, cache: 'no-store' })
 const busy = ref(false)
 const preview = ref<ImportResult | null>(null)
+const previewSurcharge = ref<number | null>(null)
+// Empty on purpose: the admin must choose (0 is allowed).
+const surchargeInput = ref<number | string | null>(null)
+const surcharge = computed(() => {
+  const raw = surchargeInput.value
+  if (raw === null || raw === '') return null
+  const value = Number(raw)
+  return Number.isFinite(value) && value >= 0 && value <= 100 && Math.round(value * 100) === value * 100 ? value : null
+})
+watch(surcharge, () => { preview.value = null; previewSurcharge.value = null })
 const search = ref('')
 
 const groups = computed(() => {
@@ -33,10 +43,10 @@ function areaLabel(rate: Rate) {
   return rate.city.startsWith(prefix) ? rate.city.slice(prefix.length) : rate.city
 }
 
-async function callImport(dryRun: boolean) {
+async function callImport(dryRun: boolean, extra: number) {
   const session = await $fetch<{ requestToken: string }>('/api/session')
   const response = await $fetch.raw<ImportResult & { error?: string }>('/api/admin/shipping-rates/import-sabil', {
-    method: 'POST', retry: 0, ignoreResponseError: true, query: { dryRun },
+    method: 'POST', retry: 0, ignoreResponseError: true, query: { dryRun, surcharge: extra },
     headers: { RequestVerificationToken: session.requestToken }
   })
   if (!response.ok || !response._data) throw new Error(response._data?.error || 'تعذر قراءة أسعار درب السبيل الآن.')
@@ -44,10 +54,12 @@ async function callImport(dryRun: boolean) {
 }
 
 async function check() {
-  if (busy.value) return
+  const extra = surcharge.value
+  if (busy.value || extra === null) return
   busy.value = true
   try {
-    preview.value = await callImport(true)
+    preview.value = await callImport(true, extra)
+    previewSurcharge.value = extra
   } catch (e) {
     toast.error((e as Error).message)
   } finally {
@@ -56,7 +68,8 @@ async function check() {
 }
 
 async function apply() {
-  if (busy.value || !preview.value) return
+  const extra = previewSurcharge.value
+  if (busy.value || !preview.value || extra === null) return
   const ok = await confirm({
     title: 'اعتماد أسعار درب السبيل؟',
     message: `ستُستبدل كل أسعار التوصيل الحالية بـ ${preview.value.areas} منطقة في ${preview.value.cities} مدينة. الطلبات السابقة لا تتأثر.`,
@@ -65,8 +78,9 @@ async function apply() {
   if (!ok) return
   busy.value = true
   try {
-    const result = await callImport(false)
+    const result = await callImport(false, extra)
     preview.value = null
+    previewSurcharge.value = null
     toast.success(`تم تحديث الأسعار: ${result.areas} منطقة في ${result.cities} مدينة.`)
     await refresh()
   } catch (e) {
@@ -88,20 +102,26 @@ async function apply() {
       <p v-if="data && !data.readEnabled" class="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
         ربط درب السبيل غير مفعّل على الخادم بعد. لازم إضافة مفتاح الحساب على الخادم أولاً.
       </p>
+      <div class="mt-4 max-w-sm">
+        <label class="block text-sm font-semibold" for="surcharge">إضافة على كل سعر (د.ل)</label>
+        <input id="surcharge" v-model="surchargeInput" type="number" inputmode="decimal" min="0" max="100" step="0.5" class="field mt-1">
+        <p class="mt-1 text-xs text-gray-600">خدمة "نساء" في درب السبيل تضيف 10 د.ل على سعر التوصيل. اكتب 10 لو تبعث بخدمة النساء.</p>
+      </div>
       <div class="mt-4 flex flex-wrap gap-2">
-        <button type="button" class="btn-primary min-h-11 px-4" :disabled="busy" @click="check">
+        <button type="button" class="btn-primary min-h-11 px-4" :disabled="busy || surcharge === null" @click="check">
           {{ busy && !preview ? 'جاري القراءة…' : 'استيراد أسعار درب السبيل' }}
         </button>
       </div>
 
       <div v-if="preview" class="mt-4 rounded-lg border border-gray-200 p-4">
         <p class="font-semibold">
-          جاهزة للاعتماد: {{ preview.areas }} منطقة في {{ preview.cities }} مدينة
+          جاهزة للاعتماد: {{ preview.areas }} منطقة في {{ preview.cities }} مدينة (مع إضافة {{ formatPrice(preview.surcharge) }} د.ل على كل سعر)
         </p>
         <p v-if="preview.conflicts || preview.skippedNoRate" class="mt-1 text-sm text-gray-600">
           <span v-if="preview.conflicts">{{ preview.conflicts }} منطقة بسعرين مختلفين (اعتمدنا الأعلى). </span>
           <span v-if="preview.skippedNoRate">{{ preview.skippedNoRate }} منطقة بدون سعر توصيل (لم تُضف).</span>
         </p>
+        <p v-if="preview.skippedPickup > 0" class="mt-1 text-sm text-gray-600">تم تجاهل {{ preview.skippedPickup }} نقطة استلام من المكتب</p>
         <ul class="mt-3 grid gap-1 text-sm sm:grid-cols-2">
           <li v-for="row in preview.sample" :key="row.region + row.area" class="flex justify-between gap-3 border-b border-gray-100 py-1">
             <span>{{ row.region }} — {{ row.area }}</span>

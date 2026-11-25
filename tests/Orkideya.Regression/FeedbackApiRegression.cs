@@ -31,7 +31,6 @@ internal static class FeedbackApiRegression
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Initialization:Run"] = "false",
-                    ["Notifications:WhatsAppEnabled"] = "false",
                     ["AllowedHosts"] = "localhost",
                     ["Logging:LogLevel:Default"] = "Warning"
                 });

@@ -26,7 +26,6 @@ internal static class HttpSecurityRegression
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Initialization:Run"] = "false",
-                    ["Notifications:WhatsAppEnabled"] = "false",
                     ["AllowedHosts"] = "localhost",
                     ["Logging:LogLevel:Default"] = "Warning"
                 });
