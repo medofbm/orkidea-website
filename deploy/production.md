@@ -15,8 +15,9 @@ Nuxt is the only published service, on loopback port 3089, behind Nginx with a L
 
 ## Launch steps (owner runs them from PowerShell; scripts live in the private releases folder)
 1. `Run-PrepareProduction.ps1 -AdminEmail <owner email>`: checks memory/disk/port/subnet, builds the private stack
-   with the preview's tested images, provisions the database, creates the admin, copies the catalogue, installs the
-   daily backup (03:30 UTC, 14 days, database `.bak` + images `.tgz` in `/opt/orkidea-production-backups`).
+   with the preview's tested images, provisions the database, creates the admin and copies the catalogue.
+   Owner decision (2026-11-26): no backups are kept on the server. `Run-DownloadProductionBackup.ps1` makes a database
+   backup on demand, streams it to the owner's computer and deletes it from the server. Code lives on GitHub and locally.
 2. DNS: A records `orkidea.ly` and `www.orkidea.ly` → the server IPv4. Then `Run-EnableProductionHttps.ps1`:
    certificate for both names, Nginx site from `nginx.production.conf.template`, still behind the preview login
    (soft launch). `www` redirects to `orkidea.ly`.
@@ -25,7 +26,7 @@ Nuxt is the only published service, on loopback port 3089, behind Nginx with a L
 
 ## Updates
 Every merge to master deploys to the preview automatically. Production changes only when the owner runs
-`Run-UpdateProduction.ps1`: it backs up, switches production to the images running on the preview, verifies, and
+`Run-UpdateProduction.ps1` (download a backup first with `Run-DownloadProductionBackup.ps1`): it switches production to the images running on the preview, verifies, and
 restores the previous images if a check fails (a migration is not undone; restore the backup in that case).
 
 ## CI

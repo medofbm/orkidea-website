@@ -13,8 +13,6 @@ fi
 
 preview_env=$(mktemp "${RUNNER_TEMP:?}/orkidea-preview.XXXXXX")
 production_env=$(mktemp "${RUNNER_TEMP:?}/orkidea-production.XXXXXX")
-backups=$(mktemp -d "${RUNNER_TEMP:?}/orkidea-backups.XXXXXX")
-chmod 777 "$backups"
 preview() { docker compose --project-name orkidea-vue-preview --env-file "$preview_env" -f deploy/compose.vue-preview.yaml "$@"; }
 production() { docker compose --project-name orkidea-production --env-file "$production_env" -f deploy/compose.production.yaml "$@"; }
 cleanup() {
@@ -22,7 +20,7 @@ cleanup() {
     if [[ "$result" != 0 ]]; then production logs --tail 40 frontend web db || true; fi
     production down --volumes --remove-orphans || true
     preview down --volumes --remove-orphans || true
-    rm -rf -- "$preview_env" "$production_env" "$backups" "$production_env".*
+    rm -rf -- "$preview_env" "$production_env" "$production_env".*
 }
 trap cleanup EXIT
 
@@ -40,7 +38,6 @@ secret() { local value; value="Aa1_$(openssl rand -hex 24)"; printf '::add-mask:
     printf 'ORKIDEA_PROD_BACKEND_IMAGE=orkidea-preview:%s\n' "$GITHUB_SHA"
     printf 'ORKIDEA_PROD_FRONTEND_IMAGE=orkidea-vue-preview:%s\n' "$GITHUB_SHA"
     printf 'ORKIDEA_PROD_SUBNET=172.30.91.0/24\nORKIDEA_PROD_PROXY_IP=172.30.91.10\nORKIDEA_PROD_PORT=3088\n'
-    printf 'ORKIDEA_PROD_BACKUP_DIR=%s\n' "$backups"
     printf 'ORKIDEA_PROD_ADMIN_EMAIL=owner-ci@orkidea.test\n'
     for variable in SQL_PASSWORD APP_PASSWORD MIGRATION_PASSWORD ADMIN_PASSWORD; do
         printf 'ORKIDEA_PROD_%s=%s\n' "$variable" "$(secret)"
@@ -101,8 +98,9 @@ if curl --silent --max-time 10 "${headers[@]}" -D - -o /dev/null "$origin/api/v1
     printf 'Production API must not send the staging noindex header.\n' >&2; exit 1
 fi
 
-# Backup: a full backup lands in the mounted backup folder.
-production exec -T db sh -c 'export SQLCMDPASSWORD="$MSSQL_SA_PASSWORD"; exec /opt/mssql-tools18/bin/sqlcmd -S tcp:127.0.0.1,1433 -U sa -C -b -Q "BACKUP DATABASE [Orkidea] TO DISK = N'"'"'/var/opt/backups/ci.bak'"'"' WITH INIT, CHECKSUM" -o /dev/null'
-test -s "$backups/ci.bak"
+# On-demand backup (owner downloads it to his computer; nothing is kept on the server).
+production exec -T db sh -c 'export SQLCMDPASSWORD="$MSSQL_SA_PASSWORD"; exec /opt/mssql-tools18/bin/sqlcmd -S tcp:127.0.0.1,1433 -U sa -C -b -Q "BACKUP DATABASE [Orkidea] TO DISK = N'"'"'/var/opt/mssql/data/download.bak'"'"' WITH INIT, CHECKSUM" -o /dev/null' 
+test "$(production exec -T db sh -c 'cat /var/opt/mssql/data/download.bak; rm -f /var/opt/mssql/data/download.bak' | wc -c)" -gt 100000
+test "$(production exec -T db sh -c 'ls /var/opt/mssql/data/download.bak 2>/dev/null | wc -l')" = 0
 
-printf 'PASS: production stack (Express, Production env), provisioning, admin bootstrap, catalogue copy with stock at 0, no preview markers, indexing allowed, backup.\n'
+printf 'PASS: production stack (Express, Production env), provisioning, admin bootstrap, catalogue copy with stock at 0, no preview markers, indexing allowed, on-demand backup download.\n'
