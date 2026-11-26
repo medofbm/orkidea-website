@@ -196,7 +196,7 @@ jobs:
           bash tests/check-production-compose.sh
       - name: Save the verified Vue image for controlled transfer
         run: docker save "orkidea-vue-preview:${GITHUB_SHA}" | gzip > orkidea-vue-preview-image.tar.gz
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: orkidea-vue-preview-image-${{ github.sha }}
           path: orkidea-vue-preview-image.tar.gz
@@ -204,7 +204,7 @@ jobs:
           if-no-files-found: error
       - name: Save the verified web image for controlled transfer
         run: docker save "orkidea-preview:${GITHUB_SHA}" | gzip > orkidea-preview-image.tar.gz
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: orkidea-preview-image-${{ github.sha }}
           path: orkidea-preview-image.tar.gz
