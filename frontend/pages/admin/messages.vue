@@ -93,7 +93,7 @@ async function remove(message: Message) {
         </div>
         <div class="mt-1 text-sm">
           <a v-if="message.phoneNumber" :href="'tel:' + message.phoneNumber" dir="ltr"
-            class="inline-flex min-h-11 items-center text-brand underline">{{ message.phoneNumber }}</a>
+            class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors">{{ message.phoneNumber }}</a>
           <div v-if="message.phoneNumber" class="mb-2 flex flex-wrap gap-2">
             <a :href="'tel:+' + adminPhoneDigits(message.phoneNumber)" class="btn-secondary inline-flex items-center gap-1 text-sm">
               <AppIcon name="phone" :size="16" />اتصال</a>
@@ -101,7 +101,7 @@ async function remove(message: Message) {
               class="btn-secondary inline-flex items-center gap-1 text-sm"><AppIcon name="whatsapp" :size="16" />واتساب</a>
           </div>
           <a v-if="message.email" :href="'mailto:' + message.email" dir="ltr"
-            class="inline-flex min-h-11 items-center break-all text-brand underline">{{ message.email }}</a>
+            class="break-all inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors">{{ message.email }}</a>
         </div>
         <p class="whitespace-pre-line break-words" :class="message.isRead ? '' : 'font-bold'">{{ message.message }}</p>
         <div class="mt-3 flex flex-wrap gap-2">

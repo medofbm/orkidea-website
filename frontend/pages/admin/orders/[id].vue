@@ -108,10 +108,7 @@ async function updateOrder(action: 'status' | 'stock' | 'delivery', input: Recor
 
 <template>
   <section aria-labelledby="order-title" class="mx-auto max-w-6xl">
-    <nav class="mb-3 flex flex-wrap gap-4" aria-label="تنقل الطلب">
-      <NuxtLink :to="{ path: '/admin/orders', query: returnQuery }" class="inline-flex min-h-11 items-center text-brand underline">الطلبات</NuxtLink>
-      <NuxtLink to="/admin/delivery" class="inline-flex min-h-11 items-center text-brand underline">التوصيل والرواجع</NuxtLink>
-    </nav>
+    <NuxtLink :to="{ path: '/admin/orders', query: returnQuery }" class="mb-3 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors"><AppIcon name="chevron-right" :size="16" />رجوع للطلبات</NuxtLink>
     <div class="mb-6 flex flex-wrap items-center gap-3">
       <h1 id="order-title" class="text-3xl font-bold">تفاصيل الطلب <span v-if="data">#{{ data.order.id }}</span></h1>
       <span v-if="data" class="badge" :class="adminOrderStatusClass(data.order.status)">{{ adminOrderStatus(data.order.status) }}</span>

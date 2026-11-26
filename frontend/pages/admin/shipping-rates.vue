@@ -142,7 +142,7 @@ async function apply() {
       </div>
       <p v-if="status === 'pending'" class="mt-4 text-sm text-gray-500">جاري التحميل…</p>
       <p v-else-if="error" class="mt-4 text-sm text-red-700">
-        تعذر تحميل الأسعار. <button type="button" class="underline" @click="refresh()">إعادة المحاولة</button>
+        تعذر تحميل الأسعار. <button type="button" class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors" @click="refresh()">إعادة المحاولة</button>
       </p>
       <p v-else-if="!groups.length" class="mt-4 text-sm text-gray-500">لا توجد أسعار.</p>
       <div v-else class="mt-4 space-y-4">

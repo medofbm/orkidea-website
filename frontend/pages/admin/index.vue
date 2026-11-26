@@ -14,7 +14,7 @@ const greeting = (() => {
   return hour < 12 ? 'صباح الخير' : 'مساء الخير'
 })()
 
-type Attention = { key: string, text: string, action: string, to: string, icon: AppIconName, count: number }
+type Attention = { key: string, text: string, short: string, action: string, to: string, icon: AppIconName, count: number, tone: 'warning' | 'brand' }
 
 // «يحتاج انتباهك»: only things with a real number above zero, each with a direct link.
 const attention = computed<Attention[]>(() => {
@@ -24,12 +24,12 @@ const attention = computed<Attention[]>(() => {
   const outOfStock = d.lowestStock?.filter(row => Number(row.available) <= 0).length ?? 0
   const unorderable = d.unorderableSizes?.length ?? 0
   const rows: Attention[] = [
-    { key: 'orders', count: d.pendingOrders, text: 'طلبات جديدة تنتظر المراجعة', action: 'راجع الطلبات', to: '/admin/orders?status=pending', icon: 'cart' },
-    { key: 'messages', count: d.unreadMessages ?? 0, text: 'رسائل من الزبائن لم تُقرأ', action: 'اقرأ الرسائل', to: '/admin/messages', icon: 'mail' },
-    { key: 'reviews', count: hidden, text: 'تقييمات بانتظار موافقتك', action: 'راجع التقييمات', to: '/admin/reviews', icon: 'star' },
-    { key: 'stock', count: outOfStock, text: 'منتجات خلص مخزونها', action: 'افتح المخزون', to: '/admin/inventory', icon: 'droplet' },
-    { key: 'sizes', count: unorderable, text: 'أحجام لا يقدر الزبون يطلبها، حدد كمية الاستهلاك لها', action: 'اضبط الأحجام', to: '/admin/inventory/' + (d.unorderableSizes?.[0]?.productId ?? ''), icon: 'bag' },
-    { key: 'variants', count: d.productsWithoutVariants, text: 'منتجات بدون أحجام', action: 'راجع المنتجات', to: '/admin/products', icon: 'flower' }
+    { key: 'orders', count: d.pendingOrders, text: 'طلبات جديدة تنتظر المراجعة', short: 'طلبات جديدة', tone: 'warning', action: 'راجع الطلبات', to: '/admin/orders?status=pending', icon: 'cart' },
+    { key: 'messages', count: d.unreadMessages ?? 0, text: 'رسائل من الزبائن لم تُقرأ', short: 'رسائل لم تُقرأ', tone: 'brand', action: 'اقرأ الرسائل', to: '/admin/messages', icon: 'mail' },
+    { key: 'reviews', count: hidden, text: 'تقييمات بانتظار موافقتك', short: 'تقييمات بانتظار الموافقة', tone: 'brand', action: 'راجع التقييمات', to: '/admin/reviews', icon: 'star' },
+    { key: 'stock', count: outOfStock, text: 'منتجات خلص مخزونها', short: 'منتجات خلص مخزونها', tone: 'warning', action: 'افتح المخزون', to: '/admin/inventory', icon: 'droplet' },
+    { key: 'sizes', count: unorderable, text: 'أحجام لا يقدر الزبون يطلبها، حدد كمية الاستهلاك لها', short: 'أحجام لا تُطلب', tone: 'warning', action: 'اضبط الأحجام', to: '/admin/inventory/' + (d.unorderableSizes?.[0]?.productId ?? ''), icon: 'bag' },
+    { key: 'variants', count: d.productsWithoutVariants, text: 'منتجات بدون أحجام', short: 'منتجات بدون أحجام', tone: 'warning', action: 'راجع المنتجات', to: '/admin/products', icon: 'flower' }
   ]
   return rows.filter(row => row.count > 0)
 })
@@ -99,16 +99,15 @@ function stockTone(available: string) {
           <AppIcon name="check-circle" :size="24" />
           <p class="font-semibold">كل شيء تمام، ما فيش شيء ينتظرك الآن.</p>
         </div>
-        <ul v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <ul v-else class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           <li v-for="item in attention" :key="item.key">
-            <NuxtLink :to="item.to"
-              class="group flex h-full min-h-11 items-center gap-3 rounded-2xl border border-warning/30 bg-status-pending p-4 motion-safe:transition hover:shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-              <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-warning" aria-hidden="true"><AppIcon :name="item.icon" :size="22" /></span>
-              <span class="min-w-0 flex-1">
-                <span class="block text-2xl font-extrabold leading-none text-ink"><bdi>{{ item.count }}</bdi></span>
-                <span class="mt-1 block text-sm font-semibold text-ink">{{ item.text }}</span>
-                <span class="mt-0.5 block text-sm font-bold text-brand underline group-hover:text-brand-deep">{{ item.action }}</span>
-              </span>
+            <NuxtLink :to="item.to" :aria-label="item.count + ' ' + item.text + '، ' + item.action"
+              class="group flex min-h-11 items-center gap-2.5 rounded-xl border px-3 py-1.5 motion-safe:transition hover:shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              :class="item.tone === 'warning' ? 'border-warning/30 bg-status-pending' : 'border-brand/20 bg-lavender'">
+              <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-white" :class="item.tone === 'warning' ? 'text-warning' : 'text-brand'" aria-hidden="true"><AppIcon :name="item.icon" :size="17" /></span>
+              <bdi class="text-lg font-extrabold leading-none text-ink">{{ item.count }}</bdi>
+              <span class="min-w-0 flex-1 text-sm font-semibold leading-snug text-ink" :title="item.text">{{ item.short }}</span>
+              <AppIcon name="chevron-left" :size="16" class="shrink-0 text-ink-soft group-hover:text-brand-deep" aria-hidden="true" />
             </NuxtLink>
           </li>
         </ul>
@@ -176,7 +175,7 @@ function stockTone(available: string) {
             <ol v-else class="space-y-2">
               <li v-for="(product, index) in data.topProducts" :key="product.productId" class="flex items-center gap-3">
                 <span class="grid size-7 shrink-0 place-items-center rounded-full bg-gradient-brand text-xs font-bold text-white" aria-hidden="true">{{ index + 1 }}</span>
-                <NuxtLink :to="'/admin/products/' + product.productId" class="min-w-0 flex-1 truncate py-2 text-sm font-semibold text-ink hover:underline">{{ product.name }}</NuxtLink>
+                <NuxtLink :to="'/admin/products/' + product.productId" class="min-w-0 flex-1 truncate py-2 text-sm font-semibold text-ink hover:text-brand">{{ product.name }}</NuxtLink>
                 <span class="shrink-0 text-end text-xs text-ink-soft"><bdi class="font-bold text-ink">{{ product.quantity }}</bdi> قطعة<br><bdi>{{ product.value }}</bdi> د.ل</span>
               </li>
             </ol>
@@ -184,12 +183,12 @@ function stockTone(available: string) {
           <section aria-labelledby="lowest-stock" class="card p-4">
             <div class="mb-3 flex items-center justify-between gap-2">
               <h2 id="lowest-stock" class="text-lg font-bold">أقل مخزون متاح</h2>
-              <NuxtLink to="/admin/inventory" class="inline-flex min-h-11 items-center text-sm font-semibold text-brand underline">المخزون</NuxtLink>
+              <NuxtLink to="/admin/inventory" class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors">المخزون</NuxtLink>
             </div>
             <p v-if="!data.lowestStock?.length" class="text-sm text-ink-soft">تتبّع المخزون غير مفعّل لأي منتج.</p>
             <ul v-else class="space-y-2">
               <li v-for="row in data.lowestStock" :key="row.productId" class="flex items-center gap-3">
-                <NuxtLink :to="'/admin/inventory/' + row.productId" class="min-w-0 flex-1 truncate py-2 text-sm font-semibold text-ink hover:underline">{{ row.name }}</NuxtLink>
+                <NuxtLink :to="'/admin/inventory/' + row.productId" class="min-w-0 flex-1 truncate py-2 text-sm font-semibold text-ink hover:text-brand">{{ row.name }}</NuxtLink>
                 <span class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold" :class="stockTone(row.available)">
                   <bdi>{{ row.available }}</bdi> {{ row.unit === 'ml' ? 'مل' : 'قطعة' }}
                 </span>
@@ -202,7 +201,7 @@ function stockTone(available: string) {
       <!-- 5. Latest orders -->
       <div class="mb-3 mt-8 flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-xl font-bold">أحدث الطلبات</h2>
-        <NuxtLink to="/admin/orders" class="inline-flex min-h-11 items-center font-semibold text-brand underline">كل الطلبات</NuxtLink>
+        <NuxtLink to="/admin/orders" class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors">كل الطلبات</NuxtLink>
       </div>
       <AdminOrderList :orders="data.recentOrders" />
     </template>

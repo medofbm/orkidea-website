@@ -9,6 +9,6 @@ defineProps<{ statusCode?: number }>()
     <p v-else-if="statusCode === 404">الطلب غير موجود.</p>
     <p v-else>تعذر تحميل البيانات. أعد المحاولة بعد التحقق من الاتصال.</p>
     <NuxtLink v-if="statusCode === 401 || statusCode === 403" to="/account"
-      class="mt-3 inline-block min-h-11 text-brand underline">صفحة الحساب</NuxtLink>
+      class="mt-3 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors">صفحة الحساب</NuxtLink>
   </div>
 </template>

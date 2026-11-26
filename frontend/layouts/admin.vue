@@ -130,33 +130,33 @@ const badgeTone: Record<NonNullable<NavLink['badge']>, string> = { orders: 'bg-w
       class="fixed inset-y-0 start-0 z-50 flex w-[272px] max-w-[85vw] flex-col bg-white shadow-lift motion-safe:transition-transform motion-safe:duration-200 lg:z-20 lg:max-w-none lg:translate-x-0 lg:border-e lg:border-lavender lg:shadow-none"
       :class="open ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full'"
       :role="open ? 'dialog' : undefined" :aria-modal="open ? 'true' : undefined" :aria-label="open ? 'قائمة الإدارة' : undefined">
-      <div class="bg-gradient-brand relative flex items-center gap-3 overflow-hidden px-5 py-5 text-white">
-        <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/25" aria-hidden="true">
-          <img src="/brand/flower-white.png" alt="" width="30" height="30" class="h-[30px] w-[30px]" />
+      <div class="bg-gradient-brand relative flex items-center gap-2.5 overflow-hidden px-4 py-3 text-white">
+        <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/25" aria-hidden="true">
+          <img src="/brand/flower-white.png" alt="" width="24" height="24" class="h-6 w-6" />
         </span>
         <NuxtLink to="/admin" class="min-w-0 rounded-lg leading-tight text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-          <span class="block text-lg font-extrabold">أوركيديا</span>
-          <span class="block text-xs font-medium text-white/80">لوحة الإدارة</span>
+          <span class="block text-base font-extrabold">أوركيديا</span>
+          <span class="block text-[11px] font-medium text-white/80">لوحة الإدارة</span>
         </NuxtLink>
         <button v-if="open" type="button" class="ms-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-white lg:hidden"
           aria-label="إغلاق القائمة" @click="setOpen(false)">
-          <AppIcon name="x" :size="22" />
+          <AppIcon name="x" :size="20" />
         </button>
       </div>
-      <nav class="admin-scroll flex-1 overflow-y-auto px-3 py-4" aria-label="قائمة الإدارة">
-        <div v-for="group in groups" :key="group.title" class="mb-5 last:mb-0" role="group" :aria-labelledby="'nav-' + group.title">
-          <p :id="'nav-' + group.title" class="mb-1.5 px-3 text-xs font-bold tracking-wide text-ink-soft">{{ group.title }}</p>
-          <ul class="flex flex-col gap-1">
+      <nav class="admin-scroll flex-1 overflow-y-auto px-2 py-2" aria-label="قائمة الإدارة">
+        <div v-for="group in groups" :key="group.title" class="mb-2 last:mb-0" role="group" :aria-labelledby="'nav-' + group.title">
+          <p :id="'nav-' + group.title" class="mb-0.5 px-2 text-[11px] font-bold tracking-wide text-ink-soft">{{ group.title }}</p>
+          <ul class="flex flex-col gap-0.5">
             <li v-for="link in group.links" :key="link.to">
               <NuxtLink :to="link.to" :aria-current="isActive(link.to) ? 'page' : undefined"
-                class="group flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 font-semibold motion-safe:transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                class="group flex min-h-10 items-center gap-2.5 rounded-lg px-2 py-1 text-sm font-semibold motion-safe:transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                 :class="isActive(link.to) ? 'bg-brand text-white shadow-soft' : 'text-ink hover:bg-lavender hover:text-brand-deep'">
-                <span class="grid size-8 shrink-0 place-items-center rounded-lg motion-safe:transition-colors"
+                <span class="grid size-7 shrink-0 place-items-center rounded-md motion-safe:transition-colors"
                   :class="isActive(link.to) ? 'bg-white/20' : 'bg-lavender text-brand group-hover:bg-white'" aria-hidden="true">
-                  <AppIcon :name="link.icon" :size="18" />
+                  <AppIcon :name="link.icon" :size="16" />
                 </span>
                 <span class="min-w-0 flex-1 truncate">{{ link.label }}</span>
-                <span v-if="link.badge && badgeFor(link)" class="grid h-6 min-w-6 place-items-center rounded-full px-2 text-xs font-bold"
+                <span v-if="link.badge && badgeFor(link)" class="grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-bold"
                   :class="isActive(link.to) ? 'bg-white text-brand-deep' : [badgeTone[link.badge], 'text-white']">
                   <bdi>{{ badgeFor(link) }}</bdi><span class="sr-only">{{ badgeText[link.badge] }}</span>
                 </span>
@@ -165,28 +165,23 @@ const badgeTone: Record<NonNullable<NavLink['badge']>, string> = { orders: 'bg-w
           </ul>
         </div>
       </nav>
-      <div class="border-t border-lavender bg-blush/50 p-3">
-        <div v-if="account?.signedIn" class="mb-2 flex items-center gap-3 px-1">
-          <span class="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-brand text-white" aria-hidden="true"><AppIcon name="user" :size="18" /></span>
-          <span class="min-w-0 flex-1">
-            <span class="block text-xs text-ink-soft">مسجّل باسم</span>
-            <bdi class="block truncate text-sm font-semibold text-ink" dir="ltr">{{ account.name }}</bdi>
-          </span>
-        </div>
-        <div class="grid gap-1" :class="account?.signedIn ? 'grid-cols-3' : 'grid-cols-2'">
-          <NuxtLink to="/account" class="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-xs font-semibold text-ink-soft hover:bg-lavender hover:text-brand-deep focus-visible:outline-2 focus-visible:outline-brand">
-            <AppIcon name="user" :size="20" />الحساب
-          </NuxtLink>
-          <NuxtLink to="/" class="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-xs font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-brand">
-            <AppIcon name="sparkle" :size="20" />المتجر
-          </NuxtLink>
-          <button v-if="account?.signedIn" type="button" :disabled="loggingOut"
-            class="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-xs font-semibold text-danger hover:bg-danger/10 focus-visible:outline-2 focus-visible:outline-danger disabled:opacity-60"
-            @click="logout">
-            <AppIcon name="login" :size="20" class="rotate-180" />
-            {{ loggingOut ? 'جاري الخروج…' : 'تسجيل الخروج' }}
-          </button>
-        </div>
+      <div class="flex items-center gap-1 border-t border-lavender bg-blush/50 px-2 py-2">
+        <span class="grid size-8 shrink-0 place-items-center rounded-full bg-gradient-brand text-white" aria-hidden="true"><AppIcon name="user" :size="16" /></span>
+        <bdi v-if="account?.signedIn" class="min-w-0 flex-1 truncate px-1 text-xs font-semibold text-ink" dir="ltr" :title="account.name ?? undefined">{{ account.name }}</bdi>
+        <span v-else class="min-w-0 flex-1" />
+        <NuxtLink to="/account" aria-label="الحساب" title="الحساب"
+          class="grid size-10 shrink-0 place-items-center rounded-lg text-ink-soft hover:bg-lavender hover:text-brand-deep focus-visible:outline-2 focus-visible:outline-brand">
+          <AppIcon name="user" :size="18" />
+        </NuxtLink>
+        <NuxtLink to="/" aria-label="المتجر" title="المتجر"
+          class="grid size-10 shrink-0 place-items-center rounded-lg text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-brand">
+          <AppIcon name="sparkle" :size="18" />
+        </NuxtLink>
+        <button v-if="account?.signedIn" type="button" :disabled="loggingOut" aria-label="تسجيل الخروج" :title="loggingOut ? 'جاري الخروج…' : 'تسجيل الخروج'"
+          class="grid size-10 shrink-0 place-items-center rounded-lg text-danger hover:bg-danger/10 focus-visible:outline-2 focus-visible:outline-danger disabled:opacity-60"
+          @click="logout">
+          <AppIcon name="login" :size="18" class="rotate-180" />
+        </button>
       </div>
     </aside>
 
@@ -194,10 +189,10 @@ const badgeTone: Record<NonNullable<NavLink['badge']>, string> = { orders: 'bg-w
       <!-- Desktop top bar: where you are -->
       <div class="mx-auto mb-6 hidden max-w-6xl items-center gap-3 lg:flex">
         <nav aria-label="مكانك في الإدارة" class="flex items-center gap-2 text-sm text-ink-soft">
-          <NuxtLink to="/admin" class="hover:text-brand hover:underline">الإدارة</NuxtLink>
+          <NuxtLink to="/admin" class="inline-flex min-h-9 items-center rounded-full px-3 text-sm font-semibold text-ink-soft hover:bg-lavender hover:text-brand-deep focus-visible:outline-2 focus-visible:outline-brand">الإدارة</NuxtLink>
           <template v-if="activeTo && activeTo !== '/admin'">
             <AppIcon name="chevron-left" :size="14" />
-            <NuxtLink :to="activeTo" class="font-semibold text-ink hover:underline" aria-current="location">{{ pageTitle }}</NuxtLink>
+            <NuxtLink :to="activeTo" class="inline-flex min-h-9 items-center rounded-full bg-lavender px-3 text-sm font-bold text-brand-deep focus-visible:outline-2 focus-visible:outline-brand" aria-current="location">{{ pageTitle }}</NuxtLink>
           </template>
         </nav>
       </div>
