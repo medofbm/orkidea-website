@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # CI rehearsal of the production launch: seeded preview + empty production, provision, admin bootstrap,
 # catalogue copy, then checks that production serves the same catalogue without any preview markers or test data.
-set -euo pipefail
+set -Eeuo pipefail
 umask 077
+trap 'printf "FAILED at line %s: %s
+" "$LINENO" "$BASH_COMMAND" >&2' ERR
 
 if [[ "${GITHUB_ACTIONS:-}" != true || ! "${GITHUB_SHA:-}" =~ ^[0-9a-f]{40}$ ]]; then
     printf 'This check is only for disposable GitHub Actions runners.\n' >&2
