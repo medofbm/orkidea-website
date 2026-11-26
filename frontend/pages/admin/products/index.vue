@@ -51,7 +51,7 @@ function hasCover(imageUrl: string | null) {
           </span>
           <div class="min-w-0 flex-1">
           <NuxtLink :to="'/admin/products/' + product.productId"
-            class="inline-flex min-h-11 items-center font-semibold text-brand underline">{{ product.name }}</NuxtLink>
+            class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors">{{ product.name }}</NuxtLink>
           <span v-if="product.isArchived" class="badge badge-status-pending ms-2">مؤرشف</span>
           <p class="text-sm">{{ product.category ?? 'بدون فئة' }} · {{ product.variants }} حجم</p>
           <ul v-if="!hasCover(product.imageUrl) || product.hasDescription === false ||

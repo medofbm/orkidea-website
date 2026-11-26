@@ -93,9 +93,7 @@ async function add() {
         <button v-for="v in variants" :key="v.id" type="button" :aria-pressed="selected?.id === v.id" :disabled="busy || adding || !isOrderable(v)"
           class="grid h-8 cursor-pointer place-items-center rounded-full border border-brand/25 bg-white px-2.5 text-xs font-semibold text-ink-soft motion-safe:transition-colors hover:enabled:border-brand/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand aria-pressed:bg-brand aria-pressed:text-white aria-pressed:shadow-soft"
           @click="pickedId = v.id">
-          <!-- Hidden copy reserves the width of the "size · price" text so chips never change width on selection. -->
-          <span class="invisible col-start-1 row-start-1 whitespace-nowrap" aria-hidden="true">{{ sizeLabel(v.size) }}&nbsp;·&nbsp;<bdi>{{ formatPrice(v.price) }}</bdi>&nbsp;د.ل</span>
-          <span class="col-start-1 row-start-1 whitespace-nowrap">{{ sizeLabel(v.size) }}<template v-if="!isOrderable(v)">&nbsp;·&nbsp;غير متاح</template><template v-else-if="selected?.id === v.id">&nbsp;·&nbsp;<bdi>{{ formatPrice(v.price) }}</bdi>&nbsp;د.ل</template></span>
+          <span class="whitespace-nowrap">{{ sizeLabel(v.size) }}<template v-if="!isOrderable(v)">&nbsp;·&nbsp;غير متاح</template></span>
         </button>
       </div>
 

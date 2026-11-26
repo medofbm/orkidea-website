@@ -74,7 +74,7 @@ async function edit() {
 
 <template>
   <section aria-labelledby="manual-order-title" class="mx-auto max-w-6xl">
-    <NuxtLink to="/admin/orders" class="mb-3 inline-flex min-h-11 items-center text-brand underline">العودة للطلبات</NuxtLink>
+    <NuxtLink to="/admin/orders" class="mb-3 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors"><AppIcon name="chevron-right" :size="16" />العودة للطلبات</NuxtLink>
     <h1 id="manual-order-title" class="mb-4 text-3xl font-bold">تسجيل طلب من فيسبوك</h1>
     <p v-if="status === 'idle' || status === 'pending'" role="status">جاري تحميل المنتجات ومدن التوصيل…</p>
     <AdminReadError v-else-if="optionsError" :status-code="optionsError.statusCode" />

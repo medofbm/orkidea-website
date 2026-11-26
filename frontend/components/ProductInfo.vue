@@ -40,7 +40,7 @@ const sections = computed(() => {
           </ul>
           <div v-else class="space-y-2 leading-8 text-ink">
             <p>نوصّل لباب بيتك، والدفع عند الاستلام.</p>
-            <NuxtLink to="/order-and-delivery" class="inline-flex min-h-11 items-center font-semibold text-brand underline underline-offset-4">تفاصيل الطلب والتوصيل</NuxtLink>
+            <NuxtLink to="/order-and-delivery" class="chip">تفاصيل الطلب والتوصيل</NuxtLink>
           </div>
         </div>
       </details>

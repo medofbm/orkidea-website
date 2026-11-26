@@ -85,7 +85,7 @@ function changePage(page: number) {
         <li v-for="shipment in data.items" :key="shipment.orderId" class="card min-w-0 p-4 sm:p-6">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <NuxtLink :to="'/admin/orders/' + shipment.orderId"
-              class="inline-flex min-h-11 items-center font-bold text-brand underline">
+              class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors font-bold">
               الطلب <bdi class="ms-1">#{{ shipment.orderId }}</bdi>
             </NuxtLink>
             <span class="badge" :class="deliveryBadge(shipment.state)">

@@ -117,7 +117,7 @@ async function removeCategory(category: Category) {
 
 <template>
   <section aria-labelledby="categories-title" class="mx-auto max-w-6xl">
-    <NuxtLink to="/admin/products" class="inline-flex min-h-11 items-center text-brand underline">العودة للمنتجات</NuxtLink>
+    <NuxtLink to="/admin/products" class="mb-3 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors"><AppIcon name="chevron-right" :size="16" />العودة للمنتجات</NuxtLink>
     <h1 id="categories-title" class="mb-2 text-3xl font-bold">إدارة الفئات</h1>
     <p class="mb-5 text-ink-soft">الفئات هنا تظهر في خيارات المنتج. تغيير الاسم يبقى مرتبط بنفس المنتجات.</p>
 

@@ -108,7 +108,7 @@ async function remove(review: Review) {
           <span class="chip">{{ review.source === 'facebook' ? 'فيسبوك' : 'الموقع' }}</span>
           <time v-if="created(review.createdAtUtc)" :datetime="review.createdAtUtc">{{ created(review.createdAtUtc) }}</time>
           <NuxtLink v-if="review.orderId" :to="'/admin/orders/' + review.orderId"
-            class="inline-flex min-h-11 items-center text-brand underline">طلب <bdi>#{{ review.orderId }}</bdi></NuxtLink>
+            class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors">طلب <bdi>#{{ review.orderId }}</bdi></NuxtLink>
         </p>
         <p class="mt-2 whitespace-pre-line break-words">{{ review.message }}</p>
         <div class="mt-3 flex flex-wrap gap-2">

@@ -276,7 +276,7 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
 
 <template>
   <section class="mx-auto max-w-6xl" aria-labelledby="product-editor-title">
-    <NuxtLink to="/admin/products" class="inline-flex min-h-11 items-center text-brand underline">العودة للمنتجات</NuxtLink>
+    <NuxtLink to="/admin/products" class="mb-3 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors"><AppIcon name="chevron-right" :size="16" />العودة للمنتجات</NuxtLink>
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
       <h1 id="product-editor-title" class="text-3xl font-bold">{{ isNew ? 'إضافة منتج' : 'تعديل المنتج' }}
         <span v-if="data?.isArchived" class="badge badge-status-pending ms-2 align-middle text-sm">مؤرشف</span></h1>
@@ -320,7 +320,7 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
             </label>
             <img v-if="cover || imageSource(form.imageUrl)" :src="cover?.url ?? imageSource(form.imageUrl)"
               alt="معاينة الغلاف" referrerpolicy="no-referrer" class="mt-3 size-32 rounded-xl object-cover shadow-soft">
-            <button v-if="cover" type="button" class="min-h-11 text-brand underline" @click="removeCover">إلغاء اختيار الغلاف الجديد</button>
+            <button v-if="cover" type="button" class="mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors" @click="removeCover">إلغاء اختيار الغلاف الجديد</button>
           </div>
           <div class="border-t pt-4">
             <h2 class="text-xl font-bold">صور إضافية</h2>
@@ -335,7 +335,7 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
                 <button v-if="!removed.includes(image)" type="button" :aria-label="'إزالة الصورة المحفوظة ' + (index + 1)"
                   class="absolute end-1 top-1 size-11 rounded-full bg-white text-xl text-danger shadow"
                   @click="removed.push(image)">×</button>
-                <button v-else type="button" class="min-h-11 text-sm underline"
+                <button v-else type="button" class="mt-1 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors"
                   @click="removed = removed.filter(item => item !== image)">تراجع عن الإزالة</button>
               </li>
               <li v-for="image in gallery" :key="image.url" class="relative w-24">
@@ -366,12 +366,12 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
             <span class="me-auto"><span class="chip bg-lavender text-brand-deep">{{ variant.size }}</span>
               <bdi class="ms-2 font-bold">{{ variant.price }}</bdi> د.ل
               <span v-if="variant.isArchived" class="badge badge-status-pending ms-1">مؤرشف</span></span>
-            <button type="button" :disabled="disabled" class="min-h-11 px-2 text-brand underline"
+            <button type="button" :disabled="disabled" class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors disabled:opacity-60"
               @click="chooseVariant(variant)">تعديل</button>
             <button type="button" :disabled="disabled" :aria-label="(variant.isArchived ? 'إلغاء أرشفة الحجم ' : 'أرشفة الحجم ') + variant.size"
-              class="min-h-11 px-2 text-brand underline disabled:opacity-60" @click="toggleVariantArchive(variant)">{{ variant.isArchived ? 'إلغاء الأرشفة' : 'أرشفة' }}</button>
+              class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors disabled:opacity-60" @click="toggleVariantArchive(variant)">{{ variant.isArchived ? 'إلغاء الأرشفة' : 'أرشفة' }}</button>
             <button type="button" :disabled="disabled" :aria-label="'حذف الحجم ' + variant.size"
-              class="min-h-11 px-2 text-danger underline disabled:opacity-60" @click="removeVariant(variant)">حذف</button>
+              class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-danger/30 bg-white px-3 text-sm font-semibold text-danger hover:bg-status-cancelled focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger disabled:opacity-60" @click="removeVariant(variant)">حذف</button>
           </li>
         </ul>
         <form @submit.prevent="saveVariant">
@@ -385,7 +385,7 @@ async function removeVariant(variant: AdminProductDetails['variants'][number]) {
                 class="field mt-1 block min-h-11 w-full">
             </label>
             <button type="submit" class="min-h-11 btn-primary">{{ selected ? 'حفظ التعديل' : 'حفظ الحجم' }}</button>
-            <button v-if="selected" type="button" class="ms-3 min-h-11 underline" @click="chooseVariant()">إلغاء التعديل</button>
+            <button v-if="selected" type="button" class="btn-secondary ms-3 min-h-11" @click="chooseVariant()">إلغاء التعديل</button>
           </fieldset>
         </form>
       </section>

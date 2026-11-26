@@ -135,7 +135,7 @@ function adminDate(iso: string) {
 
 <template>
   <section aria-labelledby="stock-title" class="mx-auto max-w-6xl">
-    <NuxtLink to="/admin/inventory" class="mb-3 inline-flex min-h-11 items-center text-brand underline">العودة للمخزون</NuxtLink>
+    <NuxtLink to="/admin/inventory" class="mb-3 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors"><AppIcon name="chevron-right" :size="16" />العودة للمخزون</NuxtLink>
     <h1 id="stock-title" class="mb-5 text-3xl font-bold">مخزون {{ data?.name }}</h1>
     <p v-if="notice" role="status" class="mb-3 text-success">{{ notice }}</p>
     <p v-if="failure" role="alert" class="mb-3 text-danger">{{ failure }}</p>
@@ -244,7 +244,7 @@ function adminDate(iso: string) {
               </p>
               <p class="whitespace-pre-line break-words">{{ move.reason }}</p>
               <NuxtLink v-if="move.orderId" :to="'/admin/orders/' + move.orderId"
-                class="inline-flex min-h-11 items-center text-brand underline">الطلب <bdi class="ms-1">#{{ move.orderId }}</bdi></NuxtLink>
+                class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors">الطلب <bdi class="ms-1">#{{ move.orderId }}</bdi></NuxtLink>
             </li>
           </ol>
           <nav v-if="data.pages > 1" aria-label="صفحات سجل المخزون" class="mt-4 flex items-center justify-between gap-3">

@@ -32,7 +32,7 @@ function apply() {
       <ul class="grid gap-3 lg:grid-cols-2">
         <li v-for="product in data.items" :key="product.productId" class="min-w-0 rounded-xl bg-white p-4">
           <NuxtLink :to="'/admin/inventory/' + product.productId"
-            class="mb-2 inline-flex min-h-11 items-center break-words font-bold text-brand underline">
+            class="mb-2 max-w-full break-words inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand/30 bg-white px-3 text-sm font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-safe:transition-colors font-bold">
             {{ product.name }}
           </NuxtLink>
           <AdminStockBalances v-if="product.account" :account="product.account" />

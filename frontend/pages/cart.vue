@@ -29,7 +29,6 @@ useSeoMeta({ title: 'سلة أوركيديا', robots: 'noindex, nofollow' })
       <p class="text-danger">تعذر تحميل السلة.</p><button class="btn-secondary mt-2" @click="reload()">إعادة المحاولة</button>
     </div>
     <template v-else-if="cart">
-      <p role="status" :class="{ 'mb-4': message }" class="text-sm font-medium text-brand-deep">{{ message }}</p>
       <div v-if="!cart.items.length" class="card-glass animate-fade-in-up flex flex-col items-center p-8 text-center sm:p-12">
         <div class="mb-4 grid size-28 place-items-center rounded-full bg-lavender">
           <img src="/brand/flower-purple.png" alt="" width="72" height="72" class="size-16 motion-safe:animate-float">
@@ -40,29 +39,34 @@ useSeoMeta({ title: 'سلة أوركيديا', robots: 'noindex, nofollow' })
       </div>
       <div v-else class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.48fr)]">
         <ul class="min-w-0 space-y-3">
-          <li v-for="item in cart.items" :key="item.variantId" class="card-glass animate-fade-in-up flex gap-3 p-3 sm:gap-4 sm:p-4">
-            <div class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-lavender sm:size-24">
-              <img v-if="item.image" :src="item.image" alt="" class="size-full object-cover">
-              <img v-else src="/brand/flower-purple.png" alt="" class="size-10 opacity-80">
-            </div>
-            <div class="min-w-0 flex-1">
-              <NuxtLink :to="'/products/' + item.productId" class="inline-flex min-h-11 items-center font-bold wrap-anywhere text-ink hover:underline">{{ item.name }}</NuxtLink>
-              <p class="text-sm text-brand-deep"><span v-if="item.size">{{ item.size }} · </span><bdi>{{ formatPrice(item.price) }}</bdi> د.ل للوحدة</p>
-              <p v-if="!item.available" class="mt-1 text-sm text-danger">غير متاح للطلب. احذفيه لمتابعة الطلب.</p>
-              <div class="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
-                <div class="inline-flex items-center rounded-full border border-lavender-deep bg-white">
-                  <button :disabled="busy || item.quantity >= 99" :aria-label="'زيادة كمية ' + item.name"
-                    class="min-h-11 min-w-11 rounded-full font-semibold text-ink hover:bg-lavender disabled:opacity-40" @click="mutate('PATCH', item.variantId, item.quantity + 1)">+</button>
-                  <span :aria-label="'الكمية ' + item.quantity" class="min-w-8 text-center font-bold tabular-nums">{{ item.quantity }}</span>
-                  <button :disabled="busy || item.quantity <= 1" :aria-label="'تقليل كمية ' + item.name"
-                    class="min-h-11 min-w-11 rounded-full font-semibold text-ink hover:bg-lavender disabled:opacity-40" @click="mutate('PATCH', item.variantId, item.quantity - 1)">−</button>
-                </div>
-                <span class="price ms-auto"><bdi>{{ formatPrice(item.subtotal) }}</bdi> د.ل</span>
-                <button :disabled="busy" :aria-label="'حذف ' + item.name"
-                  class="btn-ghost !text-danger hover:!bg-danger/10" @click="mutate('DELETE', item.variantId)">
-                  <AppIcon name="x" :size="16" /> حذف
-                </button>
+          <li v-for="item in cart.items" :key="item.variantId" class="card-glass animate-fade-in-up p-3 sm:p-4">
+            <div class="flex gap-3 sm:gap-4">
+              <div class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-lavender sm:size-24">
+                <img v-if="item.image" :src="item.image" alt="" class="size-full object-cover">
+                <img v-else src="/brand/flower-purple.png" alt="" class="size-10 opacity-80">
               </div>
+              <div class="min-w-0 flex-1">
+                <NuxtLink :to="'/products/' + item.productId" class="inline-flex min-h-11 items-center rounded-md font-bold leading-snug wrap-anywhere text-ink hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{{ item.name }}</NuxtLink>
+                <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-soft">
+                  <span v-if="item.size" class="badge">{{ item.size }}</span>
+                  <span><bdi>{{ formatPrice(item.price) }}</bdi> د.ل للوحدة</span>
+                </p>
+                <p v-if="!item.available" class="mt-1 text-sm font-semibold text-danger">غير متاح للطلب. احذفيه لمتابعة الطلب.</p>
+              </div>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-lavender pt-3">
+              <div role="group" :aria-label="'كمية ' + item.name" class="inline-flex items-center rounded-full border border-lavender-deep bg-white p-0.5">
+                <button type="button" :disabled="busy || item.quantity <= 1" :aria-label="'تقليل كمية ' + item.name"
+                  class="storefront-action grid size-11 place-items-center rounded-full text-lg font-bold text-brand hover:enabled:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-40" @click="mutate('PATCH', item.variantId, item.quantity - 1)"><span aria-hidden="true">−</span></button>
+                <span role="status" :aria-label="'الكمية ' + item.quantity" class="min-w-10 text-center text-base font-bold tabular-nums text-ink">{{ item.quantity }}</span>
+                <button type="button" :disabled="busy || item.quantity >= 99" :aria-label="'زيادة كمية ' + item.name"
+                  class="storefront-action grid size-11 place-items-center rounded-full text-lg font-bold text-brand hover:enabled:bg-lavender focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-40" @click="mutate('PATCH', item.variantId, item.quantity + 1)"><span aria-hidden="true">+</span></button>
+              </div>
+              <button type="button" :disabled="busy" :aria-label="'حذف ' + item.name"
+                class="storefront-action inline-flex min-h-11 items-center gap-1.5 rounded-full border border-danger/30 bg-white px-3 text-sm font-semibold text-danger hover:enabled:bg-danger/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger disabled:opacity-50" @click="mutate('DELETE', item.variantId)">
+                <AppIcon name="trash" :size="16" aria-hidden="true" /> حذف
+              </button>
+              <p class="ms-auto text-end leading-tight"><span class="block text-xs text-ink-soft">الإجمالي</span><span class="price text-lg sm:text-xl"><bdi>{{ formatPrice(item.subtotal) }}</bdi> د.ل</span></p>
             </div>
           </li>
         </ul>
