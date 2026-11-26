@@ -1,5 +1,5 @@
 # Public store: orkidea.ly (www redirects to the bare domain). Install only after DNS points here and the certificate exists.
-# __SOFT_LAUNCH__ lines keep the store behind the existing Basic Auth file until the owner opens it to the public.
+# Lines marked SOFT_LAUNCH keep the store behind the existing Basic Auth file until the owner opens it to the public.
 limit_req_zone $binary_remote_addr zone=orkidea_prod_api:10m rate=10r/s;
 server {
     listen 80;
@@ -12,13 +12,15 @@ server {
     server_name www.orkidea.ly;
     ssl_certificate __FULLCHAIN__;
     ssl_certificate_key __TLS_KEY__;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
     return 301 https://orkidea.ly$request_uri;
 }
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
     server_name orkidea.ly;
     ssl_certificate __FULLCHAIN__;
     ssl_certificate_key __TLS_KEY__;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
     __SOFT_LAUNCH__auth_basic "Orkidea";
     __SOFT_LAUNCH__auth_basic_user_file __HTPASSWD__;
     client_max_body_size 6m;
