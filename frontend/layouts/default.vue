@@ -10,13 +10,24 @@ const whatsappHref = computed(() => {
 const year = new Date().getFullYear()
 // Desktop: plain pills. Mobile (inside the offcanvas): soft lavender chips with icons.
 const navLink = 'nav-underline storefront-action inline-flex min-h-12 items-center gap-3 whitespace-nowrap rounded-2xl bg-lavender/60 px-4 text-brand hover:bg-lavender sm:min-h-11 sm:rounded-full sm:bg-transparent sm:px-2.5 lg:px-4 sm:text-ink sm:hover:bg-lavender/60'
-const footLink = 'inline-flex min-h-11 items-center text-white/85 hover:text-white hover:underline'
+const footLink = 'footer-link inline-flex min-h-11 items-center gap-2 text-white/85 hover:text-white'
 const socialBtn = 'storefront-action inline-flex size-11 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25'
 const menuSocialBtn = 'storefront-action inline-flex size-11 items-center justify-center rounded-full bg-lavender text-brand hover:bg-lavender-deep'
 const whatsappDisplay = computed(() => {
   const digits = String(whatsappNumber ?? '').replace(/\D/g, '')
   return digits ? `+${digits}` : ''
 })
+const contactChannels = computed(() => [
+  { key: 'whatsapp' as const, label: 'واتساب', href: whatsappHref.value, aria: 'تواصلي معنا عبر واتساب', hover: 'hover:bg-[#25D366] hover:text-white' },
+  { key: 'instagram' as const, label: 'إنستغرام', href: instagramUrl ? String(instagramUrl) : '', aria: 'تابعي أوركيديا على إنستغرام', hover: 'hover:bg-[#d62976] hover:text-white' },
+  { key: 'facebook' as const, label: 'فيسبوك', href: facebookUrl ? String(facebookUrl) : '', aria: 'تابعي أوركيديا على فيسبوك', hover: 'hover:bg-[#1877f2] hover:text-white' }
+].filter(c => c.href))
+const trust = [
+  { icon: 'cash', title: 'الدفع عند الاستلام', text: 'ما فيش دفع مسبق' },
+  { icon: 'truck', title: 'توصيل لكل ليبيا', text: 'لين باب بيتك' },
+  { icon: 'leaf', title: 'طبيعي 100%', text: 'مكونات نقية' },
+  { icon: 'hand-heart', title: 'صنع يدوي', text: 'بعناية وحب' }
+] as const
 const menuOpen = ref(false)
 const scrolled = ref(false)
 const progress = ref(0)
@@ -108,7 +119,7 @@ onUnmounted(() => {
       <div class="bg-gradient-strip h-[3px] motion-safe:animate-gradient-shift" aria-hidden="true" />
       <div class="absolute inset-x-0 bottom-0 h-0.5 origin-right bg-gradient-brand" :style="{ transform: `scaleX(${progress})` }" aria-hidden="true" />
       <nav class="mx-auto flex max-w-6xl flex-nowrap items-center gap-2 px-4 motion-safe:transition-[padding] lg:grid lg:grid-cols-[1fr_auto_1fr]" :class="scrolled ? 'py-1' : 'py-2'" aria-label="القائمة الرئيسية" @keydown.esc="closeMenu" @keydown="trapTab">
-        <NuxtLink to="/" class="group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full sm:order-3 lg:justify-self-end">
+        <NuxtLink to="/" class="group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full sm:order-1 lg:justify-self-start">
           <img src="/brand/flower-purple.png" alt="شعار أوركيديا" width="40" height="40" class="size-10 object-contain motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:rotate-[20deg] motion-safe:group-hover:scale-110">
           <span class="text-gradient-brand text-shine text-xl font-extrabold">أوركيديا</span>
         </NuxtLink>
@@ -170,7 +181,7 @@ onUnmounted(() => {
               <a v-if="facebookUrl" :href="facebookUrl" target="_blank" rel="noopener noreferrer" aria-label="تابعي أوركيديا على فيسبوك" :class="menuSocialBtn"><AppIcon name="facebook" :size="20" /></a>
             </div>
           </div>
-          <div class="mt-auto flex flex-col gap-2 border-t border-lavender p-4 sm:order-1 sm:mt-0 sm:flex-row sm:items-center sm:border-0 sm:p-0 lg:justify-self-start">
+          <div class="mt-auto flex flex-col gap-2 border-t border-lavender p-4 sm:order-3 sm:mt-0 sm:flex-row sm:items-center sm:border-0 sm:p-0 lg:justify-self-end">
             <template v-if="account?.signedIn">
               <NuxtLink v-if="account.isAdmin" to="/admin" class="btn-secondary storefront-action text-sm whitespace-nowrap sm:min-h-11! sm:px-4! sm:max-lg:hidden" @click="menuOpen = false">
                 <AppIcon name="shield" :size="18" class="sm:hidden" />
@@ -201,40 +212,63 @@ onUnmounted(() => {
       </nav>
     </header>
     <main id="content" class="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:py-8"><slot /></main>
-    <footer class="rounded-t-3xl bg-gradient-brand text-white">
-      <div class="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 sm:gap-10">
+    <footer class="relative mt-6 overflow-hidden rounded-t-3xl bg-gradient-brand text-white">
+      <img src="/brand/flower-white.png" alt="" aria-hidden="true" width="280" height="280" loading="lazy" class="pointer-events-none absolute -bottom-16 -start-12 size-56 rotate-12 opacity-[0.07] sm:size-72">
+      <img src="/brand/flower-white.png" alt="" aria-hidden="true" width="160" height="160" loading="lazy" class="pointer-events-none absolute -top-8 end-6 size-32 -rotate-12 opacity-[0.07]">
+      <span class="pointer-events-none absolute -top-24 start-1/3 size-64 rounded-full bg-lilac/20 blur-3xl" aria-hidden="true"></span>
+      <div class="relative mx-auto max-w-6xl px-4 pt-8">
+        <ul class="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="مزايا التسوق من أوركيديا">
+          <li v-for="item in trust" :key="item.title" class="flex items-center gap-3 rounded-2xl bg-white/10 p-3 ring-1 ring-white/20 backdrop-blur-sm">
+            <span class="grid size-10 shrink-0 place-items-center rounded-full bg-white/20" aria-hidden="true"><AppIcon :name="item.icon" :size="20" /></span>
+            <span class="min-w-0 text-sm leading-tight"><span class="block font-bold">{{ item.title }}</span><span class="text-white/80">{{ item.text }}</span></span>
+          </li>
+        </ul>
+      </div>
+      <div class="relative mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr] lg:gap-12">
         <section aria-labelledby="footer-about">
-          <NuxtLink to="/" class="inline-flex min-h-11 items-center gap-3 rounded-full text-lg font-bold text-white">
-            <img src="/brand/flower-white.png" alt="" width="36" height="36" class="size-9 object-contain">
+          <NuxtLink to="/" class="group inline-flex min-h-11 items-center gap-3 rounded-full text-xl font-extrabold text-white">
+            <img src="/brand/flower-white.png" alt="" width="36" height="36" class="size-9 object-contain motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:rotate-[20deg]">
             أوركيديا
           </NuxtLink>
           <h2 id="footer-about" class="mt-2 text-lg font-bold text-white">عن أوركيديا</h2>
-          <p class="mt-2 text-sm leading-7 text-white/90">متجر متخصص في بيع الزيوت والصابون الطبيعية. نقدّم منتجات طبيعية للعناية بك.</p>
-          <ul class="mt-3 flex flex-wrap gap-2" aria-label="مزايا المنتجات">
-            <li class="inline-flex min-h-9 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white ring-1 ring-white/25">طبيعي 100%</li>
-            <li class="inline-flex min-h-9 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white ring-1 ring-white/25">صنع يدوي</li>
-          </ul>
+          <p class="mt-2 max-w-sm text-sm leading-7 text-white/90">متجر متخصص في بيع الزيوت والصابون الطبيعية. نقدّم منتجات طبيعية للعناية بك.</p>
+        </section>
+        <section aria-labelledby="footer-links">
+          <h2 id="footer-links" class="text-lg font-bold text-white">روابط سريعة</h2>
+          <nav aria-label="روابط أسفل الصفحة" class="mt-2 flex flex-col text-sm font-medium">
+            <NuxtLink to="/" :class="footLink">الرئيسية</NuxtLink>
+            <NuxtLink to="/cart" :class="footLink">السلة</NuxtLink>
+            <NuxtLink to="/account" :class="footLink">الحساب</NuxtLink>
+            <NuxtLink to="/order-and-delivery" :class="footLink">طريقة الطلب والتوصيل</NuxtLink>
+            <NuxtLink to="/privacy" :class="footLink">سياسة الخصوصية</NuxtLink>
+          </nav>
         </section>
         <section aria-labelledby="footer-contact">
           <h2 id="footer-contact" class="text-lg font-bold text-white">تواصلي معنا</h2>
-          <div v-if="whatsappHref || instagramUrl || facebookUrl" class="mt-3 flex flex-wrap items-center gap-3">
-            <a v-if="whatsappHref" :href="whatsappHref" target="_blank" rel="noopener noreferrer" aria-label="تواصلي معنا عبر واتساب" :class="socialBtn"><AppIcon name="whatsapp" :size="20" /></a>
-            <a v-if="instagramUrl" :href="instagramUrl" target="_blank" rel="noopener noreferrer" aria-label="تابعي أوركيديا على إنستغرام" :class="socialBtn"><AppIcon name="instagram" :size="20" /></a>
-            <a v-if="facebookUrl" :href="facebookUrl" target="_blank" rel="noopener noreferrer" aria-label="تابعي أوركيديا على فيسبوك" :class="socialBtn"><AppIcon name="facebook" :size="20" /></a>
+          <p class="mt-2 text-sm text-white/85">يسعدنا نرد على استفساراتك.</p>
+          <div v-if="contactChannels.length" class="mt-3 flex flex-wrap items-center gap-3">
+            <a v-for="c in contactChannels" :key="c.key" :href="c.href" target="_blank" rel="noopener noreferrer" :aria-label="c.aria"
+              :class="[socialBtn, c.hover, 'motion-safe:hover:-translate-y-0.5']"><AppIcon :name="c.key" :size="20" /></a>
           </div>
-          <a v-if="whatsappDisplay" :href="`tel:${whatsappDisplay}`" dir="ltr" class="mt-3 inline-flex min-h-11 items-center font-semibold text-white hover:underline">{{ whatsappDisplay }}</a>
+          <a v-if="whatsappDisplay" :href="`tel:${whatsappDisplay}`" dir="ltr" class="footer-link mt-3 inline-flex min-h-11 items-center gap-2 font-semibold text-white"><AppIcon name="phone" :size="18" />{{ whatsappDisplay }}</a>
         </section>
       </div>
-      <div class="mx-auto max-w-6xl border-t border-white/20 px-4 py-4">
-        <nav aria-label="روابط أسفل الصفحة" class="flex flex-wrap justify-center gap-x-6 text-sm font-medium">
-          <NuxtLink to="/" :class="footLink">الرئيسية</NuxtLink>
-          <NuxtLink to="/cart" :class="footLink">السلة</NuxtLink>
-          <NuxtLink to="/account" :class="footLink">الحساب</NuxtLink>
-          <NuxtLink to="/order-and-delivery" :class="footLink">طريقة الطلب والتوصيل</NuxtLink>
-          <NuxtLink to="/privacy" :class="footLink">سياسة الخصوصية</NuxtLink>
-        </nav>
-        <p class="mt-2 text-center text-xs text-white/75">Orkidea {{ year }} جميع الحقوق محفوظة · صنع بـ ❤ في ليبيا</p>
+      <div class="relative mx-auto max-w-6xl border-t border-white/20 px-4 py-4">
+        <p class="text-center text-xs text-white/75">Orkidea {{ year }} جميع الحقوق محفوظة · صنع بـ ❤ في ليبيا</p>
       </div>
     </footer>
   </div>
 </template>
+
+<style scoped>
+.footer-link { position: relative; width: fit-content; }
+.footer-link::after {
+  content: ""; position: absolute; inset-inline: 0; bottom: 0.55rem; height: 2px; border-radius: 2px;
+  background: currentColor; transform: scaleX(0); transform-origin: right; opacity: 0.8;
+}
+.footer-link:focus-visible { outline: 3px solid #fff; outline-offset: 2px; border-radius: 6px; }
+.footer-link:hover::after, .footer-link:focus-visible::after { transform: scaleX(1); }
+@media (prefers-reduced-motion: no-preference) {
+  .footer-link::after { transition: transform 250ms ease-out; }
+}
+</style>

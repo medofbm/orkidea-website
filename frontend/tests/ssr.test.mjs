@@ -147,7 +147,7 @@ test('built storefront renders catalogue data and the product gallery on the ser
     assert.ok(listing.includes(product.name), 'catalogue is present in initial HTML')
     const filtered = await (await fetch(origin + '/?categoryId=1')).text()
     assert.ok(filtered.includes(product.name), 'matching category retains its product')
-    assert.match(filtered, /<a(?=[^>]*aria-current="page")[^>]*href="\/\?categoryId=1#catalogue-heading"/, 'active category card is announced')
+    assert.match(filtered, /<a(?=[^>]*aria-current="page")[^>]*href="\/#catalogue-heading"/, 'active category card is announced and clears the filter when clicked')
     const paginated = await (await fetch(origin + '/?page=2&categoryId=1')).text()
     assert.match(paginated, /صفحة <bdi[^>]*>2<\/bdi> من <bdi[^>]*>3<\/bdi>/, 'current page and page count are announced')
     assert.match(paginated, /href="\/?\?page=1&(?:amp;)?categoryId=1#catalogue-heading"[^>]*>السابق/, 'previous page keeps the selected category')

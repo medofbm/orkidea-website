@@ -51,22 +51,14 @@ test('mobile browser uses Vue and ASP.NET through one HTTPS origin', { timeout: 
     console.log('PASS browser: anonymous denial and real admin login over HTTPS')
 
     await page.goto(origin + '/admin')
-    const dashboardShortcuts = page.getByRole('navigation', { name: 'إجراءات الإدارة' })
-    await dashboardShortcuts.waitFor()
-    const expectedShortcuts = [
-      ['مراجعة الطلبات', '/admin/orders'],
-      ['تسجيل طلب من فيسبوك', '/admin/orders/manual'],
-      ['إدارة المخزون', '/admin/inventory'],
-      ['التوصيل والرواجع', '/admin/delivery'],
-      ['مراجعة المنتجات', '/admin/products']
-    ]
-    assert.equal(await dashboardShortcuts.getByRole('link').count(), expectedShortcuts.length,
-      'dashboard exposes exactly the five expected shortcuts')
-    for (const [label, href] of expectedShortcuts) {
-      assert.equal(await dashboardShortcuts.getByRole('link', { name: label, exact: true }).getAttribute('href'), href,
-        `dashboard shortcut ${label} targets ${href}`)
+    await page.getByRole('heading', { name: 'يحتاج انتباهك' }).waitFor()
+    const expectedRoutes = ['/admin/orders', '/admin/orders/manual', '/admin/inventory', '/admin/delivery', '/admin/products']
+    for (const href of expectedRoutes) {
+      assert.equal(await page.locator(`#admin-sidebar a[href="${href}"]`).count(), 1, `admin menu links to ${href}`)
     }
-    console.log('PASS browser: authenticated dashboard shortcuts have accessible names and correct routes')
+    const pipeline = page.getByRole('region', { name: 'رحلة الطلبات' })
+    assert.ok(await pipeline.getByRole('link').count() >= 4, 'dashboard order pipeline links to the filtered order lists')
+    console.log('PASS browser: authenticated dashboard shows what needs attention and the admin menu routes')
 
     await page.route('**/api/admin/orders?*', route => route.fulfill({ json: {
       items: [{ id: 99, customerName: 'Test', city: 'Test', orderDate: '2026-01-01',

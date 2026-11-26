@@ -14,6 +14,9 @@ function arSort(a: string, b: string) {
   const first = (name: string) => normaliseArabic(name).startsWith('طرابلس') ? 0 : 1
   return first(a) - first(b) || a.localeCompare(b, 'ar')
 }
+// Cheapest first, ties by name (Tripoli first, then Arabic alphabetical).
+const byPrice = (a: { name: string, price: string }, b: { name: string, price: string }) =>
+  Number(a.price) - Number(b.price) || arSort(a.name, b.name)
 function extreme(areas: Area[], pick: 'min' | 'max') {
   return areas.reduce((best, area) => (pick === 'min' ? Number(area.price) < Number(best.price)
     : Number(area.price) > Number(best.price)) ? area : best, areas[0]!).price
@@ -31,13 +34,13 @@ const cities = computed<City[]>(() => {
     map.set(rate.region as string, list)
   }
   return [...map.entries()].map(([name, areas]) => ({
-    name, areas: areas.sort((a, b) => a.name.localeCompare(b.name, 'ar')),
+    name, areas: areas.sort(byPrice),
     min: extreme(areas, 'min'), max: extreme(areas, 'max')
-  })).sort((a, b) => arSort(a.name, b.name))
+  })).sort((a, b) => Number(a.min) - Number(b.min) || arSort(a.name, b.name))
 })
 const flatRows = computed<Area[]>(() => grouped.value ? [] : props.rates
   .map(rate => ({ id: rate.id, name: rate.city, price: rate.price }))
-  .sort((a, b) => arSort(a.name, b.name)))
+  .sort(byPrice))
 
 const selected = computed(() => props.rates.find(rate => rate.id === props.modelValue))
 const selectedText = computed(() => {
@@ -55,7 +58,8 @@ const cityRows = computed(() => cities.value.filter(city => matches(city.name)))
 // While searching, areas of cities whose own name did not match are listed as «area — city».
 const areaHits = computed(() => needle.value ? cities.value
   .filter(city => !matches(city.name))
-  .flatMap(city => city.areas.filter(area => matches(area.name)).map(area => ({ ...area, city: city.name }))) : [])
+  .flatMap(city => city.areas.filter(area => matches(area.name)).map(area => ({ ...area, city: city.name })))
+  .sort(byPrice) : [])
 const areaRows = computed(() => (activeCity.value?.areas ?? []).filter(area => matches(area.name)))
 const flatVisible = computed(() => flatRows.value.filter(row => matches(row.name)))
 const hasResults = computed(() => {

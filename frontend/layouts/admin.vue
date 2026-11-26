@@ -4,17 +4,16 @@ import type { AppIconName } from '~/components/AppIcon.vue'
 useSeoMeta({ robots: 'noindex, nofollow, noarchive' })
 
 const route = useRoute()
-type NavLink = { to: string, label: string, icon: AppIconName, badge?: 'orders' | 'messages' }
-// Grouped so the owner finds things by task: selling, catalogue, customers.
+type NavLink = { to: string, label: string, icon: AppIconName, badge?: 'orders' | 'messages' | 'reviews' }
+// Grouped by daily use: look at the day, handle orders, keep the catalogue, answer customers, settings.
 const groups: { title: string, links: NavLink[] }[] = [
-  { title: 'نظرة عامة', links: [{ to: '/admin', label: 'لوحة الإدارة', icon: 'home' }] },
+  { title: 'الرئيسية', links: [{ to: '/admin', label: 'لوحة الإدارة', icon: 'home' }] },
   {
-    title: 'البيع',
+    title: 'الطلبات',
     links: [
       { to: '/admin/orders', label: 'الطلبات', icon: 'cart', badge: 'orders' },
       { to: '/admin/orders/manual', label: 'طلب من فيسبوك', icon: 'facebook' },
-      { to: '/admin/delivery', label: 'التوصيل والرواجع', icon: 'truck' },
-      { to: '/admin/shipping-rates', label: 'أسعار التوصيل', icon: 'cash' }
+      { to: '/admin/delivery', label: 'التوصيل والرواجع', icon: 'truck' }
     ]
   },
   {
@@ -29,9 +28,10 @@ const groups: { title: string, links: NavLink[] }[] = [
     title: 'الزبائن',
     links: [
       { to: '/admin/messages', label: 'الرسائل', icon: 'mail', badge: 'messages' },
-      { to: '/admin/reviews', label: 'التقييمات', icon: 'star' }
+      { to: '/admin/reviews', label: 'التقييمات', icon: 'star', badge: 'reviews' }
     ]
-  }
+  },
+  { title: 'الإعدادات', links: [{ to: '/admin/shipping-rates', label: 'أسعار التوصيل', icon: 'cash' }] }
 ]
 // Bottom bar on phones: the four places used most, plus «المزيد» for the full menu.
 const quick: NavLink[] = [
@@ -43,14 +43,16 @@ const quick: NavLink[] = [
 const allLinks = groups.flatMap(group => group.links)
 
 // Light counters (best effort; never block the layout): new orders and unread messages.
-const counts = reactive({ orders: 0, messages: 0 })
+const counts = reactive({ orders: 0, messages: 0, reviews: 0 })
 async function loadCounts() {
-  const [orders, messages] = await Promise.allSettled([
+  const [orders, messages, reviews] = await Promise.allSettled([
     $fetch<{ total: number }>('/api/admin/orders', { query: { status: 'pending' }, retry: 0 }),
-    $fetch<{ items: { isRead?: boolean }[] }>('/api/admin/contact-messages', { retry: 0 })
+    $fetch<{ items: { isRead?: boolean }[] }>('/api/admin/contact-messages', { retry: 0 }),
+    $fetch<{ items: { isVisible?: boolean }[] }>('/api/admin/reviews', { retry: 0 })
   ])
   counts.orders = orders.status === 'fulfilled' ? orders.value.total : 0
   counts.messages = messages.status === 'fulfilled' ? messages.value.items.filter(item => item.isRead === false).length : 0
+  counts.reviews = reviews.status === 'fulfilled' ? reviews.value.items.filter(item => item.isVisible === false).length : 0
 }
 onMounted(loadCounts)
 watch(() => route.fullPath, loadCounts)
@@ -105,6 +107,8 @@ function onKeydown(event: KeyboardEvent) {
 }
 watch(() => route.fullPath, () => { open.value = false })
 const badgeFor = (link: NavLink) => link.badge ? counts[link.badge] : 0
+const badgeText: Record<NonNullable<NavLink['badge']>, string> = { orders: ' طلبات جديدة', messages: ' رسائل غير مقروءة', reviews: ' تقييمات بانتظار المراجعة' }
+const badgeTone: Record<NonNullable<NavLink['badge']>, string> = { orders: 'bg-warning', messages: 'bg-brand', reviews: 'bg-info' }
 </script>
 
 <template>
@@ -118,9 +122,6 @@ const badgeFor = (link: NavLink) => link.badge ? counts[link.badge] : 0
         <AppIcon name="menu" :size="24" />
       </button>
       <span class="min-w-0 flex-1 truncate text-lg font-bold text-brand">{{ pageTitle }}</span>
-      <NuxtLink to="/admin/orders/manual" class="btn-primary min-h-11 gap-1 px-3 text-sm" aria-label="تسجيل طلب من فيسبوك">
-        <AppIcon name="facebook" :size="16" /><span class="max-[380px]:sr-only">طلب جديد</span>
-      </NuxtLink>
     </header>
 
     <div v-if="open" class="fixed inset-0 z-40 bg-ink/50 lg:hidden" aria-hidden="true" @click="setOpen(false)" />
@@ -129,61 +130,69 @@ const badgeFor = (link: NavLink) => link.badge ? counts[link.badge] : 0
       class="fixed inset-y-0 start-0 z-50 flex w-[272px] max-w-[85vw] flex-col bg-white shadow-lift motion-safe:transition-transform motion-safe:duration-200 lg:z-20 lg:max-w-none lg:translate-x-0 lg:border-e lg:border-lavender lg:shadow-none"
       :class="open ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full'"
       :role="open ? 'dialog' : undefined" :aria-modal="open ? 'true' : undefined" :aria-label="open ? 'قائمة الإدارة' : undefined">
-      <div class="bg-gradient-brand flex items-center gap-3 px-5 py-5 text-white">
-        <img src="/brand/flower-white.png" alt="" width="36" height="36" class="h-9 w-9" />
-        <NuxtLink to="/admin" class="text-xl font-extrabold text-white">إدارة أوركيديا</NuxtLink>
-        <button v-if="open" type="button" class="ms-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-white lg:hidden"
+      <div class="bg-gradient-brand relative flex items-center gap-3 overflow-hidden px-5 py-5 text-white">
+        <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/25" aria-hidden="true">
+          <img src="/brand/flower-white.png" alt="" width="30" height="30" class="h-[30px] w-[30px]" />
+        </span>
+        <NuxtLink to="/admin" class="min-w-0 rounded-lg leading-tight text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+          <span class="block text-lg font-extrabold">أوركيديا</span>
+          <span class="block text-xs font-medium text-white/80">لوحة الإدارة</span>
+        </NuxtLink>
+        <button v-if="open" type="button" class="ms-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-white lg:hidden"
           aria-label="إغلاق القائمة" @click="setOpen(false)">
           <AppIcon name="x" :size="22" />
         </button>
       </div>
-      <nav class="flex-1 overflow-y-auto p-3" aria-label="قائمة الإدارة">
-        <div v-for="group in groups" :key="group.title" class="mb-3">
-          <p class="mb-1 px-3 text-xs font-bold tracking-wide text-ink-soft/80">{{ group.title }}</p>
-          <ul class="flex flex-col gap-0.5">
+      <nav class="admin-scroll flex-1 overflow-y-auto px-3 py-4" aria-label="قائمة الإدارة">
+        <div v-for="group in groups" :key="group.title" class="mb-5 last:mb-0" role="group" :aria-labelledby="'nav-' + group.title">
+          <p :id="'nav-' + group.title" class="mb-1.5 px-3 text-xs font-bold tracking-wide text-ink-soft">{{ group.title }}</p>
+          <ul class="flex flex-col gap-1">
             <li v-for="link in group.links" :key="link.to">
               <NuxtLink :to="link.to" :aria-current="isActive(link.to) ? 'page' : undefined"
-                class="relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 font-semibold text-ink-soft hover:bg-lavender hover:text-brand-deep focus-visible:bg-lavender"
-                :class="isActive(link.to) ? 'nav-active bg-lavender text-brand-deep' : ''">
-                <AppIcon :name="link.icon" :size="20" />
-                {{ link.label }}
-                <span v-if="badgeFor(link)" class="ms-auto grid min-w-6 place-items-center rounded-full px-2 text-xs font-bold text-white"
-                  :class="link.badge === 'orders' ? 'bg-warning' : 'bg-brand'">
-                  <bdi>{{ badgeFor(link) }}</bdi><span class="sr-only">{{ link.badge === 'orders' ? ' طلبات جديدة' : ' غير مقروءة' }}</span>
+                class="group flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 font-semibold motion-safe:transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                :class="isActive(link.to) ? 'bg-brand text-white shadow-soft' : 'text-ink hover:bg-lavender hover:text-brand-deep'">
+                <span class="grid size-8 shrink-0 place-items-center rounded-lg motion-safe:transition-colors"
+                  :class="isActive(link.to) ? 'bg-white/20' : 'bg-lavender text-brand group-hover:bg-white'" aria-hidden="true">
+                  <AppIcon :name="link.icon" :size="18" />
+                </span>
+                <span class="min-w-0 flex-1 truncate">{{ link.label }}</span>
+                <span v-if="link.badge && badgeFor(link)" class="grid h-6 min-w-6 place-items-center rounded-full px-2 text-xs font-bold"
+                  :class="isActive(link.to) ? 'bg-white text-brand-deep' : [badgeTone[link.badge], 'text-white']">
+                  <bdi>{{ badgeFor(link) }}</bdi><span class="sr-only">{{ badgeText[link.badge] }}</span>
                 </span>
               </NuxtLink>
             </li>
           </ul>
         </div>
       </nav>
-      <div class="space-y-1 border-t border-lavender p-3">
-        <div v-if="account?.signedIn" class="flex items-center gap-3 rounded-xl bg-lavender/60 px-3 py-2">
+      <div class="border-t border-lavender bg-blush/50 p-3">
+        <div v-if="account?.signedIn" class="mb-2 flex items-center gap-3 px-1">
           <span class="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-brand text-white" aria-hidden="true"><AppIcon name="user" :size="18" /></span>
           <span class="min-w-0 flex-1">
             <span class="block text-xs text-ink-soft">مسجّل باسم</span>
             <bdi class="block truncate text-sm font-semibold text-ink" dir="ltr">{{ account.name }}</bdi>
           </span>
         </div>
-        <NuxtLink to="/account" class="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 font-semibold text-ink-soft hover:bg-lavender focus-visible:bg-lavender">
-          <AppIcon name="user" :size="20" />
-          الحساب
-        </NuxtLink>
-        <NuxtLink to="/" class="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 font-semibold text-brand hover:bg-lavender focus-visible:bg-lavender">
-          <AppIcon name="sparkle" :size="20" />
-          عرض المتجر
-        </NuxtLink>
-        <button v-if="account?.signedIn" type="button" :disabled="loggingOut"
-          class="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 font-semibold text-danger hover:bg-danger/10 disabled:opacity-60"
-          @click="logout">
-          <AppIcon name="login" :size="20" class="rotate-180" />
-          {{ loggingOut ? 'جاري تسجيل الخروج…' : 'تسجيل الخروج' }}
-        </button>
+        <div class="grid gap-1" :class="account?.signedIn ? 'grid-cols-3' : 'grid-cols-2'">
+          <NuxtLink to="/account" class="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-xs font-semibold text-ink-soft hover:bg-lavender hover:text-brand-deep focus-visible:outline-2 focus-visible:outline-brand">
+            <AppIcon name="user" :size="20" />الحساب
+          </NuxtLink>
+          <NuxtLink to="/" class="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-xs font-semibold text-brand hover:bg-lavender focus-visible:outline-2 focus-visible:outline-brand">
+            <AppIcon name="sparkle" :size="20" />المتجر
+          </NuxtLink>
+          <button v-if="account?.signedIn" type="button" :disabled="loggingOut"
+            class="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-xs font-semibold text-danger hover:bg-danger/10 focus-visible:outline-2 focus-visible:outline-danger disabled:opacity-60"
+            @click="logout">
+            <AppIcon name="login" :size="20" class="rotate-180" />
+            {{ loggingOut ? 'جاري الخروج…' : 'تسجيل الخروج' }}
+          </button>
+        </div>
       </div>
     </aside>
 
     <main id="admin-content" class="px-4 pt-6 pb-28 lg:ms-[272px] lg:px-8 lg:pt-8 lg:pb-10">
-      <!-- Desktop top bar: where you are, and the most common action -->
-      <div class="mx-auto mb-6 hidden max-w-6xl items-center justify-between gap-3 lg:flex">
+      <!-- Desktop top bar: where you are -->
+      <div class="mx-auto mb-6 hidden max-w-6xl items-center gap-3 lg:flex">
         <nav aria-label="مكانك في الإدارة" class="flex items-center gap-2 text-sm text-ink-soft">
           <NuxtLink to="/admin" class="hover:text-brand hover:underline">الإدارة</NuxtLink>
           <template v-if="activeTo && activeTo !== '/admin'">
@@ -191,14 +200,6 @@ const badgeFor = (link: NavLink) => link.badge ? counts[link.badge] : 0
             <NuxtLink :to="activeTo" class="font-semibold text-ink hover:underline" aria-current="location">{{ pageTitle }}</NuxtLink>
           </template>
         </nav>
-        <div class="flex items-center gap-2">
-          <NuxtLink v-if="counts.orders" to="/admin/orders?status=pending" class="chip gap-1.5 bg-status-pending text-warning">
-            <AppIcon name="cart" :size="16" /><bdi>{{ counts.orders }}</bdi> طلبات جديدة
-          </NuxtLink>
-          <NuxtLink to="/admin/orders/manual" class="btn-primary min-h-11 gap-1.5 text-sm">
-            <AppIcon name="facebook" :size="16" />طلب جديد من فيسبوك
-          </NuxtLink>
-        </div>
       </div>
       <div class="mx-auto max-w-6xl"><slot /></div>
     </main>
@@ -232,9 +233,8 @@ const badgeFor = (link: NavLink) => link.badge ? counts[link.badge] : 0
 </template>
 
 <style scoped>
-/* Active sidebar link: a slim brand bar on the inline-start edge. */
-.nav-active::before {
-  content: ""; position: absolute; inset-block: 0.5rem; inset-inline-start: 0;
-  width: 0.25rem; border-radius: 9999px; background: var(--color-brand);
-}
+/* Thin, quiet scrollbar for the sidebar menu. */
+.admin-scroll { scrollbar-width: thin; scrollbar-color: var(--color-lavender-deep) transparent; }
+.admin-scroll::-webkit-scrollbar { width: 6px; }
+.admin-scroll::-webkit-scrollbar-thumb { background: var(--color-lavender-deep); border-radius: 9999px; }
 </style>

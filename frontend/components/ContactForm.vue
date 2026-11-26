@@ -74,16 +74,17 @@ function reset() {
       <button type="button" class="btn-secondary" @click="reset">إرسال رسالة أخرى</button>
     </div>
 
-    <form v-else id="contact-form" class="card flex flex-col gap-4 p-5 sm:p-6" novalidate @submit.prevent="submit">
+    <form v-else id="contact-form" class="card flex flex-col gap-5 p-5 ring-1 ring-brand/10 sm:p-7" novalidate @submit.prevent="submit">
+      <p class="-mt-1 text-sm text-ink-soft">اكتبي لنا وبنرجعلك في أقرب وقت.</p>
       <div>
-        <label for="cf-name" class="mb-1 flex items-center gap-2 text-sm font-bold text-ink"><AppIcon name="user" :size="18" />اسمك</label>
+        <label for="cf-name" class="mb-1.5 flex items-center gap-2 text-sm font-bold text-ink"><AppIcon class="text-brand" name="user" :size="18" />اسمك</label>
         <input id="cf-name" ref="nameRef" v-model="form.name" class="field" type="text" autocomplete="name" maxlength="80" required
           :aria-invalid="!!errors.name" :aria-describedby="errors.name ? 'cf-name-err' : undefined">
         <p v-if="errors.name" id="cf-name-err" role="alert" class="mt-1 text-sm font-semibold text-danger">{{ errors.name }}</p>
       </div>
 
       <div>
-        <label for="cf-phone" class="mb-1 flex items-center gap-2 text-sm font-bold text-ink"><AppIcon name="phone" :size="18" />رقم الهاتف</label>
+        <label for="cf-phone" class="mb-1.5 flex items-center gap-2 text-sm font-bold text-ink"><AppIcon class="text-brand" name="phone" :size="18" />رقم الهاتف</label>
         <input id="cf-phone" v-model="form.phone" class="field" type="tel" inputmode="tel" dir="ltr" autocomplete="tel" maxlength="20"
           :aria-invalid="!!errors.contact" :aria-describedby="errors.contact ? 'cf-contact-err' : 'cf-contact-hint'">
         <p v-if="errors.contact" id="cf-contact-err" role="alert" class="mt-1 text-sm font-semibold text-danger">{{ errors.contact }}</p>
@@ -91,14 +92,14 @@ function reset() {
       </div>
 
       <div>
-        <label for="cf-email" class="mb-1 flex items-center gap-2 text-sm font-bold text-ink"><AppIcon name="mail" :size="18" />البريد الإلكتروني (اختياري)</label>
+        <label for="cf-email" class="mb-1.5 flex items-center gap-2 text-sm font-bold text-ink"><AppIcon class="text-brand" name="mail" :size="18" />البريد الإلكتروني (اختياري)</label>
         <input id="cf-email" v-model="form.email" class="field" type="email" dir="ltr" autocomplete="email" maxlength="120"
           :aria-invalid="!!errors.email" :aria-describedby="errors.email ? 'cf-email-err' : undefined">
         <p v-if="errors.email" id="cf-email-err" role="alert" class="mt-1 text-sm font-semibold text-danger">{{ errors.email }}</p>
       </div>
 
       <div>
-        <label for="cf-message" class="mb-1 flex items-center gap-2 text-sm font-bold text-ink"><AppIcon name="sparkle" :size="18" />رسالتك</label>
+        <label for="cf-message" class="mb-1.5 flex items-center gap-2 text-sm font-bold text-ink"><AppIcon class="text-brand" name="sparkle" :size="18" />رسالتك</label>
         <textarea id="cf-message" v-model="form.message" class="field min-h-32 resize-y" rows="4" maxlength="1000" required
           :aria-invalid="!!errors.message" :aria-describedby="errors.message ? 'cf-message-err' : undefined"></textarea>
         <p v-if="errors.message" id="cf-message-err" role="alert" class="mt-1 text-sm font-semibold text-danger">{{ errors.message }}</p>
@@ -106,7 +107,8 @@ function reset() {
 
       <p v-if="status === 'error'" role="alert" class="rounded-[var(--radius-field)] bg-status-cancelled px-4 py-3 text-sm font-semibold text-danger">{{ serverMessage }}</p>
 
-      <button type="submit" class="btn-primary" :disabled="status === 'sending'" :aria-busy="status === 'sending'">
+      <button type="submit" class="btn-primary w-full gap-2" :disabled="status === 'sending'" :aria-busy="status === 'sending'">
+        <AppIcon v-if="status !== 'sending'" name="mail" :size="20" />
         {{ status === 'sending' ? 'جاري الإرسال...' : 'أرسلي رسالتك' }}
       </button>
     </form>
