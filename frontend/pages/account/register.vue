@@ -61,7 +61,7 @@ useSeoMeta({ title: 'إنشاء حساب أوركيديا', robots: 'noindex, no
             autocomplete="new-password" class="field" :aria-invalid="mismatch" :aria-describedby="mismatch ? 'register-mismatch' : undefined">
         </label>
         <p v-if="mismatch" id="register-mismatch" role="alert" class="text-sm text-danger">كلمتا المرور غير متطابقتين.</p>
-        <label class="flex min-h-11 items-center gap-2">
+        <label class="check-row text-sm text-ink">
           <input v-model="show" type="checkbox"> إظهار كلمة المرور
         </label>
         <button type="submit" class="btn-primary w-full">{{ pending ? 'جاري إنشاء الحساب…' : 'إنشاء الحساب' }}</button>

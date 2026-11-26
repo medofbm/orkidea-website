@@ -169,7 +169,7 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
                 <label v-for="kind in services" :key="kind"
                   class="flex min-h-11 items-center gap-2 rounded-2xl border border-lavender-deep bg-white px-3 py-2 has-checked:border-brand-deep has-checked:bg-cream has-checked:font-semibold has-checked:ring-1 has-checked:ring-brand-deep has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-deep">
                   <input :checked="service === kind" name="carrierService" type="radio" :value="kind"
-                    class="accent-brand-deep" @change="chooseService(kind)">
+                    @change="chooseService(kind)">
                   {{ serviceLabels[kind] }}
                 </label>
               </div>

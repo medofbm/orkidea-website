@@ -69,8 +69,8 @@ async function submit() {
         <label for="orc-message" class="mb-1 block text-sm font-bold text-ink">تعليقك (اختياري)</label>
         <textarea id="orc-message" v-model="message" class="field min-h-24 resize-y" rows="3" maxlength="500"></textarea>
       </div>
-      <label class="flex min-h-11 items-center gap-2 text-sm font-semibold text-ink">
-        <input v-model="allowName" type="checkbox" class="size-5 accent-brand">
+      <label class="check-row text-sm font-semibold text-ink">
+        <input v-model="allowName" type="checkbox">
         اسمحي بعرض اسمي الأول مع رأيي
       </label>
       <p v-if="error" id="orc-error" role="alert" class="rounded-[var(--radius-field)] bg-status-cancelled px-4 py-3 text-sm font-semibold text-danger">{{ error }}</p>

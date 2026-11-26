@@ -98,7 +98,7 @@ useSeoMeta({ title: 'تغيير كلمة المرور - أوركيديا', robot
                 autocomplete="new-password" class="field" :aria-invalid="mismatch" :aria-describedby="mismatch ? 'reset-mismatch' : undefined">
             </label>
             <p v-if="mismatch" id="reset-mismatch" role="alert" class="text-sm text-danger">كلمتا المرور غير متطابقتين.</p>
-            <label class="flex min-h-11 items-center gap-2">
+            <label class="check-row text-sm text-ink">
               <input v-model="show" type="checkbox"> إظهار كلمة المرور
             </label>
             <button type="submit" class="btn-primary w-full">{{ pending ? 'جاري الحفظ…' : 'حفظ كلمة المرور' }}</button>
