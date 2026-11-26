@@ -85,13 +85,13 @@ async function add() {
         <NuxtLink :to="target" class="stretched rounded-md focus-visible:outline-offset-4">{{ product.name }}</NuxtLink>
       </h3>
 
-      <div v-if="variants.length === 1" class="relative z-10 flex min-h-[2.75rem] flex-wrap content-start gap-1.5">
-        <span class="grid min-h-11 place-items-center rounded-full border px-3 text-xs font-semibold whitespace-nowrap sm:text-sm"
+      <div v-if="variants.length === 1" class="relative z-10 flex min-h-8 flex-wrap content-start gap-1.5">
+        <span class="grid h-8 place-items-center rounded-full border px-2.5 text-xs font-semibold whitespace-nowrap"
           :class="isOrderable(variants[0]) ? 'border-brand bg-brand text-white' : 'border-brand/25 bg-lavender text-ink-soft opacity-70'">{{ sizeLabel(variants[0]!.size) }}<template v-if="!isOrderable(variants[0])">&nbsp;·&nbsp;غير متاح</template></span>
       </div>
-      <div v-else-if="multiple" role="group" :aria-label="'اختاري الحجم لـ ' + product.name" class="relative z-10 flex min-h-[2.75rem] flex-wrap content-start gap-1.5">
+      <div v-else-if="multiple" role="group" :aria-label="'اختاري الحجم لـ ' + product.name" class="relative z-10 flex min-h-8 flex-wrap content-start gap-1.5">
         <button v-for="v in variants" :key="v.id" type="button" :aria-pressed="selected?.id === v.id" :disabled="busy || adding || !isOrderable(v)"
-          class="grid min-h-11 cursor-pointer place-items-center rounded-full border border-brand/25 bg-white px-3 text-xs font-semibold text-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand aria-pressed:bg-brand aria-pressed:text-white sm:text-sm"
+          class="grid h-8 cursor-pointer place-items-center rounded-full border border-brand/25 bg-white px-2.5 text-xs font-semibold text-ink-soft motion-safe:transition-colors hover:enabled:border-brand/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-brand aria-pressed:bg-brand aria-pressed:text-white aria-pressed:shadow-soft"
           @click="pickedId = v.id">
           <!-- Hidden copy reserves the width of the "size · price" text so chips never change width on selection. -->
           <span class="invisible col-start-1 row-start-1 whitespace-nowrap" aria-hidden="true">{{ sizeLabel(v.size) }}&nbsp;·&nbsp;<bdi>{{ formatPrice(v.price) }}</bdi>&nbsp;د.ل</span>

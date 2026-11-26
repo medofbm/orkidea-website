@@ -5,7 +5,7 @@ using Orkideya.Models;
 
 namespace Orkideya.Application.Inventory;
 
-public enum StockResult { Changed, Unchanged, Invalid, Missing, Conflict, Insufficient }
+public enum StockResult { Changed, Unchanged, Invalid, Missing, Conflict, Insufficient, HasReservations }
 
 public sealed class StockService(ApplicationDbContext db, TimeProvider clock)
 {
@@ -51,6 +51,26 @@ public sealed class StockService(ApplicationDbContext db, TimeProvider clock)
         variant.StockUnitsPerItem = units; stock.Revision++;
         db.StockMovements.Add(Movement(productId, null, "Configure", 0, 0, actor,
             $"استهلاك الحجم #{variantId}: {units.ToString(System.Globalization.CultureInfo.InvariantCulture)} {stock.Unit}"));
+        return await SaveAsync(ct);
+    }
+
+    // Changing the unit zeroes the balance (old quantities are in the old unit) and clears per-size consumption.
+    public async Task<StockResult> ChangeUnitAsync(int productId, string unit, int revision, string actor, CancellationToken ct = default)
+    {
+        if (!ValidActor(actor) || unit is not ("ml" or "piece")) return StockResult.Invalid;
+        var stock = await db.StockAccounts.SingleOrDefaultAsync(s => s.ProductId == productId, ct);
+        if (stock is null) return StockResult.Missing;
+        if (stock.Revision != revision || stock.Revision == int.MaxValue) return StockResult.Conflict;
+        if (stock.Unit == unit) return StockResult.Unchanged;
+        if (stock.Reserved != 0) return StockResult.HasReservations;
+        var variants = await db.ProductVariants.Where(v => v.ProductId == productId).ToListAsync(ct);
+        foreach (var variant in variants) variant.StockUnitsPerItem = null;
+        var from = stock.Unit == "ml" ? "مل" : "قطعة";
+        var to = unit == "ml" ? "مل" : "قطعة";
+        var previous = stock.OnHand;
+        stock.Unit = unit; stock.OnHand = 0; stock.Revision++;
+        db.StockMovements.Add(Movement(productId, null, "Unit", -previous, 0, actor,
+            $"تغيير وحدة التتبع من {from} إلى {to}؛ صُفّر الرصيد لإدخاله من جديد بالوحدة الجديدة."));
         return await SaveAsync(ct);
     }
 

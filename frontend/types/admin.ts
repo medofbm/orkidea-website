@@ -84,6 +84,7 @@ export interface AdminStockPage {
 }
 
 export interface AdminStockDetails extends AdminStockProduct {
+  category: string | null
   variants: { productVariantId: number; size: string; stockUnitsPerItem: number | null }[]
   movements: { stockMovementId: string; orderId: number | null; kind: string; onHandDelta: number;
     reservedDelta: number; reason: string; actorName: string | null; createdAtUtc: string }[]

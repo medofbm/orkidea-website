@@ -59,7 +59,7 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
         <p class="mt-1 text-ink-soft">أهلًا بكِ، سجّلي دخولك وتابعي طلباتك بسهولة.</p>
       </div>
     <p v-if="loading" role="status">جاري التحقق من الجلسة…</p>
-    <p v-if="error" role="alert" class="mb-4 rounded-xl bg-danger/10 p-3 text-danger">{{ error }}</p>
+    <p v-if="error" role="alert" class="mb-4 flex items-start gap-2 rounded-xl border border-danger/25 bg-danger/10 p-3 text-sm font-semibold text-danger"><AppIcon name="x" :size="16" class="mt-1" />{{ error }}</p>
     <template v-if="account?.signedIn">
       <p class="flex items-center gap-2 font-semibold text-success"><AppIcon name="check-circle" :size="20" />تم تسجيل الدخول</p>
       <p v-if="account.name" class="my-2 break-all" dir="ltr">{{ account.name }}</p>
@@ -75,7 +75,7 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
             <input v-model="fields.code" required maxlength="64" dir="ltr" autocomplete="one-time-code"
               :inputmode="fields.recovery ? 'text' : 'numeric'" class="field">
           </label>
-          <label class="flex min-h-11 items-center gap-2">
+          <label class="check-row">
             <input v-model="fields.recovery" type="checkbox"> استخدام رمز الاسترداد
           </label>
         </template>
@@ -83,15 +83,21 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
           <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="mail" :size="16" class="text-brand" />البريد الإلكتروني</span>
             <input v-model="fields.email" required type="email" maxlength="254" dir="ltr" autocomplete="username" class="field">
           </label>
-          <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="shield" :size="16" class="text-brand" />كلمة المرور</span>
-            <input v-model="fields.password" required :type="showPassword ? 'text' : 'password'" maxlength="1024" dir="ltr" autocomplete="current-password" class="field">
-          </label>
-          <label class="flex min-h-11 items-center gap-2">
-            <input v-model="showPassword" type="checkbox"> إظهار كلمة المرور
-          </label>
-          <label class="flex min-h-11 items-center gap-2">
-            <input v-model="fields.rememberMe" type="checkbox"> تذكّريني على هذا الجهاز
-          </label>
+          <div class="relative">
+            <label class="block"><span class="mb-1.5 flex items-center gap-2 text-sm font-semibold text-ink"><AppIcon name="shield" :size="16" class="text-brand" />كلمة المرور</span>
+              <input v-model="fields.password" required :type="showPassword ? 'text' : 'password'" maxlength="1024" dir="ltr" autocomplete="current-password" class="field pl-12">
+            </label>
+            <!-- Outside the label so the field's accessible name stays «كلمة المرور». The input is LTR, so the toggle sits on its left. -->
+            <button type="button" class="absolute bottom-[3px] left-0.5 grid h-11 w-11 place-items-center rounded-xl text-ink-soft hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-brand"
+              :aria-label="showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'" :aria-pressed="showPassword" @click="showPassword = !showPassword">
+              <AppIcon :name="showPassword ? 'eye-off' : 'eye'" :size="20" />
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-x-6 text-sm text-ink">
+            <label class="check-row">
+              <input v-model="fields.rememberMe" type="checkbox"> تذكّريني على هذا الجهاز
+            </label>
+          </div>
         </template>
         <button type="submit" class="btn-primary w-full">
           {{ pending ? 'جاري التحقق…' : verification ? 'تأكيد الرمز' : 'تسجيل الدخول' }}

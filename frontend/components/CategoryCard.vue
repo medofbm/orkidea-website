@@ -7,6 +7,8 @@ defineProps<{
   count?: number
   icon?: string
   image?: string
+  // Currently selected category: ring + aria-current.
+  active?: boolean
 }>()
 </script>
 
@@ -14,6 +16,8 @@ defineProps<{
   <NuxtLink
     v-if="image"
     :to="to"
+    :aria-current="active ? 'page' : undefined"
+    :class="active ? 'ring-4 ring-brand ring-offset-2' : ''"
     class="photo-card group relative block aspect-[4/5] overflow-hidden rounded-card bg-lavender shadow-soft outline-none focus-visible:ring-4 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
   >
     <img :src="image" alt="" width="480" height="600" loading="lazy" decoding="async"
@@ -26,10 +30,13 @@ defineProps<{
       </span>
     </span>
     <span v-if="count !== undefined" class="absolute top-3 start-3 rounded-full bg-white/85 px-2.5 py-0.5 text-xs font-semibold text-brand">{{ count }} منتج</span>
+    <span v-if="active" class="absolute top-3 end-3 grid size-7 place-items-center rounded-full bg-brand text-white shadow-soft" aria-hidden="true"><AppIcon name="check" :size="16" /></span>
   </NuxtLink>
   <NuxtLink
     v-else
     :to="to"
+    :aria-current="active ? 'page' : undefined"
+    :class="active ? 'ring-4 ring-brand ring-offset-2 border-brand' : ''"
     class="category-card group flex min-h-[44px] flex-col items-center justify-center gap-3 rounded-card border border-brand/10 bg-white p-6 text-center text-ink shadow-soft outline-none focus-visible:ring-4 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
   >
     <span class="category-card__circle flex h-16 w-16 items-center justify-center rounded-full bg-lavender text-brand" aria-hidden="true">

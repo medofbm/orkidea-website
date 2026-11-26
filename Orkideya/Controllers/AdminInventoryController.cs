@@ -51,7 +51,7 @@ public sealed class AdminInventoryController(ApplicationDbContext db, StockServi
             from account in accounts.DefaultIfEmpty()
             select new
             {
-                product.ProductId, product.Name, Account = account,
+                product.ProductId, product.Name, Category = product.Category == null ? null : product.Category.Name, Account = account,
                 Variants = product.ProductVariants.OrderBy(variant => variant.ProductVariantId)
                     .Select(variant => new { variant.ProductVariantId, variant.Size, variant.StockUnitsPerItem }).ToList()
             }).SingleOrDefaultAsync(ct);
@@ -74,7 +74,7 @@ public sealed class AdminInventoryController(ApplicationDbContext db, StockServi
             }).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         return Ok(new
         {
-            item.ProductId, item.Name, account = Summary(item.Account), item.Variants, total, page, pages,
+            item.ProductId, item.Name, category = item.Category, account = Summary(item.Account), item.Variants, total, page, pages,
             movements = moves.Select(move => new
             {
                 move.StockMovementId, move.OrderId, move.Kind, move.OnHandDelta, move.ReservedDelta, move.Reason, move.actorName,
@@ -93,6 +93,12 @@ public sealed class AdminInventoryController(ApplicationDbContext db, StockServi
     public Task<IActionResult> Configure(int id, StockVariantInput input, CancellationToken ct) =>
         Write(id, actor => stock.ConfigureAsync(id, input.VariantId, input.Units!.Value, input.ExpectedRevision!.Value, actor, ct));
 
+    public sealed record UnitInput([Required, StringLength(5)] string Unit, [Required] int? ExpectedRevision);
+
+    [HttpPost("{id:int}/unit"), ValidateAntiForgeryToken]
+    public Task<IActionResult> ChangeUnit(int id, UnitInput input, CancellationToken ct) =>
+        Write(id, actor => stock.ChangeUnitAsync(id, input.Unit, input.ExpectedRevision!.Value, actor, ct));
+
     [HttpPost("{id:int}/adjust"), ValidateAntiForgeryToken]
     public Task<IActionResult> Adjust(int id, StockAdjustmentInput input, CancellationToken ct) =>
         Write(id, actor => stock.AdjustAsync(id, input.Delta!.Value, input.ExpectedRevision!.Value, input.RequestId!.Value, actor, input.Reason, ct));
@@ -109,6 +115,7 @@ public sealed class AdminInventoryController(ApplicationDbContext db, StockServi
                 StockResult.Unchanged => Ok(new { success = true, message = "البيانات محفوظة بالفعل." }),
                 StockResult.Conflict => Conflict(new { message = "تغيّر الرصيد أو الإعداد. حدّث المخزون قبل إعادة المحاولة." }),
                 StockResult.Missing => NotFound(new { message = "المنتج أو الحجم غير موجود." }),
+                StockResult.HasReservations => Conflict(new { message = "ما نقدرش نغيّر الوحدة وفيه كمية محجوزة لطلبات مفتوحة. كمّل الطلبات أو ألغيها أولاً." }),
                 StockResult.Insufficient => BadRequest(new { message = "الرصيد بعد التعديل خارج الحدود أو أقل من الكمية المحجوزة." }),
                 _ => BadRequest(new { message = "راجع وحدة القياس والكمية وسبب التعديل." })
             };

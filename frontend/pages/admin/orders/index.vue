@@ -75,12 +75,12 @@ function changePage(page: number) {
           class="mt-1 block min-h-11 w-full rounded-lg border px-3">
       </label>
       <label>الحالة
-        <select v-model="fields.status" class="mt-1 block min-h-11 rounded-lg border px-3">
+        <select v-model="fields.status" class="mt-1 block min-h-11">
           <option v-for="(label, value) in statuses" :key="value" :value="value">{{ label }}</option>
         </select>
       </label>
       <label>المصدر
-        <select v-model="fields.source" class="mt-1 block min-h-11 rounded-lg border px-3">
+        <select v-model="fields.source" class="mt-1 block min-h-11">
           <option v-for="(label, value) in sources" :key="value" :value="value">{{ label }}</option>
         </select>
       </label>
