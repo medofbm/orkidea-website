@@ -11,6 +11,20 @@ const { data, status, error, refresh } = useFetch<AdminStockDetails>(url, {
 })
 const account = computed(() => data.value?.account)
 const unit = ref<'' | 'ml' | 'piece'>('')
+const newUnit = ref<'' | 'ml' | 'piece'>('')
+const confirmDialog = useConfirm()
+// Suggest a unit from the category name; the admin can still change it.
+function defaultUnit(category: string | null | undefined): '' | 'ml' | 'piece' {
+  if (!category) return ''
+  if (category.includes('زيت') || category.includes('زيوت')) return 'ml'
+  if (category.includes('صابون')) return 'piece'
+  return ''
+}
+watch(() => data.value?.category, (category) => {
+  if (!unit.value && !data.value?.account) unit.value = defaultUnit(category)
+}, { immediate: true })
+const otherUnit = computed<'ml' | 'piece'>(() => account.value?.unit === 'ml' ? 'piece' : 'ml')
+watch(otherUnit, value => { newUnit.value = value }, { immediate: true })
 const unsetVariants = computed(() => account.value ? (data.value?.variants.filter(variant => variant.stockUnitsPerItem == null) ?? []) : [])
 const step = computed(() => account.value?.unit === 'piece' ? 1 : 0.001)
 const delta = ref<number | ''>('')
@@ -24,7 +38,7 @@ const failure = ref('')
 const disabled = computed(() => saving.value || needsRefresh.value || status.value !== 'success')
 const moveKinds: Record<string, string> = {
   Setup: 'تفعيل التتبع', Configure: 'استهلاك حجم', Adjust: 'إضافة أو تصحيح',
-  Reserve: 'حجز', Consume: 'صرف', Release: 'تحرير الحجز'
+  Unit: 'تغيير الوحدة', Reserve: 'حجز', Consume: 'صرف', Release: 'تحرير الحجز'
 }
 
 watch(variantId, loadUnits)
@@ -47,7 +61,7 @@ async function recover() {
   notice.value = 'تم تحديث الرصيد. راجع السجل قبل تسجيل حركة جديدة.'
 }
 
-async function save(action: 'open' | 'configure' | 'adjust', input: Record<string, string | number>) {
+async function save(action: 'open' | 'configure' | 'adjust' | 'unit', input: Record<string, string | number>) {
   if (disabled.value) return
   saving.value = true
   failure.value = ''
@@ -88,6 +102,19 @@ function configure() {
   if (!account.value || typeof variantId.value !== 'number' ||
       typeof units.value !== 'number' || !Number.isFinite(units.value) || units.value <= 0) return
   void save('configure', { variantId: variantId.value, units: units.value, expectedRevision: account.value.revision })
+}
+
+async function changeUnit() {
+  if (!account.value || disabled.value || !newUnit.value || newUnit.value === account.value.unit) return
+  const from = adminStockUnit(account.value.unit)
+  const to = adminStockUnit(newUnit.value)
+  const ok = await confirmDialog({
+    title: 'تغيير وحدة التتبع؟',
+    message: 'ستتغير الوحدة من ' + from + ' إلى ' + to + '. سيُصفَّر الرصيد وتُمسح كمية الاستهلاك لكل حجم، وتحتاج إدخالهما من جديد.',
+    confirmLabel: 'تغيير الوحدة', tone: 'danger'
+  })
+  if (!ok) return
+  void save('unit', { unit: newUnit.value, expectedRevision: account.value.revision })
 }
 
 // History display helpers: sign, colour and Libya time.
@@ -151,6 +178,23 @@ function adminDate(iso: string) {
               class="min-h-11 btn-primary disabled:opacity-60">حفظ حركة الكمية</button>
           </fieldset>
         </form>
+        <section class="card p-4 sm:p-6" aria-labelledby="stock-unit">
+          <h2 id="stock-unit" class="mb-2 text-xl font-bold">تغيير وحدة التتبع</h2>
+          <p class="mb-3 text-sm">الوحدة الحالية: <bdi class="font-bold">{{ adminStockUnit(account.unit) }}</bdi></p>
+          <p role="note" class="mb-3 rounded-xl border border-warning/40 bg-status-pending p-3 text-sm font-semibold text-warning">
+            تنبيه: عند تغيير الوحدة يرجع الرصيد إلى صفر وتُمسح كمية الاستهلاك لكل حجم، ولازم تدخلهما من جديد. الأحجام تتوقف عن الطلب إلى أن تضبط الاستهلاك. ما يمكنش التغيير وفيه كمية محجوزة.
+          </p>
+          <form @submit.prevent="changeUnit">
+            <fieldset :disabled="disabled" class="space-y-3">
+              <label class="block">الوحدة الجديدة
+                <select v-model="newUnit" required class="field mt-1 block min-h-11">
+                  <option :value="otherUnit">{{ adminStockUnit(otherUnit) }}</option>
+                </select>
+              </label>
+              <button type="submit" :disabled="!newUnit || newUnit === account.unit" class="min-h-11 rounded-lg border px-4 disabled:opacity-60">تغيير الوحدة</button>
+            </fieldset>
+          </form>
+        </section>
         <section class="card p-4 sm:p-6" aria-labelledby="stock-variants">
           <h2 id="stock-variants" class="mb-2 text-xl font-bold">استهلاك كل حجم</h2>
           <p class="mb-3 text-sm">اضبط الكمية المستهلكة للوحدة المباعة. الإعداد يسري على الطلبات الجديدة.</p>

@@ -183,6 +183,7 @@ try
     await ArchiveScenario.Run(Open, Check);
     await OrderListScenario.Run(Open, Check);
     await StockScenario.Run(Open, Check);
+    await StockUnitScenario.Run(Open, Check);
     // Verify the older downgrade guard before checkout creates protected shipping snapshots.
     await ManualOrderScenario.Run(Open,Check);
     await using (var db = Open()) await CheckoutScenario.Run(db, Check);
