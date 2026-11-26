@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using System.Text;
+using Orkideya.Application.Accounts;
 using Orkideya.Services.Email;
 
 namespace Orkideya.Controllers;
@@ -43,7 +44,7 @@ public sealed record ResetPasswordInput(
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class AccountController(SignInManager<IdentityUser> signInManager,
     UserManager<IdentityUser> userManager, IEmailSender emailSender, IOptions<AppOptions> appOptions,
-    ILogger<AccountController> logger) : ControllerBase
+    IAccountActivityRecorder activity, ILogger<AccountController> logger) : ControllerBase
 {
     private const string InvalidTokenMessage = "الرابط غير صالح أو انتهت صلاحيته. اطلبي رابط جديد.";
 
@@ -143,6 +144,7 @@ public sealed class AccountController(SignInManager<IdentityUser> signInManager,
             return BadRequest(new { message = "تعذر إنشاء الحساب. راجع البريد ومتطلبات كلمة المرور أو جرّب تسجيل الدخول." });
 
         await signInManager.SignInAsync(user, isPersistent: false);
+        await activity.RecordCreatedAsync(user.Id, signedIn: true, HttpContext.RequestAborted);
         return NoContent();
     }
 
@@ -186,6 +188,8 @@ public sealed class AccountController(SignInManager<IdentityUser> signInManager,
         var result = await signInManager.PasswordSignInAsync(
             input.Email.Trim(), input.Password, input.RememberMe, lockoutOnFailure: true);
         if (result.RequiresTwoFactor) return Ok(new { requiresVerification = true });
+        if (result.Succeeded && await userManager.FindByNameAsync(input.Email.Trim()) is { } user)
+            await activity.RecordSignInAsync(user.Id, HttpContext.RequestAborted);
         return LoginResponse(result);
     }
 
@@ -195,10 +199,14 @@ public sealed class AccountController(SignInManager<IdentityUser> signInManager,
     public async Task<IActionResult> Verify(AccountVerification input)
     {
         var code = input.Code.Trim().Replace(" ", "", StringComparison.Ordinal);
+        // Read before signing in: the two-factor cookie that names the user is cleared on success.
+        var pending = await signInManager.GetTwoFactorAuthenticationUserAsync();
         var result = input.Recovery
             ? await signInManager.TwoFactorRecoveryCodeSignInAsync(code)
             : await signInManager.TwoFactorAuthenticatorSignInAsync(
                 code.Replace("-", "", StringComparison.Ordinal), input.RememberMe, rememberClient: false);
+        if (result.Succeeded && pending is not null)
+            await activity.RecordSignInAsync(pending.Id, HttpContext.RequestAborted);
         return LoginResponse(result);
     }
 

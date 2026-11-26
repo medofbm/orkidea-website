@@ -138,3 +138,48 @@ export interface AdminOrderDetails {
   items: { id: number; productId: number; quantity: number; variantSize: string | null;
     productName: string | null; unitPrice: string }[]
 }
+
+// Accounts (admin «الزبائن» and «المديرين»). Dates are UTC ISO strings; null means «غير معروف».
+export interface AdminUserSummary {
+  id: string
+  email: string | null
+  phoneNumber: string | null
+  emailConfirmed: boolean
+  createdAtUtc: string | null
+  lastSignInAtUtc: string | null
+  signInCount: number | null
+  isAdmin: boolean
+  isSuperAdmin: boolean
+  orderCount: number
+  totalSpent: string
+}
+
+export interface AdminUsersPage {
+  items: AdminUserSummary[]
+  page: number
+  pages: number
+  total: number
+  pageSize: number
+  isSuperAdmin: boolean
+}
+
+export interface AdminUserDetails {
+  user: AdminUserSummary
+  orders: { id: number, orderDate: string, status: string, total: string }[]
+  isSuperAdmin: boolean
+}
+
+export interface AdminAdminsList {
+  items: {
+    id: string
+    email: string | null
+    emailConfirmed: boolean
+    isSuperAdmin: boolean
+    isYou: boolean
+    hasPassword: boolean
+    createdAtUtc: string | null
+    lastSignInAtUtc: string | null
+  }[]
+  isSuperAdmin: boolean
+  superAdminConfigured: boolean
+}

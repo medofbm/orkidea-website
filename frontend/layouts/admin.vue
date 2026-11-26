@@ -31,6 +31,13 @@ const groups: { title: string, links: NavLink[] }[] = [
       { to: '/admin/reviews', label: 'التقييمات', icon: 'star', badge: 'reviews' }
     ]
   },
+  {
+    title: 'الحسابات',
+    links: [
+      { to: '/admin/users', label: 'الزبائن', icon: 'user' },
+      { to: '/admin/admins', label: 'المديرين', icon: 'shield' }
+    ]
+  },
   { title: 'الإعدادات', links: [{ to: '/admin/shipping-rates', label: 'أسعار التوصيل', icon: 'cash' }] }
 ]
 // Bottom bar on phones: the four places used most, plus «المزيد» for the full menu.

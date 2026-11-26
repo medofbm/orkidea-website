@@ -175,6 +175,30 @@ internal static class IdentityCookieScenario
             check(account.Headers.CacheControl?.NoStore == true &&
                 signedIn.GetProperty("signedIn").GetBoolean() && signedIn.GetProperty("isAdmin").GetBoolean(),
                 "Account API resolves the authenticated role without caching");
+            var adminActivity = await db.AccountActivities.AsNoTracking().SingleOrDefaultAsync(a => a.UserId == adminUser.Id);
+            check(adminActivity is { SignInCount: 1, CreatedAtUtc: null, LastSignInAtUtc: not null },
+                "Account API sign-in records activity; an account older than the table keeps an unknown creation date");
+            var usersPage = await accountClient.GetFromJsonAsync<JsonElement>("/api/v1/admin/users?search=cookie-admin");
+            check(usersPage.GetProperty("total").GetInt32() == 1 &&
+                usersPage.GetProperty("items")[0].GetProperty("isAdmin").GetBoolean() &&
+                usersPage.GetProperty("items")[0].GetProperty("signInCount").GetInt32() == 1 &&
+                !usersPage.GetProperty("isSuperAdmin").GetBoolean(),
+                "Admin users list finds the account by email with role and sign-in count");
+            using var customerDetails = await accountClient.GetAsync("/api/v1/admin/users/" + customer.Id);
+            var customerPayload = await customerDetails.Content.ReadFromJsonAsync<JsonElement>();
+            check(customerDetails.StatusCode == HttpStatusCode.OK &&
+                customerPayload.GetProperty("user").GetProperty("email").GetString() == customer.Email &&
+                customerPayload.GetProperty("user").GetProperty("createdAtUtc").ValueKind == JsonValueKind.Null &&
+                customerPayload.GetProperty("orders").GetArrayLength() == 0,
+                "Admin user details show an account without activity as unknown and without orders");
+            // Signed-in token on this request only: the pre-login header must stay for the logout check below.
+            var signedInSession = await accountClient.GetFromJsonAsync<JsonElement>("/api/v1/session");
+            using var addAdmin = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/admins") { Content = JsonContent.Create(new { email = "new-admin@orkidea.test" }) };
+            addAdmin.Headers.Remove("RequestVerificationToken");
+            addAdmin.Headers.Add("RequestVerificationToken", signedInSession.GetProperty("requestToken").GetString());
+            using var notSuper = await accountClient.SendAsync(addAdmin);
+            check(notSuper.StatusCode == HttpStatusCode.Forbidden && await users.FindByEmailAsync("new-admin@orkidea.test") is null,
+                "An admin who is not the super admin cannot add administrators (real SQL)");
             using var rejectedLogout = await accountClient.PostAsync("/api/v1/account/logout", null);
             check(rejectedLogout.StatusCode == HttpStatusCode.BadRequest, "Account API rejects logout using the pre-login token");
             accountClient.DefaultRequestHeaders.Remove("RequestVerificationToken");
@@ -205,6 +229,8 @@ internal static class IdentityCookieScenario
             var signedIn = await twoFactorClient.GetFromJsonAsync<JsonElement>("/api/v1/account");
             check(verified.StatusCode == HttpStatusCode.OK && signedIn.GetProperty("signedIn").GetBoolean() &&
                 !signedIn.GetProperty("isAdmin").GetBoolean(), "Recovery code completes the Identity challenge with customer permissions");
+            check(await db.AccountActivities.AsNoTracking().CountAsync(a => a.UserId == twoFactorUser.Id && a.SignInCount == 1) == 1,
+                "Verification-code sign-in records activity once (password step alone does not count)");
         }
 
         using (var profileClient = Client())
@@ -253,6 +279,10 @@ internal static class IdentityCookieScenario
                 new { email, password = newPassword, rememberMe = false });
             check(oldLogin.StatusCode == HttpStatusCode.Unauthorized && newLogin.StatusCode == HttpStatusCode.OK,
                 "Only the new password can authenticate after the update");
+            var registeredUser = await users.FindByEmailAsync(email);
+            var registeredActivity = await db.AccountActivities.AsNoTracking().SingleAsync(a => a.UserId == registeredUser!.Id);
+            check(registeredActivity is { CreatedAtUtc: not null, SignInCount: 2 },
+                "Registration records the creation date and counts later sign-ins");
         }
 
         using var buyer = Client();

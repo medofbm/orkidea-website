@@ -31,10 +31,15 @@ namespace Orkideya.Data
         public DbSet<OrderCreation> OrderCreations { get; set; }
         public DbSet<OrderDelivery> OrderDeliveries { get; set; }
         public DbSet<OrderDeliveryEvent> OrderDeliveryEvents { get; set; }
+        public DbSet<AccountActivity> AccountActivities { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            // One activity row per account; it goes away with the account.
+            builder.Entity<AccountActivity>().HasOne<Microsoft.AspNetCore.Identity.IdentityUser>().WithOne()
+                .HasForeignKey<AccountActivity>(activity => activity.UserId).OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<AccountActivity>().ToTable(t => t.HasCheckConstraint("CK_AccountActivity_SignInCount", "[SignInCount] >= 0"));
             builder.Entity<OrderShippingQuote>().Property(q=>q.OrderId).ValueGeneratedNever();
             builder.Entity<OrderShippingQuote>().HasOne<Order>().WithOne(o=>o.ShippingQuote)
                 .HasForeignKey<OrderShippingQuote>(q=>q.OrderId).OnDelete(DeleteBehavior.Restrict);

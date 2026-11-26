@@ -181,6 +181,7 @@ builder.Services.AddScoped<Orkideya.Application.Orders.ManualOrderService>();
 builder.Services.AddScoped<Orkideya.Application.Orders.OrderStatusService>();
 builder.Services.AddScoped<Orkideya.Application.Inventory.StockService>();
 builder.Services.AddScoped<Orkideya.Application.Delivery.DeliveryService>();
+builder.Services.AddScoped<Orkideya.Application.Accounts.IAccountActivityRecorder, Orkideya.Application.Accounts.AccountActivityRecorder>();
 
 // Determine cookie security policy based on environment
 var cookieSecurePolicy = builder.Environment.IsDevelopment() 
