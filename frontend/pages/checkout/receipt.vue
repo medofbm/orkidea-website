@@ -117,7 +117,7 @@ useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchi
           <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer" class="btn-secondary gap-2">
             <AppIcon name="whatsapp" :size="18" />سؤال على طلبك؟ كلّمينا
           </a>
-          <NuxtLink to="/order-and-delivery" class="btn-ghost underline underline-offset-4">سياسة الطلب والتوصيل</NuxtLink>
+          <NuxtLink to="/order-and-delivery" class="btn-ghost">سياسة الطلب والتوصيل</NuxtLink>
         </div>
       </section>
       <OrderRatingCard />
