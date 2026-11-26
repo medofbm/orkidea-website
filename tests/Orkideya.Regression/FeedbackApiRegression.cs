@@ -21,6 +21,8 @@ using System.Text.Json;
 /// <summary>Public reviews/contact and admin feedback API: routes, antiforgery, roles, validation. No database access.</summary>
 internal static class FeedbackApiRegression
 {
+    // Mirrors Program.PublicFormLimit in Orkideya/Program.cs.
+    private const int PublicFormLimit = 5;
     private static WebApplicationFactory<CartController> Create() =>
         new WebApplicationFactory<CartController>().WithWebHostBuilder(builder =>
         {
@@ -104,7 +106,7 @@ internal static class FeedbackApiRegression
         check(ReviewsApiController.FirstWord("  Nora Ali ") == "Nora" && ReviewsApiController.FirstWord("") is null &&
             ReviewsApiController.FirstWord(null) is null, "Public review name is the first word only");
 
-        // HTTP behaviour. Each factory has its own rate limiter state (public-forms allows 3 per hour).
+        // HTTP behaviour. Each factory has its own rate limiter state (public-forms allows 5 posts per form per 15 minutes, Program.PublicFormLimit).
         using (var factory = Create())
         using (var client = Client(factory))
         {
@@ -130,7 +132,7 @@ internal static class FeedbackApiRegression
         using (var factory = Create())
         using (var client = Client(factory))
         {
-            for (var attempt = 1; attempt <= 3; attempt++)
+            for (var attempt = 1; attempt <= PublicFormLimit; attempt++)
             {
                 using var request = await Post(client, "/api/v1/reviews", new { name = "Nora", rating = 9, message = "خدمة ممتازة وتوصيل سريع" });
                 using var response = await client.SendAsync(request);
@@ -140,7 +142,11 @@ internal static class FeedbackApiRegression
             using var limited = await Post(client, "/api/v1/reviews", new { name = "Nora", rating = 9, message = "خدمة ممتازة وتوصيل سريع" });
             using var limitedResponse = await client.SendAsync(limited);
             check(limitedResponse.StatusCode == HttpStatusCode.TooManyRequests && !string.IsNullOrWhiteSpace(await Message(limitedResponse)),
-                "Fourth public form post from one IP returns 429 with message");
+                "Public form post over the limit from one IP returns 429 with message");
+            // Each form has its own budget: the contact form still answers after the review form is limited.
+            using var contactRequest = await Post(client, "/api/v1/contact", new { name = "Nora", message = "رسالة طويلة كفاية للإرسال" });
+            using var contactResponse = await client.SendAsync(contactRequest);
+            check(contactResponse.StatusCode == HttpStatusCode.BadRequest, "Contact form keeps its own budget after reviews are limited");
         }
 
         // Idempotency-Key: a malformed key is rejected before the action (and before any database access).
@@ -196,10 +202,15 @@ internal static class FeedbackApiRegression
             using var noReceiptRequest = await Post(client, "/api/v1/checkout/receipt/review", new { rating = 5, message = "تجربة جميلة", allowName = true });
             using var noReceipt = await client.SendAsync(noReceiptRequest);
             check(noReceipt.StatusCode == HttpStatusCode.NotFound, "Receipt review without a receipt session returns 404");
+            for (var extra = 4; extra <= PublicFormLimit; extra++)
+            {
+                using var extraRequest = await Post(client, "/api/v1/checkout/receipt/review", new { rating = 9, allowName = false });
+                using var extraResponse = await client.SendAsync(extraRequest);
+            }
             using var limitedRequest = await Post(client, "/api/v1/checkout/receipt/review", new { rating = 5, allowName = false });
             using var limited = await client.SendAsync(limitedRequest);
             check(limited.StatusCode == HttpStatusCode.TooManyRequests && !string.IsNullOrWhiteSpace(await Message(limited)),
-                "Receipt review shares the public-forms rate limit");
+                "Receipt review is rate limited after 5 posts");
         }
 
         // Admin routes: anonymous and Customer blocked, Admin still needs antiforgery.

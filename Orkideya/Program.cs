@@ -30,10 +30,11 @@ builder.Services.AddRateLimiter(options =>
         ? RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = cartWriteLimit, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })
         : RateLimitPartition.GetNoLimiter("read"));
-    // Public reviews and contact form share one budget per client IP (spam protection).
+    // Public forms (contact, store review, receipt review): spam protection per client IP, with a separate budget
+    // per form so one form (or a few typos) never blocks another. 5 posts per form per 15 minutes.
     options.AddPolicy("public-forms", context => RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
+        (context.Connection.RemoteIpAddress?.ToString() ?? "unknown") + "|" + context.Request.Path.Value?.ToLowerInvariant(),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = PublicFormLimit, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
     // Password recovery gets its own, looser budget so a few typos do not lock a customer out for an hour.
     options.AddPolicy("account-recovery", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -355,4 +356,8 @@ app.MapGet("/health/ready", async (ApplicationDbContext context, CancellationTok
 });
 
 app.Run();
-public partial class Program { }
+public partial class Program
+{
+    /// <summary>Posts allowed per public form, per client IP, per 15 minutes.</summary>
+    public const int PublicFormLimit = 5;
+}
