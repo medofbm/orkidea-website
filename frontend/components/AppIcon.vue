@@ -2,7 +2,7 @@
 export const APP_ICON_NAMES = [
   'leaf', 'hand-heart', 'star', 'star-filled', 'truck', 'cash', 'phone', 'whatsapp', 'facebook',
   'instagram', 'cart', 'bag', 'user', 'user-plus', 'login', 'home', 'check', 'check-circle', 'x',
-  'chevron-left', 'chevron-right', 'heart', 'mail', 'menu', 'sparkle', 'shield', 'gift', 'droplet', 'flower'
+  'chevron-left', 'chevron-right', 'heart', 'mail', 'menu', 'sparkle', 'shield', 'gift', 'droplet', 'flower', 'eye', 'eye-off'
 ] as const
 export type AppIconName = typeof APP_ICON_NAMES[number]
 </script>
@@ -30,6 +30,8 @@ const paths: Record<AppIconName, string[]> = {
   login: ['M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5', 'M4 12h11', 'M11 8l4 4-4 4'],
   home: ['M3 11l9-8 9 8', 'M5 10v10h5v-6h4v6h5V10'],
   check: ['M5 12.5l4.5 4.5L19 7'],
+  eye: ['M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z', 'M12 9a3 3 0 1 0 .01 0'],
+  'eye-off': ['M3 3l18 18', 'M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1', 'M6.6 6.6C3.9 8.4 2 12 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6', 'M9.9 9.9a3 3 0 0 0 4.2 4.2'],
   'check-circle': ['M12 3a9 9 0 1 0 .01 0', 'M8 12.5l3 3 5-6'],
   x: ['M6 6l12 12M18 6L6 18'],
   'chevron-left': ['M15 5l-7 7 7 7'],
