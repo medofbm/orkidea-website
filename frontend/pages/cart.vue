@@ -64,7 +64,7 @@ useSeoMeta({ title: 'سلة أوركيديا', robots: 'noindex, nofollow' })
               </div>
               <button type="button" :disabled="busy" :aria-label="'حذف ' + item.name"
                 class="storefront-action inline-flex min-h-11 items-center gap-1.5 rounded-full border border-danger/30 bg-white px-3 text-sm font-semibold text-danger hover:enabled:bg-danger/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger disabled:opacity-50" @click="mutate('DELETE', item.variantId)">
-                <AppIcon name="x" :size="16" aria-hidden="true" /> حذف
+                <AppIcon name="trash" :size="16" aria-hidden="true" /> حذف
               </button>
               <p class="ms-auto text-end leading-tight"><span class="block text-xs text-ink-soft">الإجمالي</span><span class="price text-lg sm:text-xl"><bdi>{{ formatPrice(item.subtotal) }}</bdi> د.ل</span></p>
             </div>
