@@ -72,7 +72,10 @@ production up --detach --wait --wait-timeout 180 frontend
 sql() {
     production exec -T db sh -c 'export SQLCMDPASSWORD="$MSSQL_SA_PASSWORD"; exec /opt/mssql-tools18/bin/sqlcmd -S tcp:127.0.0.1,1433 -U sa -C -b -h -1 -W -d Orkidea'
 }
-test "$(sql <<< 'SET NOCOUNT ON; SELECT (SELECT COUNT(*) FROM Orders)+(SELECT COUNT(*) FROM Reviews)+(SELECT COUNT(*) FROM ContactMessages)+(SELECT COUNT(*) FROM StockMovements);')" = 0
+leftovers=$(sql <<< "SET NOCOUNT ON; SELECT CONCAT('orders=',(SELECT COUNT(*) FROM Orders),' reviews=',(SELECT COUNT(*) FROM Reviews),' messages=',(SELECT COUNT(*) FROM ContactMessages),' movements=',(SELECT COUNT(*) FROM StockMovements));")
+printf 'Production data after setup: %s
+' "$leftovers"
+test "$leftovers" = 'orders=0 reviews=0 messages=0 movements=0'
 test "$(sql <<< 'SET NOCOUNT ON; SELECT COUNT(*) FROM StockAccounts WHERE OnHand <> 0 OR Reserved <> 0;')" = 0
 test "$(sql <<< "SET NOCOUNT ON; SELECT COUNT(*) FROM AspNetUsers;")" = 1
 test "$(sql <<< "SET NOCOUNT ON; SELECT COUNT(*) FROM AspNetUsers u JOIN AspNetUserRoles ur ON ur.UserId=u.Id JOIN AspNetRoles r ON r.Id=ur.RoleId WHERE u.NormalizedEmail='OWNER-CI@ORKIDEA.TEST' AND r.Name='Admin';")" = 1
