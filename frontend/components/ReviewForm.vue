@@ -8,6 +8,10 @@ const errors = reactive<Record<'name' | 'rating' | 'message', string>>({ name: '
 const status = ref<Status>('idle')
 const serverMessage = ref('')
 const ratingLabels = ['ضعيف', 'مقبول', 'جيد', 'جيد جدًا', 'ممتاز']
+const ratingEmoji = ['😕', '😐', '🙂', '😊', '🤩']
+// Hovering star n previews 1..n; otherwise the chosen rating shows.
+const hover = ref(0)
+const shown = computed(() => hover.value || form.rating)
 
 function validate() {
   const name = form.name.trim()
@@ -62,15 +66,23 @@ async function submit() {
     <form v-else id="review-form" class="flex flex-col gap-4" novalidate @submit.prevent="submit">
       <fieldset class="m-0 border-0 p-0" :aria-describedby="errors.rating ? 'rf-rating-err' : undefined">
         <legend class="mb-1 text-sm font-bold text-ink">تقييمك</legend>
-        <div class="flex gap-1" role="radiogroup" aria-label="التقييم من 5 نجوم">
-          <label v-for="n in 5" :key="n" class="relative cursor-pointer rounded-full p-1 text-gold has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-brand">
+        <svg width="0" height="0" class="absolute" aria-hidden="true" focusable="false">
+          <defs><linearGradient id="rf-star" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE08A" /><stop offset="0.55" stop-color="#F2B93B" /><stop offset="1" stop-color="#C9871F" /></linearGradient></defs>
+        </svg>
+        <div class="flex gap-0.5" role="radiogroup" aria-label="التقييم من 5 نجوم" @mouseleave="hover = 0">
+          <label v-for="n in 5" :key="n" class="star-label" @mouseenter="hover = n">
             <input v-model.number="form.rating" type="radio" name="rating" :value="n" class="sr-only" :aria-invalid="!!errors.rating">
             <span class="sr-only">{{ n }} من 5 - {{ ratingLabels[n - 1] }}</span>
-            <svg width="36" height="36" viewBox="0 0 24 24" :fill="n <= form.rating ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-              <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" stroke-linejoin="round" />
+            <svg class="star-svg" :class="{ 'is-on': n <= shown }" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" stroke-linejoin="round" stroke-width="1.2"
+                :fill="n <= shown ? 'url(#rf-star)' : '#fff'" :stroke="n <= shown ? '#B8872B' : '#D9C7E0'" />
             </svg>
           </label>
         </div>
+        <p class="star-word mt-1 flex items-center gap-2" aria-hidden="true">
+          <template v-if="shown"><span class="text-xl">{{ ratingEmoji[shown - 1] }}</span>{{ ratingLabels[shown - 1] }}</template>
+        </p>
+        <p class="sr-only" aria-live="polite">{{ form.rating ? ratingLabels[form.rating - 1] : '' }}</p>
         <p v-if="errors.rating" id="rf-rating-err" role="alert" class="mt-1 text-sm font-semibold text-danger">{{ errors.rating }}</p>
       </fieldset>
 
