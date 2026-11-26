@@ -114,9 +114,7 @@ services:
       MSSQL_PID: Express
       MSSQL_MEMORY_LIMIT_MB: "2048"
       MSSQL_SA_PASSWORD: ${ORKIDEA_PROD_SQL_PASSWORD:?Set the production SQL administrator password}
-    volumes:
-      - database:/var/opt/mssql
-      - ${ORKIDEA_PROD_BACKUP_DIR:-/opt/orkidea-production-backups}:/var/opt/backups
+    volumes: ["database:/var/opt/mssql"]
     networks: [data]
     cpus: 2
     mem_limit: 3g
