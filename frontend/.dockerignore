@@ -13,6 +13,8 @@
 !composables/**
 !layouts/
 !layouts/**
+!middleware/
+!middleware/**
 !pages/
 !pages/**
 !plugins/

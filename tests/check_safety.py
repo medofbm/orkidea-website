@@ -66,5 +66,9 @@ checks['Twilio package is absent']='twilio' not in read('Orkideya.csproj').lower
 checks['WhatsApp notification service and worker are absent']=not (r/'Services'/'WhatsAppNotificationService.cs').exists() and not (r/'Application'/'Notifications').exists()
 checks['Program does not register a notification transport']='Notification' not in read('Program.cs')
 checks['Order placement writes no notification row']='Notifications.Add' not in read('Application/Orders/OrderService.cs')
+# Every Nuxt source folder must be allowed into the Docker build context, or the image silently lacks it.
+_fe=r.parent/'frontend'; _allow=(_fe/'.dockerignore').read_text(encoding='utf-8')
+_nuxt_dirs=[d for d in ['assets','components','composables','layouts','middleware','pages','plugins','server','types','utils','public','data'] if (_fe/d).is_dir()]
+checks['frontend .dockerignore allows every Nuxt source folder']=all('!'+d+'/**' in _allow for d in _nuxt_dirs)
 for name,passed in checks.items():print(('PASS' if passed else 'FAIL')+': '+name)
 raise SystemExit(0 if all(checks.values()) else 1)
