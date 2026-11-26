@@ -224,6 +224,29 @@ namespace Orkideya.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Orkideya.Models.AccountActivity", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LastSignInAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SignInCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("AccountActivities", t =>
+                        {
+                            t.HasCheckConstraint("CK_AccountActivity_SignInCount", "[SignInCount] >= 0");
+                        });
+                });
+
             modelBuilder.Entity("Orkideya.Models.Category", b =>
                 {
                     b.Property<int>("CategoryId")
@@ -995,6 +1018,15 @@ namespace Orkideya.Migrations
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Orkideya.Models.AccountActivity", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                        .WithOne()
+                        .HasForeignKey("Orkideya.Models.AccountActivity", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -22,6 +22,11 @@ test('built storefront renders catalogue data and the product gallery on the ser
       res.statusCode = valid ? 200 : 400
       return res.end(JSON.stringify({ success: valid }))
     }
+    const accountsPath = req.url?.match(/^\/api\/v1\/admin\/(users|admins)(\/[^?]*)?(\?.*)?$/)
+    if (accountsPath) {
+      res.statusCode = req.headers.cookie === 'qa-session=synthetic' ? 200 : 401
+      return res.end(JSON.stringify({ method: req.method, path: accountsPath[1] + (accountsPath[2] ?? '') }))
+    }
     const orderWrite = req.url?.match(/^\/api\/v1\/admin\/orders\/1\/(status|stock|delivery)$/)?.[1]
     if (orderWrite && req.method === 'POST') {
       const chunks = []
@@ -195,6 +200,20 @@ test('built storefront renders catalogue data and the product gallery on the ser
       assert.equal(adminWrite.status, 409, path + ' forwards authenticated payload and preserves conflicts')
       assert.ok(adminWrite.headers.get('cache-control')?.includes('no-store'))
     }
+    const accountCalls = [['GET', '/api/admin/users?search=qa&page=2&role=admins', 'users'],
+      ['GET', '/api/admin/users/abc-123', 'users/abc-123'], ['GET', '/api/admin/admins', 'admins'],
+      ['POST', '/api/admin/admins', 'admins'], ['POST', '/api/admin/admins/abc-123/remove', 'admins/abc-123/remove']]
+    for (const [method, path, forwarded] of accountCalls) {
+      const response = await fetch(origin + path, { method, headers: { Cookie: 'qa-session=synthetic' } })
+      assert.equal(response.status, 200, method + ' ' + path + ' is forwarded')
+      assert.deepEqual(await response.json(), { method, path: forwarded })
+    }
+    for (const [method, path] of [['POST', '/api/admin/users'], ['POST', '/api/admin/users/abc-123'],
+      ['POST', '/api/admin/admins/abc-123/delete'], ['GET', '/api/admin/admins/abc-123'], ['GET', '/api/admin/users/a.b']]) {
+      assert.equal((await fetch(origin + path, { method })).status, 404, method + ' ' + path + ' is not proxied')
+    }
+    const adminsPage = await (await fetch(origin + '/admin/admins')).text()
+    assert.ok(adminsPage.includes('الحسابات') && adminsPage.includes('/admin/users'), 'admin sidebar lists the accounts pages')
     const queuePath = '/api/admin/delivery?state=Returned&search=%231'
     const queuePage = await (await fetch(origin + '/admin/delivery')).text()
     assert.ok(queuePage.includes('التوصيل والرواجع'))

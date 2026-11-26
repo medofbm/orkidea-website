@@ -71,6 +71,7 @@ services:
       Email__FromEmail: ${ORKIDEA_EMAIL_FROM:-noreply@orkidea.ly}
       Email__FromName: "أوركيديا"
       App__PublicBaseUrl: ${ORKIDEA_PROD_PUBLIC_BASE_URL:-https://orkidea.ly}
+      Admin__SuperAdminEmail: ${ORKIDEA_PROD_ADMIN_EMAIL:-}
       ReverseProxy__KnownProxies__0: ${ORKIDEA_PROD_PROXY_IP:?Set the frontend address}
       ConnectionStrings__DefaultConnection: Server=db;Database=Orkidea;User Id=orkidea_app;Password=${ORKIDEA_PROD_APP_PASSWORD:?Set the production app password};Encrypt=True;TrustServerCertificate=True
     depends_on:
