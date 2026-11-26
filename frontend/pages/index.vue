@@ -8,34 +8,17 @@ function positiveInteger(value: unknown, max: number) {
 }
 const page = computed(() => positiveInteger(route.query.page, 10000) ?? 1)
 const categoryId = computed(() => positiveInteger(route.query.categoryId, 2147483647))
-const sortOptions = [
-  { value: 'default', label: 'الافتراضي' },
-  { value: 'newest', label: 'الأحدث' },
-  { value: 'price-asc', label: 'السعر: من الأقل' },
-  { value: 'price-desc', label: 'السعر: من الأعلى' },
-  { value: 'name', label: 'الاسم' }
-]
-const sort = computed(() => {
-  const s = typeof route.query.sort === 'string' ? route.query.sort : ''
-  return sortOptions.some(o => o.value === s) && s !== 'default' ? s : undefined
-})
 const { data, status, error, refresh } = await useFetch<CataloguePage>(
   () => useRuntimeConfig().public.apiBase + '/products',
-  { query: { page, categoryId, sort } }
+  { query: { page, categoryId } }
 )
-// Toolbar state lives in the URL (sort) next to page and categoryId; changing sort resets page.
-function catalogueQuery(extra: { page?: number, sort?: string, categoryId?: number } = {}) {
-  const s = 'sort' in extra ? extra.sort : sort.value
+// Page and category live in the URL; picking another category goes back to page 1.
+function catalogueQuery(extra: { page?: number, categoryId?: number } = {}) {
   const c = 'categoryId' in extra ? extra.categoryId : categoryId.value
   const query: Record<string, string | number> = {}
   if (extra.page) query.page = extra.page
   if (c) query.categoryId = c
-  if (s && s !== 'default') query.sort = s
   return query
-}
-function onSortChange(event: Event) {
-  const value = (event.target as HTMLSelectElement).value
-  navigateTo({ query: catalogueQuery({ sort: value }), hash: '#catalogue-heading' }, { replace: true })
 }
 const products = computed(() => (data.value?.items ?? []).map(product => ({
   ...product,
@@ -54,8 +37,6 @@ const stats = [
   { value: 'يدوي', label: 'صنع' },
   { value: '5', label: 'تقييم', icon: 'star-filled' }
 ]
-const gridRef = ref<HTMLElement | null>(null)
-useReveal(gridRef, { selector: '.reveal', stagger: 60 })
 // Steps follow the real flow: guest checkout (name, WhatsApp, delivery city), total shown before confirming, cash on delivery.
 const steps = [
   { icon: 'bag', title: 'اختاري المنتج والحجم', text: 'تصفحي منتجاتنا واختاري الحجم اللي يناسبك.' },
@@ -82,9 +63,9 @@ const whatsappHref = computed(() => {
   return digits ? `https://wa.me/${digits}` : ''
 })
 const contactLinks = computed(() => [
-  { label: 'واتساب', href: whatsappHref.value },
-  { label: 'فيسبوك', href: facebookUrl ? String(facebookUrl) : '' },
-  { label: 'إنستغرام', href: instagramUrl ? String(instagramUrl) : '' }
+  { key: 'whatsapp' as const, label: 'واتساب', hint: 'أسرع رد، اكتبي لنا وقت ما تحبي', color: '#25D366', href: whatsappHref.value },
+  { key: 'instagram' as const, label: 'إنستغرام', hint: 'شوفي صور منتجاتنا وجديدنا', color: 'linear-gradient(135deg,#f58529,#dd2a7b 50%,#8134af)', href: instagramUrl ? String(instagramUrl) : '' },
+  { key: 'facebook' as const, label: 'فيسبوك', hint: 'تابعينا وشوفي آراء الزبائن', color: '#1877f2', href: facebookUrl ? String(facebookUrl) : '' }
 ].filter(link => link.href))
 // Visible reviews (site + imported Facebook comments) come only from the API, client-side.
 type ApiReview = { id: number, message: string, rating: number, source: 'facebook' | 'site', name: string | null }
@@ -159,10 +140,10 @@ useSeoMeta({
     <!-- Categories -->
     <section id="categories" tabindex="-1" aria-labelledby="categories-heading" class="mt-12 scroll-mt-4 sm:mt-16">
       <SectionHeader v-reveal id="categories-heading" title="تسوقي" highlight="حسب الفئة" eyebrow="الفئات" />
-      <div class="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:justify-center sm:gap-5 sm:*:w-56 lg:*:w-64">
-        <CategoryCard v-reveal.zoom name="كل المنتجات" to="/#catalogue-heading" image="/brand/cat-all.webp" :active="categoryId === undefined" />
-        <CategoryCard v-for="(category, i) in data?.categories ?? []" :key="category.id" v-reveal.zoom="(i + 1) * 80" :name="category.name"
-          :to="`/?categoryId=${category.id}#catalogue-heading`" :image="categoryImage(category.name)" :active="categoryId === category.id" />
+      <div class="mx-auto mt-6 grid max-w-3xl grid-cols-2 justify-center gap-3 sm:flex sm:flex-wrap sm:justify-center sm:gap-5 sm:*:w-56 lg:*:w-64">
+        <CategoryCard v-for="(category, i) in data?.categories ?? []" :key="category.id" v-reveal.zoom="i * 80" :name="category.name"
+          :to="categoryId === category.id ? '/#catalogue-heading' : `/?categoryId=${category.id}#catalogue-heading`"
+          :image="categoryImage(category.name)" :active="categoryId === category.id" />
       </div>
     </section>
 
@@ -179,15 +160,7 @@ useSeoMeta({
     <section class="mt-12 sm:mt-16" aria-labelledby="catalogue-heading">
       <h2 id="catalogue-heading" tabindex="-1" class="mb-4 scroll-mt-4 text-2xl font-bold text-ink sm:text-3xl">كل منتجاتنا</h2>
 
-      <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <p v-if="data?.items.length && !error" class="pb-2.5 text-sm text-ink-soft">عدد المنتجات <bdi class="font-bold">{{ data.total }}</bdi></p>
-        <div class="ms-auto w-44 sm:w-56">
-          <label for="catalogue-sort" class="mb-1 block text-sm font-semibold text-ink">الترتيب</label>
-          <select id="catalogue-sort" class="field min-h-11 w-full" :value="sort ?? 'default'" @change="onSortChange">
-            <option v-for="option in sortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-          </select>
-        </div>
-      </div>
+      <p v-if="data?.items.length && !error" class="mb-5 text-sm text-ink-soft">عدد المنتجات <bdi class="font-bold text-brand">{{ data.total }}</bdi></p>
 
       <div v-if="status === 'pending'" role="status" aria-label="جاري تحميل المنتجات"
         class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
@@ -212,8 +185,8 @@ useSeoMeta({
             عرض كل المنتجات
           </NuxtLink>
         </div>
-        <div v-else ref="gridRef" class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-          <ProductCard v-for="product in products" :key="product.id" :product="product" class="reveal" />
+        <div v-else :key="`${categoryId ?? 0}-${page}`" class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
+          <ProductCard v-for="product in products" :key="product.id" :product="product" />
         </div>
         <nav v-if="data && data.total > data.pageSize" class="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-lavender-deep/50 pt-5" aria-label="صفحات المنتجات">
           <NuxtLink v-if="page > 1" :to="{ query: catalogueQuery({ page: page - 1 }), hash: '#catalogue-heading' }" class="btn-secondary">السابق</NuxtLink>
@@ -270,25 +243,52 @@ useSeoMeta({
       </dialog>
     </section>
 
-    <!-- About -->
-    <section id="about-orkidea" tabindex="-1" aria-labelledby="about-heading" class="mt-10 scroll-mt-4 px-1 text-center">
-      <h2 v-reveal id="about-heading" class="text-2xl font-bold text-ink sm:text-3xl">أوركيديا</h2>
-      <p class="mx-auto mt-3 max-w-xl text-ink-soft">أوركيديا متجر ليبي للزيوت والصابون الطبيعية. منتجاتنا طبيعية.</p>
+    <!-- About + Contact -->
+    <section id="about-orkidea" tabindex="-1" aria-labelledby="about-heading" class="relative mt-14 scroll-mt-4 overflow-hidden rounded-[2rem] bg-gradient-brand px-5 pt-10 pb-16 text-white sm:px-10 sm:pt-14 sm:pb-20">
+      <img src="/brand/flower-white.png" alt="" aria-hidden="true" width="320" height="320" loading="lazy" class="pointer-events-none absolute -bottom-20 -end-16 size-64 rotate-12 opacity-[0.08] sm:size-80">
+      <span class="pointer-events-none absolute -top-20 -start-16 size-56 rounded-full bg-lilac/25 blur-3xl" aria-hidden="true"></span>
+      <div class="relative mx-auto flex max-w-2xl flex-col items-center text-center">
+        <span class="grid size-16 place-items-center rounded-full bg-white/15 ring-1 ring-white/30 backdrop-blur-sm">
+          <img src="/brand/flower-white.png" alt="" width="40" height="40" class="size-10 object-contain motion-safe:animate-float">
+        </span>
+        <h2 v-reveal id="about-heading" class="mt-4 text-2xl font-bold sm:text-3xl">أوركيديا، الطبيعة بين إيديك</h2>
+        <p class="mt-3 text-base leading-8 text-white/90">من ليبيا لبيتك: زيوت وصابون طبيعي نصنعوه بعناية، من مكونات نقية بدون تعقيد. تختاري منتجك، نوصلوه لك، وتدفعي عند الاستلام.</p>
+        <ul class="mt-5 flex flex-wrap justify-center gap-2" aria-label="مزايا أوركيديا">
+          <li class="inline-flex min-h-9 items-center gap-2 rounded-full bg-white/15 px-4 text-sm font-semibold ring-1 ring-white/25"><AppIcon name="leaf" :size="16" />طبيعي 100%</li>
+          <li class="inline-flex min-h-9 items-center gap-2 rounded-full bg-white/15 px-4 text-sm font-semibold ring-1 ring-white/25"><AppIcon name="hand-heart" :size="16" />صنع يدوي</li>
+          <li class="inline-flex min-h-9 items-center gap-2 rounded-full bg-white/15 px-4 text-sm font-semibold ring-1 ring-white/25"><AppIcon name="cash" :size="16" />الدفع عند الاستلام</li>
+        </ul>
+      </div>
     </section>
 
-    <!-- Contact -->
-    <section id="contact" tabindex="-1" aria-labelledby="contact-heading" class="mt-10 mb-6 scroll-mt-4 rounded-[var(--radius-card)] bg-lavender px-5 py-8 sm:px-10">
+    <section id="contact" tabindex="-1" aria-labelledby="contact-heading" class="relative z-10 mx-auto -mt-8 mb-6 max-w-5xl scroll-mt-4 rounded-[var(--radius-card)] bg-lavender px-4 py-8 shadow-soft sm:px-8">
       <SectionHeader v-reveal id="contact-heading" title="هل لديكِ" highlight="استفسار؟" subtitle="تواصلي معانا وبنرد عليك في أقرب وقت" />
-      <div class="mt-6 grid gap-6 lg:grid-cols-2 lg:items-start">
+      <div class="mt-6 grid gap-6 lg:grid-cols-[1.2fr_1fr] lg:items-start">
         <ContactForm />
-        <div class="flex flex-col gap-3 text-center">
-          <p class="font-bold text-ink">أو تواصلي معانا مباشرة</p>
+        <div class="flex flex-col gap-3">
+          <p class="flex items-center gap-2 font-bold text-ink"><AppIcon name="sparkle" :size="18" class="text-brand" />أو تواصلي معانا مباشرة</p>
           <template v-if="contactLinks.length">
-            <a v-for="link in contactLinks" :key="link.label" :href="link.href" target="_blank" rel="noopener noreferrer" class="btn-secondary bg-white">{{ link.label }}</a>
+            <a v-for="link in contactLinks" :key="link.key" :href="link.href" target="_blank" rel="noopener noreferrer"
+              class="contact-channel group flex min-h-16 items-center gap-4 rounded-[var(--radius-card)] bg-white p-3 shadow-soft outline-none ring-1 ring-brand/10 hover:ring-brand/40 focus-visible:ring-4 focus-visible:ring-brand/40">
+              <span class="grid size-12 shrink-0 place-items-center rounded-full text-white" :style="{ background: link.color }" aria-hidden="true"><AppIcon :name="link.key" :size="24" /></span>
+              <span class="min-w-0 flex-1">
+                <span class="block font-bold text-ink">{{ link.label }}</span>
+                <span class="block text-sm text-ink-soft">{{ link.hint }}</span>
+              </span>
+              <AppIcon name="chevron-left" :size="20" class="shrink-0 text-brand motion-safe:transition-transform motion-safe:group-hover:-translate-x-1" aria-hidden="true" />
+            </a>
           </template>
-          <p v-else class="text-ink-soft">قنوات التواصل ستتوفر قريبًا.</p>
+          <p v-else class="rounded-[var(--radius-card)] bg-white p-4 text-ink-soft">قنوات التواصل ستتوفر قريبًا.</p>
+          <p class="flex items-start gap-2 text-sm text-ink-soft"><AppIcon name="truck" :size="18" class="mt-0.5 shrink-0 text-brand" />توصيل لكل ليبيا والدفع عند الاستلام.</p>
         </div>
       </div>
     </section>
   </div>
 </template>
+
+<style scoped>
+@media (prefers-reduced-motion: no-preference) {
+  .contact-channel { transition: transform 250ms ease-out, box-shadow 250ms ease-out; }
+  .contact-channel:hover, .contact-channel:focus-visible { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+}
+</style>
