@@ -73,6 +73,8 @@ internal static class PasswordResetRegression
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Initialization:Run"] = "false",
+                    ["ConnectionStrings:DefaultConnection"] = "Server=127.0.0.1,1;Database=OrkideaTests;Integrated Security=true;Connect Timeout=1",
+                    ["DataProtection:KeysPath"] = Path.Combine(Path.GetTempPath(), "orkidea-test-keys"),
                     ["AllowedHosts"] = "localhost",
                     ["App:PublicBaseUrl"] = "https://shop.example.test",
                     ["Logging:LogLevel:Default"] = "Warning"

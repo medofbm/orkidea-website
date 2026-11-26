@@ -74,6 +74,7 @@ public partial class CheckoutController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("checkout-place")]
     public Task<IActionResult> PlaceOrder([Bind(Prefix = "Input")] CheckoutInput input) =>
         PlaceOrderCore(input, null);
 

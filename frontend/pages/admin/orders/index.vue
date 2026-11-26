@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AdminOrdersPage } from '~/types/admin'
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: 'admin', middleware: 'admin' })
 useSeoMeta({ title: 'طلبات أوركيديا' })
 
 const route = useRoute()

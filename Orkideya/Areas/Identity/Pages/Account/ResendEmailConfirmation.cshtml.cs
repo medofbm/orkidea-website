@@ -12,11 +12,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Orkideya.Services.Email;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace Orkideya.Areas.Identity.Pages.Account
 {
     [AllowAnonymous]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("account-recovery")]
     public class ResendEmailConfirmationModel : PageModel
     {
         private readonly UserManager<IdentityUser> _userManager;
@@ -71,11 +73,15 @@ namespace Orkideya.Areas.Identity.Pages.Account
             var userId = await _userManager.GetUserIdAsync(user);
             var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-            var callbackUrl = Url.Page(
+            var callbackUrl = this.PublicPageLink(Url.Page(
                 "/Account/ConfirmEmail",
                 pageHandler: null,
-                values: new { userId = userId, code = code },
-                protocol: Request.Scheme);
+                values: new { userId = userId, code = code }));
+            if (callbackUrl is null)
+            {
+                ModelState.AddModelError(string.Empty, "Verification email sent. Please check your email.");
+                return Page();
+            }
             await _emailSender.SendEmailAsync(
                 Input.Email,
                 "Confirm your email",

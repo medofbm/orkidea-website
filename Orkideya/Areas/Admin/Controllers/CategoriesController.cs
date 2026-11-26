@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Orkideya.Data;
 using Orkideya.Models;
 
@@ -16,10 +17,12 @@ namespace Orkideya.Areas.Admin.Controllers
     public class CategoriesController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<CategoriesController> _logger;
 
-        public CategoriesController(ApplicationDbContext context)
+        public CategoriesController(ApplicationDbContext context, ILogger<CategoriesController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         // GET: Admin/Categories
@@ -103,7 +106,8 @@ namespace Orkideya.Areas.Admin.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"خطأ: {ex.Message}" });
+                _logger.LogError(ex, "Admin category save failed.");
+                return Json(new { success = false, message = "تعذر تنفيذ العملية. حاول مرة ثانية." });
             }
         }
 
@@ -188,7 +192,8 @@ namespace Orkideya.Areas.Admin.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"خطأ: {ex.Message}" });
+                _logger.LogError(ex, "Admin category update failed.");
+                return Json(new { success = false, message = "تعذر تنفيذ العملية. حاول مرة ثانية." });
             }
         }
         

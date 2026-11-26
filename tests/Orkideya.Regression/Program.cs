@@ -13,6 +13,7 @@ CartSummaryRegression.Run(Check);
 await HttpSecurityRegression.Run(Check);
 await FeedbackApiRegression.Run(Check);
 await PasswordResetRegression.Run(Check);
+await SecurityHardeningRegressionB.Run(Check);
 var order = new Order {
     OrderId = 123, CustomerName = "=1+1", WhatsAppNumber = "+218000000000",
     ShippingAddress = "Synthetic test address", City = "Tripoli", ShippingCost = 10m,
@@ -131,6 +132,7 @@ ProductImageResizerRegression.Run(Check);
 await SabilReadRegression.Run(Check);
 SabilCatalogueRegression.Run(Check);
 await SabilRateImportRegression.Run(Check);
+SecurityHardeningRegressionA.Run(Check);
 SabilQuoteRegression.Run(Check);
 SabilShippingFeeRegression.Run(Check);
 CheckoutQuoteContextRegression.Run(Check);

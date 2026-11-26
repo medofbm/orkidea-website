@@ -29,6 +29,7 @@ public partial class CheckoutController
 
     [HttpPost("/api/v1/checkout/orders")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("checkout-place")]
     public async Task<IActionResult> ApiOrder([FromBody] CheckoutApiOrder order)
     {
         if (order?.Input is null || order.Review is null ||

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AdminDeliveriesPage } from '~/types/admin'
 
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: 'admin', middleware: 'admin' })
 useSeoMeta({ title: 'التوصيل والرواجع' })
 
 const states = ['HandedOver', 'Returning', 'Returned', 'Delivered']

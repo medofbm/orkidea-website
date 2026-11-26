@@ -1,6 +1,7 @@
 using Orkideya.Application.Cart;
 using Orkideya.Application.Inventory;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Orkideya.Data;
 using Orkideya.Models;
@@ -25,6 +26,7 @@ namespace Orkideya.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("cart-write")]
         public async Task<JsonResult> AddToCartAjax(int variantId, int quantity = 1)
         {
             if (variantId <= 0 || !CartLimits.CanAdd(0, quantity))
@@ -78,6 +80,7 @@ namespace Orkideya.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("cart-write")]
         public IActionResult RemoveFromCart(int id)
         {
             List<CartItem> cart = GetCart();
@@ -94,6 +97,7 @@ namespace Orkideya.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("cart-write")]
         public IActionResult IncreaseQuantity(int id)
         {
             List<CartItem> cart = GetCart();
@@ -110,6 +114,7 @@ namespace Orkideya.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("cart-write")]
         public IActionResult DecreaseQuantity(int id)
         {
             List<CartItem> cart = GetCart();

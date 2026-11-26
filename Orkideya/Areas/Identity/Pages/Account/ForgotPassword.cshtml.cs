@@ -12,10 +12,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Orkideya.Services.Email;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace Orkideya.Areas.Identity.Pages.Account
 {
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("account-recovery")]
     public class ForgotPasswordModel : PageModel
     {
         private readonly UserManager<IdentityUser> _userManager;
@@ -64,11 +66,12 @@ namespace Orkideya.Areas.Identity.Pages.Account
                 // visit https://go.microsoft.com/fwlink/?LinkID=532713
                 var code = await _userManager.GeneratePasswordResetTokenAsync(user);
                 code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-                var callbackUrl = Url.Page(
+                var callbackUrl = this.PublicPageLink(Url.Page(
                     "/Account/ResetPassword",
                     pageHandler: null,
-                    values: new { area = "Identity", code },
-                    protocol: Request.Scheme);
+                    values: new { area = "Identity", code }));
+
+                if (callbackUrl is null) return RedirectToPage("./ForgotPasswordConfirmation"); // no public base URL: never build links from Host
 
                 await _emailSender.SendEmailAsync(
                     Input.Email,
