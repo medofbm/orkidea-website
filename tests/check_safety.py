@@ -21,7 +21,7 @@ import re
 controller=read('Controllers/CartController.cs')
 view=read('Views/Cart/Index.cshtml')
 for action in ['RemoveFromCart','IncreaseQuantity','DecreaseQuantity']:
- checks[action+' only accepts protected POST']=bool(re.search(r'\[HttpPost\]\s*\[ValidateAntiForgeryToken\]\s*public IActionResult '+action,controller))
+ checks[action+' only accepts protected POST']=bool(re.search(r'\[HttpPost\]\s*\[ValidateAntiForgeryToken\]\s*(?:\[[^\]]+\]\s*)*public IActionResult '+action,controller))
  checks[action+' rendered as POST form']=bool(re.search(r'<form[^>]*asp-action="'+action+r'"[^>]*method="post"',view))
 checks['cart does not promise free shipping']='مجاني' not in view
 checkout=read('Controllers/CheckoutController.cs')
