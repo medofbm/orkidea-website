@@ -193,6 +193,7 @@ jobs:
           test "$(docker image inspect "$image" --format '{{.Config.User}}')" = node
           docker run --rm --entrypoint sh "$image" -c 'test ! -e /src && test ! -e /app/.env && test ! -e /app/tests'
           bash tests/check-vue-preview-compose.sh
+          bash tests/check-production-compose.sh
       - name: Save the verified Vue image for controlled transfer
         run: docker save "orkidea-vue-preview:${GITHUB_SHA}" | gzip > orkidea-vue-preview-image.tar.gz
       - uses: actions/upload-artifact@v4
