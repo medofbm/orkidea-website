@@ -1,0 +1,140 @@
+name: orkidea-production
+# Public store on orkidea.ly. Separate project, network, volumes, key ring and database from the Vue preview.
+# SQL Server runs the free Express edition (licensed for production use); the preview keeps Developer.
+x-backend: &backend
+  image: ${ORKIDEA_PROD_BACKEND_IMAGE:?Set the tested backend image}
+  pull_policy: never
+  init: true
+  user: "1654:1654"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  tmpfs: ["/tmp:rw,nosuid,size=128m"]
+  cpus: 1.5
+  mem_limit: 768m
+  pids_limit: 256
+  volumes:
+    - keys:/var/orkidea/keys
+    - media:/app/wwwroot/images/products
+  logging: &logs
+    driver: json-file
+    options: {max-size: 10m, max-file: "5"}
+x-backend-env: &backend-env
+  ASPNETCORE_ENVIRONMENT: Production
+  ASPNETCORE_HTTP_PORTS: "8080"
+  ASPNETCORE_HTTPS_PORT: "443"
+  AllowedHosts: web;localhost;127.0.0.1
+  Carriers__Sabil__QuoteEnabled: "false"
+  Carriers__Sabil__ReadEnabled: ${ORKIDEA_SABIL_READ_ENABLED:-false}
+  Carriers__Sabil__ApiKey: ${ORKIDEA_SABIL_API_KEY:-}
+  Carriers__Sabil__AccountId: ${ORKIDEA_SABIL_ACCOUNT_ID:-}
+  DataProtection__KeysPath: /var/orkidea/keys
+  DataProtection__ApplicationName: Orkidea.Production
+
+services:
+  frontend:
+    image: ${ORKIDEA_PROD_FRONTEND_IMAGE:?Set the tested frontend image}
+    pull_policy: never
+    init: true
+    user: "1000:1000"
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,nosuid,size=64m"]
+    cpus: 1
+    mem_limit: 512m
+    pids_limit: 128
+    logging: *logs
+    ports: ["127.0.0.1:${ORKIDEA_PROD_PORT:?Choose a free loopback port}:3000"]
+    environment:
+      NUXT_BACKEND_ORIGIN: http://web:8080
+      NUXT_PUBLIC_PREVIEW: "false"
+      NUXT_PUBLIC_SITE_URL: ${ORKIDEA_PROD_PUBLIC_BASE_URL:-https://orkidea.ly}
+      NUXT_PUBLIC_WHATSAPP_NUMBER: ${ORKIDEA_PUBLIC_WHATSAPP_NUMBER:-}
+    networks:
+      front:
+        ipv4_address: ${ORKIDEA_PROD_PROXY_IP:?Set an address within the production subnet}
+    depends_on:
+      web: {condition: service_healthy}
+  web:
+    <<: *backend
+    restart: unless-stopped
+    networks: [front, data]
+    environment:
+      <<: *backend-env
+      Initialization__Run: "false"
+      Email__Smtp__Host: ${ORKIDEA_EMAIL_SMTP_HOST:-}
+      Email__Smtp__Port: ${ORKIDEA_EMAIL_SMTP_PORT:-587}
+      Email__Smtp__Username: ${ORKIDEA_EMAIL_SMTP_USERNAME:-}
+      Email__Smtp__Password: ${ORKIDEA_EMAIL_SMTP_PASSWORD:-}
+      Email__FromEmail: ${ORKIDEA_EMAIL_FROM:-noreply@orkidea.ly}
+      Email__FromName: "أوركيديا"
+      App__PublicBaseUrl: ${ORKIDEA_PROD_PUBLIC_BASE_URL:-https://orkidea.ly}
+      ReverseProxy__KnownProxies__0: ${ORKIDEA_PROD_PROXY_IP:?Set the frontend address}
+      ConnectionStrings__DefaultConnection: Server=db;Database=Orkidea;User Id=orkidea_app;Password=${ORKIDEA_PROD_APP_PASSWORD:?Set the production app password};Encrypt=True;TrustServerCertificate=True
+    depends_on:
+      db: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+  # Runs on every `up` of web: applies pending EF migrations as the migration user, then exits 0. Never seeds.
+  migrate:
+    <<: *backend
+    restart: "no"
+    networks: [data]
+    environment:
+      <<: *backend-env
+      Initialization__Run: "true"
+      Initialization__SeedPreviewData: "false"
+      Initialization__SeedDefaultShippingRates: "false"
+      ConnectionStrings__DefaultConnection: Server=db;Database=Orkidea;User Id=orkidea_migrate;Password=${ORKIDEA_PROD_MIGRATION_PASSWORD:?Set the production migration password};Encrypt=True;TrustServerCertificate=True
+    depends_on:
+      db: {condition: service_healthy}
+  # One-time: creates the owner's administrator account. The password is passed only for this run.
+  initialize:
+    <<: *backend
+    profiles: [maintenance]
+    restart: "no"
+    networks: [data]
+    environment:
+      <<: *backend-env
+      Initialization__Run: "true"
+      Initialization__SeedPreviewData: "false"
+      Initialization__SeedDefaultShippingRates: "false"
+      Bootstrap__AdminEmail: ${ORKIDEA_PROD_ADMIN_EMAIL:-}
+      Bootstrap__AdminPassword: ${ORKIDEA_PROD_ADMIN_PASSWORD:-}
+      ConnectionStrings__DefaultConnection: Server=db;Database=Orkidea;User Id=orkidea_migrate;Password=${ORKIDEA_PROD_MIGRATION_PASSWORD:?Set the production migration password};Encrypt=True;TrustServerCertificate=True
+    depends_on:
+      db: {condition: service_healthy}
+  db:
+    image: mcr.microsoft.com/mssql/server@sha256:cf8f0ab2ebe61feec2eed2629061a07d247f791c2a8ddda74a4ac9f06a291718
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Express
+      MSSQL_MEMORY_LIMIT_MB: "2048"
+      MSSQL_SA_PASSWORD: ${ORKIDEA_PROD_SQL_PASSWORD:?Set the production SQL administrator password}
+    volumes:
+      - database:/var/opt/mssql
+      - ${ORKIDEA_PROD_BACKUP_DIR:-/opt/orkidea-production-backups}:/var/opt/backups
+    networks: [data]
+    cpus: 2
+    mem_limit: 3g
+    pids_limit: 512
+    security_opt: ["no-new-privileges:true"]
+    logging: *logs
+    healthcheck:
+      test: [CMD-SHELL, 'SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S tcp:127.0.0.1,1433 -U sa -C -Q "SELECT 1" -b -o /dev/null']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+volumes:
+  database:
+  keys:
+  media:
+networks:
+  front:
+    ipam:
+      config:
+        - subnet: ${ORKIDEA_PROD_SUBNET:?Choose an unused Docker subnet}
+  data:
+    internal: true

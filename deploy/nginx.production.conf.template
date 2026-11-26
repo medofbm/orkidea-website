@@ -1,0 +1,54 @@
+# Public store: orkidea.ly (www redirects to the bare domain). Install only after DNS points here and the certificate exists.
+# __SOFT_LAUNCH__ lines keep the store behind the existing Basic Auth file until the owner opens it to the public.
+limit_req_zone $binary_remote_addr zone=orkidea_prod_api:10m rate=10r/s;
+server {
+    listen 80;
+    server_name orkidea.ly www.orkidea.ly;
+    location ^~ /.well-known/acme-challenge/ { root __ACME_WEBROOT__; }
+    location / { return 301 https://orkidea.ly$request_uri; }
+}
+server {
+    listen 443 ssl;
+    server_name www.orkidea.ly;
+    ssl_certificate __FULLCHAIN__;
+    ssl_certificate_key __TLS_KEY__;
+    return 301 https://orkidea.ly$request_uri;
+}
+server {
+    listen 443 ssl http2;
+    server_name orkidea.ly;
+    ssl_certificate __FULLCHAIN__;
+    ssl_certificate_key __TLS_KEY__;
+    __SOFT_LAUNCH__auth_basic "Orkidea";
+    __SOFT_LAUNCH__auth_basic_user_file __HTPASSWD__;
+    client_max_body_size 6m;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    add_header Strict-Transport-Security "max-age=15552000" always;
+    # The Nuxt app sets the enforced Content-Security-Policy itself (frontend/server/middleware/security-headers.ts).
+    location /health/ { return 404; }
+    location /api/ {
+        limit_req zone=orkidea_prod_api burst=30 nodelay;
+        limit_req_status 429;
+        proxy_pass http://127.0.0.1:__LOOPBACK_PORT__;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Authorization "";
+        proxy_set_header Connection "";
+        proxy_http_version 1.1;
+        proxy_read_timeout 60s;
+    }
+    location / {
+        proxy_pass http://127.0.0.1:__LOOPBACK_PORT__;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Authorization "";
+        proxy_set_header Connection "";
+        proxy_http_version 1.1;
+        proxy_read_timeout 60s;
+    }
+}
