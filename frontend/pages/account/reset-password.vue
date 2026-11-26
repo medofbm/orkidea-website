@@ -80,7 +80,7 @@ useSeoMeta({ title: 'تغيير كلمة المرور - أوركيديا', robot
           <ul v-if="errors.length" class="mt-1 list-disc ps-5 text-sm">
             <li v-for="item in errors" :key="item">{{ item }}</li>
           </ul>
-          <NuxtLink to="/account/forgot-password" class="mt-2 inline-block text-sm underline">طلب رابط جديد</NuxtLink>
+          <NuxtLink to="/account/forgot-password" class="chip mt-2 text-danger">طلب رابط جديد</NuxtLink>
         </div>
         <form @submit.prevent="submit">
           <fieldset :disabled="pending" class="space-y-4">

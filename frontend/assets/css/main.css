@@ -116,6 +116,36 @@ button, a { -webkit-tap-highlight-color: transparent; }
     select:not([multiple]):not([size]) { transition: border-color 160ms ease-out, box-shadow 160ms ease-out, background-color 160ms ease-out; }
   }
 
+  /* Open list: browsers with customizable select (Chrome/Edge/Brave 135+, Android Chrome) draw the popup in the brand
+     style; others keep the native list. Same <select> markup, so keyboard, forms and screen readers are unchanged. */
+  @supports (appearance: base-select) {
+    select:not([multiple]):not([size]), select:not([multiple]):not([size])::picker(select) { appearance: base-select; }
+    select:not([multiple]):not([size])::picker-icon { display: none; }
+    select:not([multiple]):not([size])::picker(select) {
+      margin-block: 6px; padding: 6px; border: 1px solid rgb(117 29 130 / 0.15); border-radius: 1rem;
+      background: #fff; box-shadow: 0 18px 40px -12px rgb(117 29 130 / 0.35), 0 4px 12px -6px rgb(43 15 48 / 0.12);
+      max-height: min(22rem, 60dvh); overflow-y: auto; scrollbar-width: thin;
+    }
+    select:not([multiple]):not([size]) option {
+      display: flex; align-items: center; gap: 0.6rem; min-height: 42px; padding: 0.45rem 0.85rem;
+      border-radius: 0.7rem; color: var(--color-ink); background: transparent; cursor: pointer;
+    }
+    select:not([multiple]):not([size]) option:hover, select:not([multiple]):not([size]) option:focus-visible {
+      background: var(--color-lavender); color: var(--color-brand-deep); outline: none;
+    }
+    select:not([multiple]):not([size]) option:checked { background: rgb(117 29 130 / 0.10); color: var(--color-brand); font-weight: 700; }
+    select:not([multiple]):not([size]) option::checkmark { color: var(--color-brand); order: 1; margin-inline-start: auto; }
+    select:not([multiple]):not([size]) option:disabled { color: var(--color-ink-soft); opacity: 0.6; cursor: not-allowed; }
+    @media (prefers-reduced-motion: no-preference) {
+      select:not([multiple]):not([size])::picker(select) {
+        opacity: 0; transform: translateY(-4px) scale(0.98);
+        transition: opacity 150ms ease-out, transform 150ms ease-out, overlay 150ms allow-discrete, display 150ms allow-discrete;
+      }
+      select:not([multiple]):not([size]):open::picker(select) { opacity: 1; transform: none; }
+      @starting-style { select:not([multiple]):not([size]):open::picker(select) { opacity: 0; transform: translateY(-4px) scale(0.98); } }
+    }
+  }
+
   /* Checkbox and radio: native inputs (keyboard and screen readers keep working), redrawn with the brand. */
   input[type="checkbox"], input[type="radio"] {
     appearance: none; -webkit-appearance: none; flex: none;

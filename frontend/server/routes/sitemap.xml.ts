@@ -7,7 +7,7 @@ export default defineEventHandler(async event => {
   const config = useRuntimeConfig(event).public
   // Never derive absolute URLs from request headers (Host / X-Forwarded-Host can be spoofed).
   const origin = String(config.siteUrl).replace(/\/+$/, '')
-  const paths = ['/', '/order-and-delivery', '/privacy']
+  const paths = ['/', '/about', '/order-and-delivery', '/privacy']
   let seen = 0
   try {
     for (let page = 1; page <= 50; page++) {

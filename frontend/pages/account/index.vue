@@ -64,7 +64,7 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
       <p class="flex items-center gap-2 font-semibold text-success"><AppIcon name="check-circle" :size="20" />تم تسجيل الدخول</p>
       <p v-if="account.name" class="my-2 break-all" dir="ltr">{{ account.name }}</p>
       <button type="button" :disabled="pending" class="btn-secondary mt-4" @click="submit('logout')">تسجيل الخروج</button>
-      <NuxtLink v-if="account.isAdmin" to="/admin" class="btn-ghost ms-2 mt-4 underline">لوحة الإدارة</NuxtLink>
+      <NuxtLink v-if="account.isAdmin" to="/admin" class="btn-ghost ms-2 mt-4">لوحة الإدارة</NuxtLink>
       <AccountOrders />
       <AccountSettings :phone-number="account.phoneNumber" />
     </template>
@@ -102,7 +102,7 @@ useSeoMeta({ title: 'حساب أوركيديا', robots: 'noindex, nofollow, noa
         <button type="submit" class="btn-primary w-full">
           {{ pending ? 'جاري التحقق…' : verification ? 'تأكيد الرمز' : 'تسجيل الدخول' }}
         </button>
-        <NuxtLink v-if="!verification" to="/account/forgot-password" class="btn-ghost w-full text-sm underline">نسيتي كلمة المرور؟</NuxtLink>
+        <NuxtLink v-if="!verification" to="/account/forgot-password" class="btn-ghost w-full text-sm">نسيتي كلمة المرور؟</NuxtLink>
       </fieldset>
     </form>
     <button v-else-if="!loading" class="btn-secondary w-full" @click="load()">إعادة المحاولة</button>
