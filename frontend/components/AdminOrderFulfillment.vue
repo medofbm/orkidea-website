@@ -156,7 +156,7 @@ function submitDelivery() {
           <span class="block font-semibold">سبب الإجراء</span>
           <textarea v-model="reason" required maxlength="500" rows="3" class="w-full field" />
         </label>
-        <label v-if="confirmationLabel" class="flex min-h-11 items-center gap-2">
+        <label v-if="confirmationLabel" class="check-row">
           <input v-model="confirmed" type="checkbox" required>
           {{ confirmationLabel }}
         </label>

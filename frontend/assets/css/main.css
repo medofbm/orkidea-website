@@ -78,6 +78,74 @@ body {
 button, a { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 3px solid var(--color-brand); outline-offset: 3px; }
 
+/* ---------- Form controls and scrollbars (base layer: any utility class still overrides these) ---------- */
+@layer base {
+  /* Scrollbars: slim, rounded, brand-tinted thumb on a light track, for the page and inner scroll areas. */
+  * { scrollbar-width: thin; scrollbar-color: rgb(117 29 130 / 0.38) var(--color-blush); }
+  @supports not (scrollbar-color: auto) {
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-track { background: var(--color-blush); }
+    *::-webkit-scrollbar-thumb {
+      background: rgb(117 29 130 / 0.38); border-radius: 999px; border: 2px solid var(--color-blush);
+    }
+    *::-webkit-scrollbar-thumb:hover { background: rgb(117 29 130 / 0.6); }
+  }
+
+  button:disabled { cursor: not-allowed; }
+
+  /* Select: native popup kept (best on phones), closed state redrawn with a brand chevron on the inline-end (left in RTL). */
+  select:not([multiple]):not([size]) {
+    appearance: none; -webkit-appearance: none;
+    min-height: 44px; padding: 0.55rem 1rem; padding-inline-end: 2.75rem;
+    border-radius: var(--radius-field); border: 1.5px solid rgb(117 29 130 / 0.18);
+    background-color: #fafafa; color: var(--color-ink); font: inherit; line-height: 1.5; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23751D82' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7.5l5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat;
+    background-position: left 0.9rem center; background-size: 1.1rem;
+  }
+  select[dir="ltr"]:not([multiple]):not([size]) { background-position: right 0.9rem center; }
+  select:not([multiple]):not([size]):hover:not(:disabled) { border-color: rgb(117 29 130 / 0.45); background-color: #fff; }
+  select:not([multiple]):not([size]):focus { outline: none; }
+  select:not([multiple]):not([size]):focus-visible {
+    border-color: var(--color-brand); background-color: #fff; box-shadow: 0 0 0 3px rgb(117 29 130 / 0.18);
+  }
+  select:disabled { opacity: 0.6; cursor: not-allowed; background-color: #f1ecf2; }
+  select[aria-invalid="true"] { border-color: var(--color-danger); }
+  select option { background: #fff; color: var(--color-ink); }
+  select option:disabled { color: var(--color-ink-soft); }
+  @media (prefers-reduced-motion: no-preference) {
+    select:not([multiple]):not([size]) { transition: border-color 160ms ease-out, box-shadow 160ms ease-out, background-color 160ms ease-out; }
+  }
+
+  /* Checkbox and radio: native inputs (keyboard and screen readers keep working), redrawn with the brand. */
+  input[type="checkbox"], input[type="radio"] {
+    appearance: none; -webkit-appearance: none; flex: none;
+    width: 1.25rem; height: 1.25rem; margin: 0;
+    border: 1.5px solid var(--color-lavender-deep); background-color: #fff; cursor: pointer;
+    background-repeat: no-repeat; background-position: center; background-size: 0.85rem;
+  }
+  input[type="checkbox"] { border-radius: 0.4rem; }
+  input[type="radio"] { border-radius: 50%; }
+  input[type="checkbox"]:hover:not(:disabled), input[type="radio"]:hover:not(:disabled) {
+    border-color: var(--color-brand-soft); box-shadow: 0 0 0 4px rgb(117 29 130 / 0.08);
+  }
+  input[type="checkbox"]:checked, input[type="checkbox"]:indeterminate, input[type="radio"]:checked {
+    border-color: var(--color-brand); background-color: var(--color-brand);
+  }
+  input[type="checkbox"]:checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E"); }
+  input[type="checkbox"]:indeterminate { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M4 8h8'/%3E%3C/svg%3E"); }
+  input[type="radio"]:checked { box-shadow: inset 0 0 0 3.5px #fff; }
+  input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
+    outline: 3px solid rgb(117 29 130 / 0.4); outline-offset: 2px;
+  }
+  input[type="checkbox"]:disabled, input[type="radio"]:disabled { opacity: 0.5; cursor: not-allowed; }
+  input[type="checkbox"][aria-invalid="true"], input[type="radio"][aria-invalid="true"] { border-color: var(--color-danger); }
+  @media (prefers-reduced-motion: no-preference) {
+    input[type="checkbox"], input[type="radio"] {
+      transition: background-color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out;
+    }
+  }
+}
+
 /* ---------- Gradients ---------- */
 @utility bg-gradient-brand { background-image: var(--gradient-brand); }
 @utility bg-gradient-hero { background-image: var(--gradient-hero); }
@@ -156,7 +224,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   }
   &:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 12px 30px rgb(117 29 130 / 0.45); }
   &:active:not(:disabled) { transform: scale(0.98); }
-  &:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+  &:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; filter: saturate(0.6); }
 }
 
 @utility btn-secondary {
@@ -164,8 +232,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
   min-height: 48px; min-width: 44px; padding-inline: 1.5rem;
   border-radius: var(--radius-pill); border: 1.5px solid var(--color-brand);
   background: transparent; color: var(--color-brand); font-weight: 700; cursor: pointer;
-  @media (prefers-reduced-motion: no-preference) { transition: background-color 160ms ease-out, transform 160ms ease-out; }
-  &:hover:not(:disabled) { background: var(--color-lavender); }
+  @media (prefers-reduced-motion: no-preference) { transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out, transform 160ms ease-out; }
+  &:hover:not(:disabled) { background: var(--color-lavender); border-color: var(--color-brand-deep); color: var(--color-brand-deep); }
   &:active:not(:disabled) { transform: scale(0.98); }
   &:disabled { opacity: 0.55; cursor: not-allowed; }
 }
@@ -176,8 +244,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
   border-radius: var(--radius-pill); border: 0;
   background: transparent; color: var(--color-brand); font-weight: 600; cursor: pointer;
   @media (prefers-reduced-motion: no-preference) { transition: background-color 160ms ease-out, transform 160ms ease-out; }
-  &:hover:not(:disabled) { background: var(--color-lavender); }
-  &:active:not(:disabled) { transform: scale(0.98); }
+  &:hover:not(:disabled) { background: var(--color-lavender); color: var(--color-brand-deep); }
+  &:active:not(:disabled) { transform: scale(0.98); background: var(--color-lavender-deep); }
   &:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 
@@ -200,17 +268,33 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @utility field {
   width: 100%; min-height: 48px; padding: 0.65rem 1rem;
   border-radius: var(--radius-field); border: 1.5px solid rgb(117 29 130 / 0.18);
-  background: #fafafa; color: var(--color-ink);
+  background-color: #fafafa; color: var(--color-ink);
   @media (prefers-reduced-motion: no-preference) { transition: border-color 160ms ease-out, box-shadow 160ms ease-out, background-color 160ms ease-out; }
-  &:focus { outline: none; border-color: var(--color-brand); background: #fff; box-shadow: 0 0 0 3px rgb(117 29 130 / 0.12); }
-  &::placeholder { color: #bbb; }
+  &:hover:not(:disabled):not(:focus) { border-color: rgb(117 29 130 / 0.38); }
+  &:focus { outline: none; border-color: var(--color-brand); background-color: #fff; box-shadow: 0 0 0 3px rgb(117 29 130 / 0.12); }
+  &::placeholder { color: #b3a6b8; }
   &:disabled { opacity: 0.6; cursor: not-allowed; }
+  &[aria-invalid="true"] { border-color: var(--color-danger); }
+  &[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgb(198 40 40 / 0.15); }
+  /* select.field keeps room for the chevron on the inline-end side */
+  &:is(select) { padding-inline-end: 2.75rem; cursor: pointer; }
 }
+
+/* "Checkbox row": label with the box right next to its text. Use on <label class="check-row"><input type="checkbox"> text</label>. */
+@utility check-row {
+  display: inline-flex; align-items: center; gap: 0.75rem; width: fit-content; max-width: 100%;
+  min-height: 44px; cursor: pointer; user-select: none; line-height: 1.5;
+  &:has(:disabled) { opacity: 0.6; cursor: not-allowed; }
+}
+
 
 @utility chip {
   display: inline-flex; align-items: center; min-height: 44px; padding-inline: 1rem;
   border-radius: var(--radius-pill); background: var(--color-lavender); color: var(--color-brand);
   font-size: 0.875rem; font-weight: 600;
+  @media (prefers-reduced-motion: no-preference) { transition: background-color 160ms ease-out, color 160ms ease-out; }
+  &:is(a, button):hover { background: var(--color-lilac); color: var(--color-brand-deep); }
+  &:is(button) { cursor: pointer; border: 0; }
 }
 
 @utility badge {

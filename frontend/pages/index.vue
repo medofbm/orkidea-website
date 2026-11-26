@@ -15,57 +15,28 @@ const sortOptions = [
   { value: 'price-desc', label: 'السعر: من الأعلى' },
   { value: 'name', label: 'الاسم' }
 ]
-const search = computed(() => {
-  const q = typeof route.query.q === 'string' ? route.query.q.trim().slice(0, 100) : ''
-  return q || undefined
-})
 const sort = computed(() => {
   const s = typeof route.query.sort === 'string' ? route.query.sort : ''
   return sortOptions.some(o => o.value === s) && s !== 'default' ? s : undefined
 })
 const { data, status, error, refresh } = await useFetch<CataloguePage>(
   () => useRuntimeConfig().public.apiBase + '/products',
-  { query: { page, categoryId, search, sort } }
+  { query: { page, categoryId, sort } }
 )
-// Toolbar state lives in the URL (q, sort) next to page and categoryId; changing q or sort resets page.
-const searchText = ref(search.value ?? '')
-watch(search, value => { if ((value ?? '') !== searchText.value.trim()) searchText.value = value ?? '' })
-function catalogueQuery(extra: { page?: number, q?: string, sort?: string, categoryId?: number } = {}) {
-  const q = 'q' in extra ? extra.q : search.value
+// Toolbar state lives in the URL (sort) next to page and categoryId; changing sort resets page.
+function catalogueQuery(extra: { page?: number, sort?: string, categoryId?: number } = {}) {
   const s = 'sort' in extra ? extra.sort : sort.value
   const c = 'categoryId' in extra ? extra.categoryId : categoryId.value
-  // Same order as before search existed: page (when a pagination link sets it), then categoryId, then q and sort.
   const query: Record<string, string | number> = {}
   if (extra.page) query.page = extra.page
   if (c) query.categoryId = c
-  if (q) query.q = q
   if (s && s !== 'default') query.sort = s
   return query
-}
-function applySearch() {
-  const q = searchText.value.trim().slice(0, 100)
-  if (q === (search.value ?? '')) return
-  navigateTo({ query: catalogueQuery({ q }), hash: '#catalogue-heading' }, { replace: true })
-}
-let searchTimer: ReturnType<typeof setTimeout> | undefined
-function onSearchInput() {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(applySearch, 300)
-}
-function submitSearch() {
-  clearTimeout(searchTimer)
-  applySearch()
-}
-function clearSearch() {
-  clearTimeout(searchTimer)
-  searchText.value = ''
-  applySearch()
 }
 function onSortChange(event: Event) {
   const value = (event.target as HTMLSelectElement).value
   navigateTo({ query: catalogueQuery({ sort: value }), hash: '#catalogue-heading' }, { replace: true })
 }
-onBeforeUnmount(() => clearTimeout(searchTimer))
 const products = computed(() => (data.value?.items ?? []).map(product => ({
   ...product,
   startingPrice: product.variants.reduce<string | undefined>((lowest, variant) =>
@@ -85,7 +56,13 @@ const stats = [
 ]
 const gridRef = ref<HTMLElement | null>(null)
 useReveal(gridRef, { selector: '.reveal', stagger: 60 })
-const steps = ['اختاري منتجك', 'أضيفيه للسلة', 'نوصلك الطلب']
+// Steps follow the real flow: guest checkout (name, WhatsApp, delivery city), total shown before confirming, cash on delivery.
+const steps = [
+  { icon: 'bag', title: 'اختاري المنتج والحجم', text: 'تصفحي منتجاتنا واختاري الحجم اللي يناسبك.' },
+  { icon: 'cart', title: 'أضيفيه للسلة', text: 'راجعي سلتك وعدّلي الكمية قبل ما تكملي.' },
+  { icon: 'user', title: 'اكتبي بياناتك وأكدي', text: 'اسمك ورقم الواتساب ومدينة التوصيل، بدون حساب. تشوفي رسوم التوصيل والإجمالي قبل التأكيد.' },
+  { icon: 'truck', title: 'نوصلك الطلب', text: 'نجهزو طلبك ونوصلوه لك، وتدفعي عند الاستلام.' }
+] as const
 // Category photos are matched by name; a category without a match keeps the flower tile.
 function categoryImage(name: string) {
   if (/زيت|زيوت/.test(name)) return '/brand/cat-oils.webp'
@@ -183,20 +160,10 @@ useSeoMeta({
     <section id="categories" tabindex="-1" aria-labelledby="categories-heading" class="mt-12 scroll-mt-4 sm:mt-16">
       <SectionHeader v-reveal id="categories-heading" title="تسوقي" highlight="حسب الفئة" eyebrow="الفئات" />
       <div class="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:justify-center sm:gap-5 sm:*:w-56 lg:*:w-64">
-        <CategoryCard v-reveal.zoom name="كل المنتجات" to="/#catalogue-heading" image="/brand/cat-all.webp" />
+        <CategoryCard v-reveal.zoom name="كل المنتجات" to="/#catalogue-heading" image="/brand/cat-all.webp" :active="categoryId === undefined" />
         <CategoryCard v-for="(category, i) in data?.categories ?? []" :key="category.id" v-reveal.zoom="(i + 1) * 80" :name="category.name"
-          :to="`/?categoryId=${category.id}#catalogue-heading`" :image="categoryImage(category.name)" />
+          :to="`/?categoryId=${category.id}#catalogue-heading`" :image="categoryImage(category.name)" :active="categoryId === category.id" />
       </div>
-      <nav v-if="data?.categories?.length" aria-label="فئات المنتجات"
-        class="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0">
-        <NuxtLink :to="{ query: catalogueQuery({ categoryId: undefined }), hash: '#catalogue-heading' }"
-          :aria-current="categoryId === undefined ? 'page' : undefined"
-          class="chip shrink-0 whitespace-nowrap aria-[current=page]:bg-brand aria-[current=page]:text-white">كل المنتجات</NuxtLink>
-        <NuxtLink v-for="category in data.categories" :key="category.id"
-          :to="{ query: catalogueQuery({ categoryId: category.id }), hash: '#catalogue-heading' }"
-          :aria-current="categoryId === category.id ? 'page' : undefined"
-          class="chip shrink-0 whitespace-nowrap aria-[current=page]:bg-brand aria-[current=page]:text-white">{{ category.name }}</NuxtLink>
-      </nav>
     </section>
 
     <!-- Featured -->
@@ -210,29 +177,17 @@ useSeoMeta({
 
     <!-- Catalogue -->
     <section class="mt-12 sm:mt-16" aria-labelledby="catalogue-heading">
-      <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
-        <h2 id="catalogue-heading" tabindex="-1" class="scroll-mt-4 text-2xl font-bold text-ink sm:text-3xl">كل منتجاتنا</h2>
-        <p v-if="data?.items.length && !error" class="text-sm text-ink-soft">عدد المنتجات <bdi class="font-bold">{{ data.total }}</bdi></p>
-      </div>
+      <h2 id="catalogue-heading" tabindex="-1" class="mb-4 scroll-mt-4 text-2xl font-bold text-ink sm:text-3xl">كل منتجاتنا</h2>
 
-      <form role="search" class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end" @submit.prevent="submitSearch">
-        <div class="min-w-0 flex-1">
-          <label for="catalogue-search" class="mb-1 block text-sm font-semibold text-ink">ابحثي عن منتج</label>
-          <div class="relative">
-            <input id="catalogue-search" v-model="searchText" type="search" maxlength="100" autocomplete="off" enterkeyhint="search"
-              class="field min-h-11 w-full pe-11" @input="onSearchInput">
-            <button v-if="searchText" type="button" aria-label="مسح البحث" class="absolute inset-y-0 end-0 grid min-h-11 w-11 place-items-center text-ink-soft hover:text-brand" @click="clearSearch">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-        </div>
-        <div class="sm:w-56">
+      <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <p v-if="data?.items.length && !error" class="pb-2.5 text-sm text-ink-soft">عدد المنتجات <bdi class="font-bold">{{ data.total }}</bdi></p>
+        <div class="ms-auto w-44 sm:w-56">
           <label for="catalogue-sort" class="mb-1 block text-sm font-semibold text-ink">الترتيب</label>
           <select id="catalogue-sort" class="field min-h-11 w-full" :value="sort ?? 'default'" @change="onSortChange">
             <option v-for="option in sortOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
           </select>
         </div>
-      </form>
+      </div>
 
       <div v-if="status === 'pending'" role="status" aria-label="جاري تحميل المنتجات"
         class="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
@@ -251,10 +206,9 @@ useSeoMeta({
       <template v-else>
         <div v-if="!data?.items.length" class="rounded-[var(--radius-card)] bg-lavender p-6 text-center sm:p-10">
           <p class="font-semibold text-ink">
-            {{ search ? 'ما لقيناش منتجات تطابق بحثك.' : categoryId ? 'لا توجد منتجات ضمن الفئة المختارة حاليًا.' : 'المنتجات قريبًا، راجعينا بعد قليل 🌿' }}
+            {{ categoryId ? 'لا توجد منتجات ضمن الفئة المختارة حاليًا.' : 'المنتجات قريبًا، راجعينا بعد قليل 🌿' }}
           </p>
-          <button v-if="search" type="button" class="btn-secondary mt-4" @click="clearSearch">مسح البحث</button>
-          <NuxtLink v-else-if="categoryId" :to="{ query: catalogueQuery({ categoryId: undefined }), hash: '#catalogue-heading' }" class="btn-primary mt-4">
+          <NuxtLink v-if="categoryId" :to="{ query: catalogueQuery({ categoryId: undefined }), hash: '#catalogue-heading' }" class="btn-primary mt-4">
             عرض كل المنتجات
           </NuxtLink>
         </div>
@@ -273,14 +227,28 @@ useSeoMeta({
 
     <!-- How to order -->
     <section id="how-to-order" tabindex="-1" aria-labelledby="order-heading" class="mt-14 scroll-mt-4 rounded-[var(--radius-card)] bg-lavender px-5 py-8 sm:px-10 sm:py-12">
-      <h2 v-reveal id="order-heading" class="text-center text-2xl font-bold text-ink sm:text-3xl">كيف تطلبي؟</h2>
-      <ol class="mt-6 grid gap-4 sm:grid-cols-3 sm:gap-6">
-        <li v-for="(step, i) in steps" :key="step" v-reveal="i * 120" class="flex items-center gap-4 rounded-[var(--radius-card)] bg-white p-4 shadow-soft motion-safe:transition-transform motion-safe:duration-300 hover:-translate-y-1 sm:flex-col sm:p-6 sm:text-center">
-          <span class="grid size-11 shrink-0 place-items-center rounded-full bg-brand text-lg font-bold text-white" aria-hidden="true">{{ i + 1 }}</span>
-          <span class="font-bold text-ink">{{ step }}</span>
+      <SectionHeader v-reveal id="order-heading" title="كيف" highlight="تطلبي؟" eyebrow="أربع خطوات بسيطة" subtitle="تطلبي كضيفة بدون إنشاء حساب" />
+      <ol class="mx-auto mt-8 grid max-w-md gap-0 lg:max-w-none lg:grid-cols-4 lg:gap-6">
+        <li v-for="(step, i) in steps" :key="step.title" v-reveal="i * 120"
+          class="relative flex gap-4 pb-6 last:pb-0 lg:flex-col lg:items-center lg:pb-0 lg:text-center">
+          <span v-if="i < steps.length - 1" class="absolute start-[1.3rem] top-12 bottom-0 w-0.5 rounded-full bg-brand/25 lg:start-1/2 lg:top-[1.3rem] lg:bottom-auto lg:h-0.5 lg:w-[calc(100%+1.5rem)]" aria-hidden="true"></span>
+          <span class="relative z-10 grid size-11 shrink-0 place-items-center rounded-full bg-gradient-brand text-white shadow-soft" aria-hidden="true">
+            <AppIcon :name="step.icon" :size="22" />
+            <span class="absolute -top-1.5 -end-1.5 grid size-5 place-items-center rounded-full bg-white text-xs font-bold text-brand shadow-soft">{{ i + 1 }}</span>
+          </span>
+          <div class="min-w-0 flex-1 rounded-[var(--radius-card)] bg-white p-4 shadow-soft lg:w-full lg:flex-none">
+            <h3 class="font-bold text-ink"><span class="sr-only">الخطوة {{ i + 1 }}: </span>{{ step.title }}</h3>
+            <p class="mt-1 text-sm leading-relaxed text-ink-soft">{{ step.text }}</p>
+          </div>
         </li>
       </ol>
-      <p class="mt-5 text-center text-sm font-semibold text-brand">الدفع عند الاستلام</p>
+      <div class="mx-auto mt-8 flex max-w-xl items-center gap-3 rounded-[var(--radius-card)] border border-brand/30 bg-white p-4 shadow-soft">
+        <span class="grid size-10 shrink-0 place-items-center rounded-full bg-brand/10 text-brand" aria-hidden="true"><AppIcon name="cash" :size="22" /></span>
+        <p class="text-sm leading-relaxed text-ink"><strong class="text-brand">الدفع عند الاستلام.</strong> ما فيش دفع مسبق، تدفعي لما يوصلك طلبك.</p>
+      </div>
+      <div class="mt-6 flex justify-center">
+        <a href="#catalogue-heading" class="btn-primary sm:min-w-52">ابدئي التسوق</a>
+      </div>
     </section>
 
     <!-- Testimonials -->
