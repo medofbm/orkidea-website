@@ -15,6 +15,7 @@ await HttpSecurityRegression.Run(Check);
 await FeedbackApiRegression.Run(Check);
 await PasswordResetRegression.Run(Check);
 await AdminUsersRegression.Run(Check);
+await PostOrderAccountRegression.Run(Check);
 await SecurityHardeningRegressionB.Run(Check);
 var order = new Order {
     OrderId = 123, CustomerName = "=1+1", WhatsAppNumber = "+218000000000",
