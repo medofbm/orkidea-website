@@ -68,10 +68,11 @@ public partial class CheckoutController
     public async Task<IActionResult> ApiReceipt()
     {
         if (await Confirmation() is not ViewResult { Model: CheckoutReceipt receipt }) return NotFound();
+        var notBefore = DateTime.UtcNow - Orkideya.Application.Accounts.PostOrderAccountService.OrderWindow;
         // Offer "create an account" only to guests whose order is not linked yet (token was validated by Confirmation).
         var canCreateAccount = User.Identity?.IsAuthenticated != true && Guid.TryParse(HttpContext.Session.GetString("CompletedCheckoutToken"), out var checkoutToken) &&
             await _context.Orders.AsNoTracking().AnyAsync(order => order.CheckoutToken == checkoutToken && order.CustomerUserId == null &&
-                order.OrderDate >= DateTime.UtcNow - Orkideya.Application.Accounts.PostOrderAccountService.OrderWindow, HttpContext.RequestAborted);
+                order.OrderDate >= notBefore, HttpContext.RequestAborted);
         return Ok(new
         {
             canCreateAccount,
