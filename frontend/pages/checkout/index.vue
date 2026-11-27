@@ -135,8 +135,19 @@ async function send(action: 'shipping' | 'orders') {
   }
 }
 
+// Signed-in customers get name, phone and address from their own latest order. Optional: any failure is ignored.
+async function prefill() {
+  try {
+    const saved = await $fetch<Partial<typeof fields> | null>('/api/checkout/prefill')
+    if (!saved) return
+    for (const key of ['firstName', 'lastName', 'whatsAppNumber', 'shippingAddress'] as const)
+      if (!fields[key] && saved[key]) fields[key] = saved[key]
+  } catch { /* ignore */ }
+}
+
 onMounted(() => {
   void load()
+  void prefill()
   // The summary lists the cart items; a failure here only hides the list.
   void loadCart().catch(() => undefined)
 })

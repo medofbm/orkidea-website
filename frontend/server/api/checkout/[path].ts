@@ -1,6 +1,6 @@
 export default defineEventHandler(event => {
   const path = getRouterParam(event, 'path')
-  const allowed = (event.method === 'GET' && path === 'receipt') ||
+  const allowed = (event.method === 'GET' && (path === 'receipt' || path === 'prefill')) ||
     (event.method === 'POST' && (path === 'shipping' || path === 'orders'))
   if (!allowed) throw createError({ statusCode: 404 })
   setResponseHeader(event, 'Cache-Control', 'no-store')

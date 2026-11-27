@@ -120,6 +120,7 @@ useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchi
           <NuxtLink to="/order-and-delivery" class="btn-ghost">سياسة الطلب والتوصيل</NuxtLink>
         </div>
       </section>
+      <PostOrderAccountCard v-if="receipt.canCreateAccount" />
       <OrderRatingCard />
     </template>
     <template v-else>

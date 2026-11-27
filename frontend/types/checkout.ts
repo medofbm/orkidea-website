@@ -48,6 +48,8 @@ export interface CheckoutReceipt {
   total: string
   statusLabel: string
   paymentMethod: string
+  /** Guest receipt whose order is not linked to an account yet. */
+  canCreateAccount?: boolean
   // Optional so an older API without product lines still renders.
   lines?: CheckoutReceiptLine[]
 }
