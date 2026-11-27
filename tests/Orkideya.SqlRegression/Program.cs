@@ -192,6 +192,7 @@ try
     await DeliveryScenario.Run(Open, Check);
     await IdentityCookieScenario.Run(server.ConnectionString, Check);
     await ShippingRateImportScenario.Run(Open, Check);
+    await DeliveryPromotionScenario.Run(Open, Check);
     Console.WriteLine("SQL SERVER VERIFICATION COMPLETE: dedicated generated test database only.");
 }
 finally

@@ -44,6 +44,8 @@ const hasDeliveryOptions = computed(() => state.value?.destinations
   ? services.value.length > 0 || serviceDestinations.value.length > 0
   : (state.value?.shippingRates.length ?? 0) > 0)
 const shippingFee = computed(() => state.value?.destinations ? state.value.shippingFee : rate.value?.price)
+// Set by the server only when its free-delivery promotion waived the fee.
+const originalFee = computed(() => state.value?.destinations ? state.value.originalShippingFee : rate.value?.originalPrice)
 const total = computed(() => state.value?.destinations ? state.value.total : rate.value?.total)
 
 function chooseService(kind: keyof typeof serviceLabels) {
@@ -66,6 +68,7 @@ watch(() => selectedDestination.value?.key ?? '', key => {
   if (state.value) {
     state.value.quoteToken = null
     state.value.shippingFee = null
+    state.value.originalShippingFee = null
     state.value.total = null
   }
   if (key) void send('shipping')
@@ -184,7 +187,7 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
             <label v-if="options.length > 1" class="block">{{ selectedService === 'office' ? 'مكتب الاستلام' : 'المنطقة' }}
               <select v-model="destinationKey" class="mt-1 block w-full field">
                 <option value="" disabled>{{ selectedService === 'office' ? 'اختاري المكتب' : 'اختاري المنطقة' }}</option>
-                <option v-for="destination in options" :key="destination.key" :value="destination.key">{{ destination.area }}</option>
+                <option v-for="destination in options" :key="destination.key" :value="destination.key">{{ destination.area }}{{ destination.freeDelivery ? ' — توصيل مجاني' : '' }}</option>
               </select>
             </label>
             <p v-else-if="selectedDestination" class="text-sm text-ink">
@@ -229,10 +232,13 @@ useSeoMeta({ title: 'إتمام الطلب', robots: 'noindex, nofollow' })
             <span class="shrink-0 text-sm font-semibold">{{ formatPrice(item.subtotal) }} د.ل</span>
           </li>
         </ul>
+        <p v-if="state.promotion" class="mb-3 rounded-2xl bg-success/10 p-3 text-sm font-semibold text-success">
+          🎉 {{ promotionText(state.promotion) }}
+        </p>
         <dl aria-live="polite" class="space-y-3">
           <div class="flex flex-wrap justify-between gap-2"><dt>المنتجات</dt><dd class="font-semibold"><bdi>{{ formatPrice(state.productsTotal) }}</bdi> د.ل</dd></div>
           <div class="flex flex-wrap justify-between gap-2"><dt>التوصيل</dt><dd>
-            <template v-if="shippingFee != null"><bdi>{{ formatPrice(shippingFee) }}</bdi> د.ل</template>
+            <PromoPrice v-if="shippingFee != null" :price="shippingFee" :original="originalFee" />
             <template v-else-if="state.destinations && fields.carrierDestination">بانتظار حساب التوصيل</template>
             <template v-else>بانتظار اختيار الوجهة</template>
           </dd></div>

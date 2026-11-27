@@ -20,11 +20,14 @@ public partial class CheckoutController : Controller
     private readonly ApplicationDbContext _context;
     private readonly OrderService _orders;
     private readonly SabilCheckoutQuotes? _quotes;
-    public CheckoutController(ApplicationDbContext context, OrderService orders, SabilCheckoutQuotes? quotes = null)
+    private readonly DeliveryPromotionService _promotions;
+    public CheckoutController(ApplicationDbContext context, OrderService orders, SabilCheckoutQuotes? quotes = null,
+        DeliveryPromotionService? promotions = null)
     {
         _context = context;
         _orders = orders;
         _quotes = quotes;
+        _promotions = promotions ?? new DeliveryPromotionService(context);
     }
 
     public async Task<IActionResult> Index()
@@ -135,8 +138,12 @@ public partial class CheckoutController : Controller
         if (!ModelState.IsValid)
             return View("Index", await BuildViewModel(cart, input));
 
+        // Free-delivery promotion: decided here on the server, from the server cart and the server fee.
+        var subtotal = cart.Sum(item => item.SubTotal);
+        var charged = DeliveryPromotionRule.Apply(await _promotions.GetAsync(HttpContext.RequestAborted), DateTime.UtcNow,
+            snapshot?.ShippingFee ?? rate!.Price, snapshot?.City ?? rate!.CityName, snapshot is null ? rate!.Region : null, subtotal);
         if (review is not null && (review.CartRevision != CartRevision(cart) ||
-            review.ShippingFee != (snapshot?.ShippingFee ?? rate!.Price)))
+            review.ShippingFee != charged.Fee))
         {
             ModelState.AddModelError("", "تغيرت السلة أو تكلفة التوصيل. راجع الإجمالي ثم أكد الطلب مرة أخرى.");
             return View("Index", await BuildViewModel(cart, input));
@@ -163,8 +170,9 @@ public partial class CheckoutController : Controller
             ShippingAddress = input.ShippingAddress.Trim(),
             City = snapshot?.City ?? rate!.CityName,
             ShippingQuote = snapshot,
-            ShippingCost = snapshot?.ShippingFee ?? rate!.Price,
-            TotalAmount = cart.Sum(item => item.SubTotal) + (snapshot?.ShippingFee ?? rate!.Price),
+            ShippingCost = charged.Fee,
+            OriginalShippingCost = charged.OriginalFee,
+            TotalAmount = subtotal + charged.Fee,
             OrderDate = DateTime.UtcNow,
             PaymentMethod = "الدفع عند الاستلام",
             // Only a signed-in customer's own orders are linked to the account; guest orders stay null.
@@ -213,7 +221,7 @@ public partial class CheckoutController : Controller
         var receipt = await _context.Orders.AsNoTracking().Where(order => order.CheckoutToken == token)
             .Select(order => new CheckoutReceipt(order.OrderId, order.OrderDate, order.Items.Sum(item => item.Quantity),
                 order.Items.Sum(item => item.Quantity * item.UnitPrice), order.ShippingCost, order.TotalAmount,
-                order.Status, order.PaymentMethod)).SingleOrDefaultAsync(HttpContext.RequestAborted);
+                order.Status, order.PaymentMethod) { OriginalShippingCost = order.OriginalShippingCost }).SingleOrDefaultAsync(HttpContext.RequestAborted);
         if (receipt == null) return RedirectToAction("Index", "Home");
         // Current product name (it may have been renamed since); archived or deleted products fall back to the id.
         var rows = await (from item in _context.OrderItems.AsNoTracking()
@@ -242,6 +250,7 @@ public partial class CheckoutController : Controller
         CartItems = cart,
         Input = input,
         CartTotal = cart.Sum(item => item.SubTotal),
+        Promotion = await _promotions.GetActiveAsync(DateTime.UtcNow, HttpContext.RequestAborted),
         QuotedFee = ReadCurrentQuote(input, cart)?.ShippingFee,
         HomeDestinations = _quotes?.CheckoutEnabled == true ? _quotes.HomeDestinations : null,
         ShippingRates = _quotes?.CheckoutEnabled == true ? [] : await _context.ShippingRates.AsNoTracking()

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { cart, pulse, load } = useCart()
+const { promotion } = useDeliveryPromotion()
 const { account, refresh: refreshAccount } = useAccount()
 const route = useRoute()
 const { facebookUrl, instagramUrl, whatsappNumber } = useRuntimeConfig().public
@@ -113,6 +114,9 @@ onUnmounted(() => {
 <template>
   <div class="flex min-h-screen flex-col">
     <a href="#content" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:px-4 focus:py-2">الانتقال إلى المحتوى</a>
+    <p v-if="promotion" role="status" class="bg-gradient-brand px-4 py-2 text-center text-sm font-semibold text-white">
+      🎉 {{ promotionText(promotion) }}
+    </p>
     <header class="header-enter sticky top-0 z-40 border-b border-lavender motion-safe:transition-shadow" :class="scrolled ? 'scrolled shadow-lg shadow-brand/15' : 'shadow-sm shadow-brand/5'">
       <!-- Glass lives on its own layer: backdrop-filter on the header itself would trap the fixed offcanvas. -->
       <div class="glass absolute inset-0 -z-10" aria-hidden="true" />

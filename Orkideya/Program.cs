@@ -177,6 +177,7 @@ builder.Services.AddHostedService<ProductImageBackfillService>();
 builder.Services.AddScoped<Orkideya.Application.Products.ProductEditor>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<Orkideya.Application.Orders.OrderService>();
+builder.Services.AddScoped<Orkideya.Application.Shipping.DeliveryPromotionService>();
 builder.Services.AddScoped<Orkideya.Application.Orders.ManualOrderService>();
 builder.Services.AddScoped<Orkideya.Application.Orders.OrderStatusService>();
 builder.Services.AddScoped<Orkideya.Application.Inventory.StockService>();

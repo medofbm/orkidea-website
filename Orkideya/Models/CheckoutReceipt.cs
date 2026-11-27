@@ -6,6 +6,8 @@ public sealed record CheckoutReceipt(int OrderId, DateTime CreatedAtUtc, int Qua
 {
     /// <summary>Product lines of the order (name, size, quantity, unit price). Filled by the controller.</summary>
     public IReadOnlyList<CheckoutReceiptLine> Lines { get; init; } = [];
+    /// <summary>Normal delivery fee when a free-delivery promotion applied (ShippingCost is then 0).</summary>
+    public decimal? OriginalShippingCost { get; init; }
 
     public string StatusLabel => Status switch
     {

@@ -4,6 +4,16 @@ export interface CheckoutDestination {
   area: string
   service?: 'women' | 'men' | null
   isPickup?: boolean
+  /** Server flag: the quoted fee for this destination is waived by the active promotion. */
+  freeDelivery?: boolean
+}
+
+export interface DeliveryPromotionInfo {
+  title: string
+  scope: 'Tripoli' | 'AllLibya'
+  endsAtUtc: string
+  minSubtotal: string | null
+  meetsMinimum?: boolean
 }
 
 export interface CheckoutState {
@@ -11,9 +21,12 @@ export interface CheckoutState {
   quoteToken: string | null
   productsTotal: string
   shippingFee: string | null
+  /** Normal fee when the server's free-delivery promotion made shippingFee 0. */
+  originalShippingFee?: string | null
+  promotion?: DeliveryPromotionInfo | null
   total: string | null
   cartRevision: string
-  shippingRates: { id: number; city: string; price: string; total: string; region?: string | null; area?: string | null }[]
+  shippingRates: { id: number; city: string; price: string; originalPrice?: string | null; total: string; region?: string | null; area?: string | null }[]
   destinations: CheckoutDestination[] | null
   errors: string[]
 }
@@ -31,6 +44,7 @@ export interface CheckoutReceipt {
   quantity: number
   productsTotal: string
   shippingFee: string
+  originalShippingFee?: string | null
   total: string
   statusLabel: string
   paymentMethod: string

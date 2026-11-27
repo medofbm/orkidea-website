@@ -202,7 +202,8 @@ public sealed class AdminReadController(ApplicationDbContext context, TimeProvid
         id = order.OrderId, order.CustomerName, order.City,
         OrderDate = DateTime.SpecifyKind(order.OrderDate, DateTimeKind.Utc), order.Status,
         source = OrderSources.Label(order.Creation?.Source),
-        total = Money(order.TotalAmount), shippingFee = Money(order.ShippingCost)
+        total = Money(order.TotalAmount), shippingFee = Money(order.ShippingCost),
+        originalShippingFee = order.OriginalShippingCost is { } original ? Money(original) : null
     };
 
     private static string Money(decimal value) => value.ToString("0.00", CultureInfo.InvariantCulture);

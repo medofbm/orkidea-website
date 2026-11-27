@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Orkideya.Application.Shipping;
 using Orkideya.Models;
 
 namespace Orkideya.Controllers;
@@ -50,6 +51,7 @@ public partial class CheckoutController
         {
             receipt.OrderId, CreatedAtUtc = DateTime.SpecifyKind(receipt.CreatedAtUtc, DateTimeKind.Utc), receipt.Quantity, receipt.StatusLabel, receipt.PaymentMethod,
             productsTotal = Money(receipt.ProductsTotal), shippingFee = Money(receipt.ShippingCost),
+            originalShippingFee = receipt.OriginalShippingCost is { } original ? Money(original) : null,
             total = Money(receipt.TotalAmount),
             lines = receipt.Lines.Select(line => new
             {
@@ -114,26 +116,52 @@ public partial class CheckoutController
             return Conflict(new { message = "بعض المنتجات في سلتك لم تعد متاحة. راجعي السلة." });
         if (result is not ViewResult { Model: CheckoutViewModel model }) return result;
 
-        var fee = model.HomeDestinations is not null
-            ? model.QuotedFee
-            : model.ShippingRates.FirstOrDefault(rate => rate.ShippingRateId == model.Input.ShippingRateId)?.Price;
+        // Every promoted value below comes from DeliveryPromotionRule; the storefront only displays it.
+        PromotedFee Promote(decimal fee, string? city, string? region) =>
+            DeliveryPromotionRule.Apply(model.Promotion, model.NowUtc, fee, city, region, model.CartTotal);
+        PromotedFee? current = null;
+        if (model.HomeDestinations is not null)
+        {
+            if (model.QuotedFee is { } quoted && model.Input.CarrierDestination is { } key &&
+                model.HomeDestinations.TryGetValue(key, out var selected))
+                current = Promote(quoted, selected.City, null);
+        }
+        else if (model.ShippingRates.FirstOrDefault(rate => rate.ShippingRateId == model.Input.ShippingRateId) is { } chosen)
+            current = Promote(chosen.Price, chosen.CityName, chosen.Region);
+        var promotion = model.Promotion;
         var payload = new
         {
             model.Input.CheckoutToken, model.Input.QuoteToken,
             productsTotal = Money(model.CartTotal),
-            shippingFee = fee.HasValue ? Money(fee.Value) : null,
-            total = fee.HasValue ? Money(model.CartTotal + fee.Value) : null,
+            shippingFee = current is not null ? Money(current.Fee) : null,
+            originalShippingFee = current?.OriginalFee is { } originalFee ? Money(originalFee) : null,
+            total = current is not null ? Money(model.CartTotal + current.Fee) : null,
             cartRevision = CartRevision(model.CartItems),
-            shippingRates = model.ShippingRates.Select(rate => new
+            promotion = promotion is null ? null : new
             {
-                id = rate.ShippingRateId, city = rate.CityName, region = rate.Region,
-                area = Orkideya.Infrastructure.Shipping.DeliveryRateGroups.AreaLabel(rate.Region, rate.CityName),
-                price = Money(rate.Price),
-                total = Money(model.CartTotal + rate.Price)
+                title = promotion.Title, scope = promotion.Scope,
+                endsAtUtc = DateTime.SpecifyKind(promotion.EndsAtUtc, DateTimeKind.Utc),
+                minSubtotal = promotion.MinSubtotal is { } min ? Money(min) : null,
+                meetsMinimum = DeliveryPromotionRule.MeetsMinimum(promotion, model.CartTotal)
+            },
+            shippingRates = model.ShippingRates.Select(rate =>
+            {
+                var promoted = Promote(rate.Price, rate.CityName, rate.Region);
+                return new
+                {
+                    id = rate.ShippingRateId, city = rate.CityName, region = rate.Region,
+                    area = Orkideya.Infrastructure.Shipping.DeliveryRateGroups.AreaLabel(rate.Region, rate.CityName),
+                    price = Money(promoted.Fee),
+                    originalPrice = promoted.OriginalFee is { } original ? Money(original) : null,
+                    total = Money(model.CartTotal + promoted.Fee)
+                };
             }),
             destinations = model.HomeDestinations?.Select(pair => new
             {
-                key = pair.Key, pair.Value.City, pair.Value.Area, pair.Value.Service, pair.Value.IsPickup
+                key = pair.Key, pair.Value.City, pair.Value.Area, pair.Value.Service, pair.Value.IsPickup,
+                // Carrier fees are quoted per destination; this flag says the quoted fee will be waived.
+                freeDelivery = promotion is not null && DeliveryPromotionRule.Covers(promotion, pair.Value.City, null) &&
+                    DeliveryPromotionRule.MeetsMinimum(promotion, model.CartTotal)
             }),
             errors = ModelState.Values.SelectMany(value => value.Errors).Select(error =>
                 string.IsNullOrEmpty(error.ErrorMessage) ? "راجع بيانات الطلب وحاول مرة أخرى." : error.ErrorMessage).ToArray()

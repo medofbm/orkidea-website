@@ -32,6 +32,7 @@ namespace Orkideya.Data
         public DbSet<OrderDelivery> OrderDeliveries { get; set; }
         public DbSet<OrderDeliveryEvent> OrderDeliveryEvents { get; set; }
         public DbSet<AccountActivity> AccountActivities { get; set; }
+        public DbSet<DeliveryPromotion> DeliveryPromotions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -69,6 +70,10 @@ namespace Orkideya.Data
                     "([Action]='HandOver' AND [PreviousState] IS NULL AND [NewState]='HandedOver') OR ([PreviousState] IS NOT NULL AND (([Action]='Deliver' AND [PreviousState]='HandedOver' AND [NewState]='Delivered') OR ([Action]='MarkReturning' AND [PreviousState]='HandedOver' AND [NewState]='Returning') OR ([Action]='ReceiveReturn' AND [PreviousState]='Returning' AND [NewState]='Returned') OR ([Action]='Resume' AND [PreviousState]='Returning' AND [NewState]='HandedOver') OR ([Action]='Redispatch' AND [PreviousState]='Returned' AND [NewState]='HandedOver') OR ([Action]='CorrectDetails' AND [PreviousState]=[NewState] AND [NewState] IN ('HandedOver','Delivered','Returning','Returned')) OR ([Action]='CorrectState' AND (([PreviousState]='Delivered' AND [NewState]='HandedOver') OR ([PreviousState]='Returned' AND [NewState]='Returning')))))");
             });
             builder.Entity<Order>().Property(o => o.StockState).HasDefaultValue("Untracked");
+            builder.Entity<Order>().ToTable(t => t.HasCheckConstraint("CK_Order_PromotionShipping",
+                "[OriginalShippingCost] IS NULL OR ([OriginalShippingCost] > 0 AND [ShippingCost] = 0)"));
+            builder.Entity<DeliveryPromotion>().ToTable(t => t.HasCheckConstraint("CK_DeliveryPromotion_Facts",
+                "[Scope] IN ('Tripoli','AllLibya') AND [EndsAtUtc] > [StartsAtUtc] AND ([MinSubtotal] IS NULL OR [MinSubtotal] >= 0) AND LEN(LTRIM(RTRIM([Title]))) > 0"));
             builder.Entity<StockAccount>().HasOne<Product>().WithOne().HasForeignKey<StockAccount>(stock => stock.ProductId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<StockAccount>().ToTable(table => table.HasCheckConstraint("CK_StockAccount_Balances",
                 "[OnHand] >= 0 AND [Reserved] >= 0 AND [Reserved] <= [OnHand] AND [OnHand] <= 1000000000 AND [Unit] IN ('ml','piece') AND ([Unit] <> 'piece' OR ([OnHand] = FLOOR([OnHand]) AND [Reserved] = FLOOR([Reserved])))"));

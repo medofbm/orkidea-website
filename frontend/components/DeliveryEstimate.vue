@@ -4,6 +4,7 @@
 import type { DeliveryGroup, DeliverySummary } from '~/types/delivery'
 
 const summary = ref<DeliverySummary | null>(null)
+const { promotion } = useDeliveryPromotion()
 onMounted(async () => {
   try {
     const data = await $fetch<DeliverySummary>('/api/delivery/summary')
@@ -74,6 +75,11 @@ const citiesLabel = computed(() => {
 </script>
 
 <template>
+  <div v-if="summary || promotion">
+  <p v-if="promotion" class="mt-3 flex items-center gap-2 text-sm font-semibold text-success">
+    <AppIcon name="truck" :size="18" />
+    <span>🎉 {{ promotionText(promotion) }} (يظهر عند إتمام الطلب)</span>
+  </p>
   <div v-if="summary" class="mt-3 space-y-2 text-sm text-brand-deep">
     <template v-if="summary.mode === 'rates'">
       <p class="flex items-center gap-2">
@@ -138,6 +144,7 @@ const citiesLabel = computed(() => {
       <AppIcon name="cash" :size="18" />
       <span>الدفع عند الاستلام</span>
     </p>
+  </div>
   </div>
 </template>
 

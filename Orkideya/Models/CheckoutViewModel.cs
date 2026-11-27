@@ -8,5 +8,8 @@ namespace Orkideya.Models
         public IReadOnlyDictionary<string, Orkideya.Application.Shipping.QuoteDestination>? HomeDestinations { get; set; }
         public decimal? QuotedFee { get; set; }
         public decimal CartTotal { get; set; }
+        /// <summary>Active free-delivery promotion when this view model was built, else null. Server-owned.</summary>
+        public DeliveryPromotion? Promotion { get; set; }
+        public DateTime NowUtc { get; set; } = DateTime.UtcNow;
     }
 }

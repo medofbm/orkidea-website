@@ -154,7 +154,7 @@ async function updateOrder(action: 'status' | 'stock' | 'delivery', input: Recor
       </ul>
       <dl class="mt-6 space-y-2 rounded-xl bg-lavender p-4">
         <div class="flex justify-between"><dt>المنتجات</dt><dd>{{ data.productsTotal }} د.ل</dd></div>
-        <div class="flex justify-between"><dt>التوصيل</dt><dd>{{ data.order.shippingFee }} د.ل</dd></div>
+        <div class="flex justify-between"><dt>التوصيل</dt><dd>{{ data.order.shippingFee }} د.ل<span v-if="data.order.originalShippingFee" class="ms-1 text-xs text-gray-600">(مجاني بالعرض، السعر العادي {{ data.order.originalShippingFee }} د.ل)</span></dd></div>
         <div class="flex justify-between font-bold"><dt>الإجمالي</dt><dd>{{ data.order.total }} د.ل</dd></div>
       </dl>
       </div>

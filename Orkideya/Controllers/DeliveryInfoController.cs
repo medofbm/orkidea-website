@@ -42,5 +42,23 @@ public sealed class DeliveryInfoController(ApplicationDbContext context, SabilCh
         });
     }
 
+    /// <summary>The free-delivery promotion when it is active right now (for the storefront banner), else null.</summary>
+    [HttpGet("promotion")]
+    [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Any)]
+    public async Task<IActionResult> Promotion(CancellationToken cancellationToken)
+    {
+        var promotion = await new Orkideya.Application.Shipping.DeliveryPromotionService(context)
+            .GetActiveAsync(DateTime.UtcNow, cancellationToken);
+        return Ok(new
+        {
+            promotion = promotion is null ? null : new
+            {
+                title = promotion.Title, scope = promotion.Scope,
+                endsAtUtc = DateTime.SpecifyKind(promotion.EndsAtUtc, DateTimeKind.Utc),
+                minSubtotal = promotion.MinSubtotal is { } min ? Money(min) : null
+            }
+        });
+    }
+
     private static string Money(decimal value) => value.ToString("0.00", CultureInfo.InvariantCulture);
 }

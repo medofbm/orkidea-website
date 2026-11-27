@@ -79,7 +79,7 @@ useSeoMeta({ title: 'إيصال الطلب', robots: 'noindex, nofollow, noarchi
             <h2 id="receipt-summary" class="mb-4 text-lg font-bold">ملخص المبلغ</h2>
             <dl class="space-y-3">
               <div class="flex flex-wrap justify-between gap-2"><dt>المنتجات</dt><dd class="font-semibold"><bdi>{{ formatPrice(receipt.productsTotal) }}</bdi> د.ل</dd></div>
-              <div class="flex flex-wrap justify-between gap-2"><dt>التوصيل</dt><dd class="font-semibold"><bdi>{{ formatPrice(receipt.shippingFee) }}</bdi> د.ل</dd></div>
+              <div class="flex flex-wrap justify-between gap-2"><dt>التوصيل</dt><dd class="font-semibold"><PromoPrice :price="receipt.shippingFee" :original="receipt.originalShippingFee" /></dd></div>
               <div class="flex flex-wrap justify-between gap-2 border-t border-lavender-deep pt-3 text-lg font-bold">
                 <dt>الإجمالي</dt><dd class="price"><bdi>{{ formatPrice(receipt.total) }}</bdi> د.ل</dd>
               </div>
