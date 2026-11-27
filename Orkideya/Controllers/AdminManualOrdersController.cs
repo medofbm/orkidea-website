@@ -24,7 +24,7 @@ public sealed class AdminManualOrdersController(ManualOrderService orders, Appli
     [HttpGet]
     public async Task<IActionResult> Options(CancellationToken ct)
     {
-        var variants = await db.ProductVariants.AsNoTracking().Where(v => v.Price > 0)
+        var variants = await db.ProductVariants.AsNoTracking().Where(v => v.Price > 0 && !v.IsArchived && !v.Product.IsArchived)
             .OrderBy(v => v.Product.Name).ThenBy(v => v.Size).ThenBy(v => v.ProductVariantId)
             .Select(v => new { id = v.ProductVariantId, product = v.Product.Name, v.Size, v.Price }).ToListAsync(ct);
         var rates = await db.ShippingRates.AsNoTracking().Where(r => r.Price >= 0)

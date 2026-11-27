@@ -23,6 +23,13 @@ const fields = reactive({ customerName: '', phone: '', address: '', shippingRate
 let nextRowId = 0
 const newRow = () => ({ key: nextRowId++, variantId: '' as number | '', quantity: 1 })
 const lines = ref([newRow()])
+const citySearch = ref('')
+// Typing narrows the long city list; the chosen city always stays in the list.
+const filteredRates = computed(() => {
+  const term = citySearch.value.trim()
+  const rates = options.value?.rates ?? []
+  return term ? rates.filter(rate => rate.city.includes(term) || rate.id === fields.shippingRateId) : rates
+})
 const review = ref<Review>()
 const savedId = ref<number>()
 const pending = ref(false)
@@ -126,9 +133,11 @@ async function edit() {
               <textarea v-model.trim="fields.address" required maxlength="200" rows="2" class="field mt-1 block w-full font-normal"></textarea>
             </label>
             <label class="block font-semibold">مدينة التوصيل
-              <select v-model="fields.shippingRateId" required class="field mt-1 block min-h-11 w-full font-normal">
-                <option value="" disabled>اختر المدينة</option>
-                <option v-for="rate in options.rates" :key="rate.id" :value="rate.id">{{ rate.city }} — {{ rate.price }} د.ل</option>
+              <input v-model="citySearch" type="search" placeholder="ابحث عن المدينة أو المنطقة" aria-label="ابحث عن المدينة"
+                class="field mt-1 block min-h-11 w-full font-normal">
+              <select v-model="fields.shippingRateId" required class="field mt-2 block min-h-11 w-full font-normal">
+                <option value="" disabled>{{ filteredRates.length ? 'اختر المدينة' : 'ما فيش مدينة بهذا الاسم' }}</option>
+                <option v-for="rate in filteredRates" :key="rate.id" :value="rate.id">{{ rate.city }} — {{ rate.price }} د.ل</option>
               </select>
             </label>
           </div>
