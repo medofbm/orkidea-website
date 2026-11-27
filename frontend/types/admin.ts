@@ -7,6 +7,7 @@ export interface AdminOrderSummary {
   source: string
   total: string
   shippingFee: string
+  originalShippingFee?: string | null
 }
 
 export interface AdminDashboard {

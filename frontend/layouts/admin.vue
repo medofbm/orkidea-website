@@ -38,7 +38,13 @@ const groups: { title: string, links: NavLink[] }[] = [
       { to: '/admin/admins', label: 'المديرين', icon: 'shield' }
     ]
   },
-  { title: 'الإعدادات', links: [{ to: '/admin/shipping-rates', label: 'أسعار التوصيل', icon: 'cash' }] }
+  {
+    title: 'الإعدادات',
+    links: [
+      { to: '/admin/shipping-rates', label: 'أسعار التوصيل', icon: 'cash' },
+      { to: '/admin/promotions', label: 'العروض', icon: 'gift' }
+    ]
+  }
 ]
 // Bottom bar on phones: the four places used most, plus «المزيد» for the full menu.
 const quick: NavLink[] = [

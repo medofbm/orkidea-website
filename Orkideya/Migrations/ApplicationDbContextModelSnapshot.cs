@@ -306,6 +306,51 @@ namespace Orkideya.Migrations
                     b.ToTable("ContactMessages");
                 });
 
+            modelBuilder.Entity("Orkideya.Models.DeliveryPromotion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("EndsAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("MinSubtotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<DateTime>("StartsAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DeliveryPromotions", t =>
+                        {
+                            t.HasCheckConstraint("CK_DeliveryPromotion_Facts", "[Scope] IN ('Tripoli','AllLibya') AND [EndsAtUtc] > [StartsAtUtc] AND ([MinSubtotal] IS NULL OR [MinSubtotal] >= 0) AND LEN(LTRIM(RTRIM([Title]))) > 0");
+                        });
+                });
+
             modelBuilder.Entity("Orkideya.Models.Order", b =>
                 {
                     b.Property<int>("OrderId")
@@ -335,6 +380,9 @@ namespace Orkideya.Migrations
 
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("OriginalShippingCost")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("PaymentMethod")
                         .HasColumnType("nvarchar(max)");
@@ -376,7 +424,10 @@ namespace Orkideya.Migrations
 
                     b.HasIndex("CustomerUserId");
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", t =>
+                        {
+                            t.HasCheckConstraint("CK_Order_PromotionShipping", "[OriginalShippingCost] IS NULL OR ([OriginalShippingCost] > 0 AND [ShippingCost] = 0)");
+                        });
                 });
 
             modelBuilder.Entity("Orkideya.Models.OrderCreation", b =>

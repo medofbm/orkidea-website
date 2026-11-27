@@ -23,6 +23,9 @@ namespace Orkideya.Models
         public required string City { get; set; }
         [Column(TypeName = "decimal(18,2)")]
         public decimal ShippingCost { get; set; }
+        /// <summary>Normal delivery fee when a free-delivery promotion made ShippingCost 0; null otherwise.</summary>
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? OriginalShippingCost { get; set; }
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; }
         /// <summary>Identity user id of the signed-in customer who placed the order. Null for guest and legacy orders.</summary>

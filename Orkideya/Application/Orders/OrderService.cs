@@ -38,6 +38,10 @@ public sealed class OrderService(ApplicationDbContext context)
                 decimal.Round(item.UnitPrice, 2) != item.UnitPrice) ||
             order.TotalAmount != order.Items.Sum(item => item.UnitPrice * item.Quantity) + order.ShippingCost)
             throw new ArgumentException("Order aggregate is invalid.", nameof(order));
+        // A free-delivery promotion records the normal fee beside a charged fee of 0, website orders only.
+        if (order.OriginalShippingCost is { } original && (original <= 0 || decimal.Round(original, 2) != original ||
+            order.ShippingCost != 0 || order.Creation?.Source is not (null or OrderSources.Website)))
+            throw new ArgumentException("Invalid promotion shipping snapshot.", nameof(order));
 
         if (order.Items.Any(item => item.StockAccountId is not null &&
             (item.StockAccountId != item.ProductId || item.StockUnitsPerItem is null or <= 0 or > 1000000 ||
@@ -62,7 +66,7 @@ public sealed class OrderService(ApplicationDbContext context)
             if (quote.Provider!="Sabil" || quote.Currency!="lyd" || quote.ServiceId is not { Length:24 } ||
                 !quote.ServiceId.All(char.IsAsciiHexDigit) || !Text(quote.BranchId,128) || !Text(quote.City,200) || !Text(quote.Area,200) ||
                 !Text(quote.OriginRevision,128) || quote.HandoffMode is not ("OfficeDropoff" or "CarrierCollection") ||
-                quote.City!=order.City || quote.ShippingFee!=order.ShippingCost || quote.ShippingFee<0 ||
+                quote.City!=order.City || quote.ShippingFee!=(order.OriginalShippingCost ?? order.ShippingCost) || quote.ShippingFee<0 ||
                 decimal.Round(quote.ShippingFee,2)!=quote.ShippingFee || quote.QuotedAtUtc.Offset!=TimeSpan.Zero ||
                 quote.ExpiresAtUtc.Offset!=TimeSpan.Zero || quote.QuotedAtUtc>accepted || quote.ExpiresAtUtc<=accepted ||
                 quote.ExpiresAtUtc-quote.QuotedAtUtc>TimeSpan.FromMinutes(5) ||

@@ -10,6 +10,7 @@ static void Check(bool condition, string name)
 }
 var service = new ExcelExportService();
 CartSummaryRegression.Run(Check);
+await DeliveryPromotionRegression.Run(Check);
 await HttpSecurityRegression.Run(Check);
 await FeedbackApiRegression.Run(Check);
 await PasswordResetRegression.Run(Check);

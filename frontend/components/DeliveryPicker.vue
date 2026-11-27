@@ -2,9 +2,9 @@
 // Delivery rate picker for checkout: one field-styled button opens a dialog (bottom sheet on phones).
 // Step 1 lists cities, step 2 lists the areas of the chosen city. Rates without regions give one flat list.
 // Prices come from the server; this component only displays them and reports the chosen rate id.
-interface Rate { id: number, city: string, price: string, total?: string, region?: string | null, area?: string | null }
-interface Area { id: number, name: string, price: string }
-interface City { name: string, areas: Area[], min: string, max: string }
+interface Rate { id: number, city: string, price: string, originalPrice?: string | null, total?: string, region?: string | null, area?: string | null }
+interface Area { id: number, name: string, price: string, originalPrice?: string | null }
+interface City { name: string, areas: Area[], min: string, max: string, free: boolean }
 
 const props = defineProps<{ rates: Rate[], modelValue: number, error?: string }>()
 const emit = defineEmits<{ 'update:modelValue': [id: number], invalid: [] }>()
@@ -30,16 +30,18 @@ const cities = computed<City[]>(() => {
   const map = new Map<string, Area[]>()
   for (const rate of props.rates) {
     const list = map.get(rate.region as string) ?? []
-    list.push({ id: rate.id, name: rate.area || rate.city, price: rate.price })
+    list.push({ id: rate.id, name: rate.area || rate.city, price: rate.price, originalPrice: rate.originalPrice })
     map.set(rate.region as string, list)
   }
   return [...map.entries()].map(([name, areas]) => ({
     name, areas: areas.sort(byPrice),
-    min: extreme(areas, 'min'), max: extreme(areas, 'max')
+    min: extreme(areas, 'min'), max: extreme(areas, 'max'),
+    // Every area free thanks to the server-side promotion.
+    free: areas.every(area => !!area.originalPrice)
   })).sort((a, b) => Number(a.min) - Number(b.min) || arSort(a.name, b.name))
 })
 const flatRows = computed<Area[]>(() => grouped.value ? [] : props.rates
-  .map(rate => ({ id: rate.id, name: rate.city, price: rate.price }))
+  .map(rate => ({ id: rate.id, name: rate.city, price: rate.price, originalPrice: rate.originalPrice }))
   .sort(byPrice))
 
 const selected = computed(() => props.rates.find(rate => rate.id === props.modelValue))
@@ -136,7 +138,7 @@ defineExpose({ focus: () => trigger.value?.focus() })
         <span class="truncate">{{ selected ? selectedText : 'اختاري مدينتك ومنطقتك' }}</span>
       </span>
       <span v-if="selected" class="flex shrink-0 items-center gap-2 text-brand">
-        <span class="tabular-nums"><bdi>{{ formatPrice(selected.price) }}</bdi> د.ل</span>
+        <span class="tabular-nums"><PromoPrice :price="selected.price" :original="selected.originalPrice" /></span>
         <span class="text-xs font-normal text-ink-soft">تغيير</span>
       </span>
       <AppIcon v-else name="chevron-left" :size="16" class="shrink-0 text-brand" />
@@ -166,7 +168,7 @@ defineExpose({ focus: () => trigger.value?.focus() })
               <li v-for="row in flatVisible" :key="row.id">
                 <button type="button" :class="rowClass(row.id)" :aria-current="isSelected(row.id) || undefined" @click="pick(row.id)">
                   <span class="flex items-center gap-2"><AppIcon v-if="isSelected(row.id)" name="check" :size="18" class="text-brand" />{{ row.name }}</span>
-                  <span class="tabular-nums text-brand"><bdi>{{ formatPrice(row.price) }}</bdi> د.ل</span>
+                  <span class="tabular-nums text-brand"><PromoPrice :price="row.price" :original="row.originalPrice" /></span>
                 </button>
               </li>
             </template>
@@ -174,7 +176,7 @@ defineExpose({ focus: () => trigger.value?.focus() })
               <li v-for="area in areaRows" :key="area.id">
                 <button type="button" :class="rowClass(area.id)" :aria-current="isSelected(area.id) || undefined" @click="pick(area.id)">
                   <span class="flex items-center gap-2"><AppIcon v-if="isSelected(area.id)" name="check" :size="18" class="text-brand" />{{ area.name }}</span>
-                  <span class="tabular-nums text-brand"><bdi>{{ formatPrice(area.price) }}</bdi> د.ل</span>
+                  <span class="tabular-nums text-brand"><PromoPrice :price="area.price" :original="area.originalPrice" /></span>
                 </button>
               </li>
             </template>
@@ -184,7 +186,8 @@ defineExpose({ focus: () => trigger.value?.focus() })
                   <span>{{ city.name }}</span>
                   <span class="flex items-center gap-2 text-brand">
                     <span class="tabular-nums">
-                      <template v-if="cityPrice(city)"><bdi>{{ formatPrice(city.min) }}</bdi> د.ل</template>
+                      <span v-if="city.free" class="font-bold text-success">توصيل مجاني</span>
+                      <template v-else-if="cityPrice(city)"><bdi>{{ formatPrice(city.min) }}</bdi> د.ل</template>
                       <template v-else>من <bdi>{{ formatPrice(city.min) }}</bdi> د.ل</template>
                     </span>
                     <AppIcon v-if="city.areas.length > 1" name="chevron-left" :size="16" />
@@ -194,7 +197,7 @@ defineExpose({ focus: () => trigger.value?.focus() })
               <li v-for="hit in areaHits" :key="hit.id">
                 <button type="button" :class="rowClass(hit.id)" :aria-current="isSelected(hit.id) || undefined" @click="pick(hit.id)">
                   <span class="flex items-center gap-2"><AppIcon v-if="isSelected(hit.id)" name="check" :size="18" class="text-brand" />{{ hit.name }} — {{ hit.city }}</span>
-                  <span class="tabular-nums text-brand"><bdi>{{ formatPrice(hit.price) }}</bdi> د.ل</span>
+                  <span class="tabular-nums text-brand"><PromoPrice :price="hit.price" :original="hit.originalPrice" /></span>
                 </button>
               </li>
             </template>

@@ -22,6 +22,15 @@ test('built storefront renders catalogue data and the product gallery on the ser
       res.statusCode = valid ? 200 : 400
       return res.end(JSON.stringify({ success: valid }))
     }
+    if (req.url === '/api/v1/admin/promotions') {
+      res.statusCode = req.headers.cookie === 'qa-session=synthetic' &&
+        (req.method === 'GET' || req.headers.requestverificationtoken === 'synthetic-token') ? 200 : 401
+      return res.end(JSON.stringify({ method: req.method, promotion: null }))
+    }
+    if (req.url === '/api/v1/delivery/promotion' && req.method === 'GET') {
+      return res.end(JSON.stringify({ promotion: { title: 'عرض الجمعة البيضاء', scope: 'Tripoli',
+        endsAtUtc: '2026-11-30T22:00:00Z', minSubtotal: null } }))
+    }
     const accountsPath = req.url?.match(/^\/api\/v1\/admin\/(users|admins)(\/[^?]*)?(\?.*)?$/)
     if (accountsPath) {
       res.statusCode = req.headers.cookie === 'qa-session=synthetic' ? 200 : 401
@@ -212,6 +221,20 @@ test('built storefront renders catalogue data and the product gallery on the ser
       ['POST', '/api/admin/admins/abc-123/delete'], ['GET', '/api/admin/admins/abc-123'], ['GET', '/api/admin/users/a.b']]) {
       assert.equal((await fetch(origin + path, { method })).status, 404, method + ' ' + path + ' is not proxied')
     }
+    for (const method of ['GET', 'POST']) {
+      const promotions = await fetch(origin + '/api/admin/promotions', { method,
+        headers: { Cookie: 'qa-session=synthetic', RequestVerificationToken: 'synthetic-token' } })
+      assert.equal(promotions.status, 200, method + ' promotions is forwarded with session and antiforgery')
+      assert.ok(promotions.headers.get('cache-control')?.includes('no-store'))
+    }
+    for (const path of ['/api/admin/promotions/1', '/api/admin/promotions/delete']) {
+      assert.equal((await fetch(origin + path, { method: 'POST' })).status, 404, 'POST ' + path + ' is not proxied')
+    }
+    const promotion = await fetch(origin + '/api/delivery/promotion')
+    assert.equal(promotion.status, 200)
+    assert.equal((await promotion.json()).promotion.scope, 'Tripoli', 'public promotion proxy returns the server promotion')
+    const promotionsPage = await (await fetch(origin + '/admin/promotions')).text()
+    assert.ok(promotionsPage.includes('العروض') && promotionsPage.includes('/admin/promotions'), 'admin sidebar lists the promotions page under settings')
     const adminsPage = await (await fetch(origin + '/admin/admins')).text()
     assert.ok(adminsPage.includes('الحسابات') && adminsPage.includes('/admin/users'), 'admin sidebar lists the accounts pages')
     const queuePath = '/api/admin/delivery?state=Returned&search=%231'
