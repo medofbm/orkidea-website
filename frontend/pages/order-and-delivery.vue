@@ -1,6 +1,13 @@
 <script setup lang="ts">
 const { facebookUrl, instagramUrl } = useRuntimeConfig().public
-useSeoMeta({ title: 'سياسة الطلب والتوصيل | أوركيديا' })
+const siteUrl = useRuntimeConfig().public.siteUrl
+useSeoMeta({
+  title: 'سياسة الطلب والتوصيل | أوركيديا',
+  description: 'كيف تطلبي من أوركيديا: الدفع عند الاستلام، مدة التوصيل ورسومه لكل المدن في ليبيا.',
+  ogTitle: 'سياسة الطلب والتوصيل | أوركيديا',
+  ogUrl: siteUrl + '/order-and-delivery'
+})
+useHead({ link: [{ rel: 'canonical', href: siteUrl + '/order-and-delivery' }] })
 </script>
 
 <template>

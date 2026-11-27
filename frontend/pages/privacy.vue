@@ -1,5 +1,12 @@
 <script setup lang="ts">
-useSeoMeta({ title: 'سياسة الخصوصية | أوركيديا' })
+const siteUrl = useRuntimeConfig().public.siteUrl
+useSeoMeta({
+  title: 'سياسة الخصوصية | أوركيديا',
+  description: 'كيف نحافظ على بياناتك في أوركيديا: وش نجمعوا، ليش نجمعوه، وكيف نحميه.',
+  ogTitle: 'سياسة الخصوصية | أوركيديا',
+  ogUrl: siteUrl + '/privacy'
+})
+useHead({ link: [{ rel: 'canonical', href: siteUrl + '/privacy' }] })
 </script>
 
 <template>

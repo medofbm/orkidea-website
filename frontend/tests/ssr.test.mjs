@@ -154,7 +154,7 @@ test('built storefront renders catalogue data and the product gallery on the ser
     assert.equal(home.headers.get('referrer-policy'), 'strict-origin-when-cross-origin')
     assert.equal(home.headers.get('strict-transport-security'), null, 'no HSTS over plain http')
     const httpsHome = await fetch(origin, { headers: { 'X-Forwarded-Proto': 'https' } })
-    assert.match(httpsHome.headers.get('strict-transport-security') ?? '', /max-age=15552000/, 'HSTS when forwarded as https')
+    assert.match(httpsHome.headers.get('strict-transport-security') ?? '', /max-age=31536000/, 'HSTS when forwarded as https')
     const robots = await (await fetch(origin + '/robots.txt', { headers: { 'X-Forwarded-Host': 'evil.example' } })).text()
     assert.ok(!robots.includes('evil.example'), 'robots.txt ignores X-Forwarded-Host')
     const listing = await home.text()

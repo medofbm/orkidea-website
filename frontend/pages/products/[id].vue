@@ -97,19 +97,22 @@ const related = computed(() => {
         lowest === undefined || Number(variant.price) < Number(lowest) ? variant.price : lowest, undefined)
     }))
 })
+// A missing product must answer 404 (not 200) so search engines drop the URL; the Arabic message below still renders.
+if (import.meta.server && error.value?.statusCode === 404) setResponseStatus(useRequestEvent()!, 404)
 const origin = useRequestURL().origin
 const absolute = (path: string) => new URL(path, origin).href
 const productUrl = computed(() => origin + '/products/' + route.params.id)
 const seoDescription = computed(() => (product.value?.description ?? '').replace(/\s+/g, ' ').trim().slice(0, 160))
-const seoImages = computed(() => images.value.map(absolute))
+const seoImages = computed(() => images.value.map(image => absolute(productImageSrc(image, 1200) ?? image)))
 useSeoMeta({
-  title: () => product.value?.name ?? 'المنتج',
+  title: () => (product.value?.name ?? 'المنتج') + ' | أوركيديا',
   description: () => product.value?.description ?? '',
   ogTitle: () => product.value?.name ?? 'المنتج',
   ogDescription: () => seoDescription.value,
   ogImage: () => seoImages.value[0],
   ogType: 'product' as never,
   ogUrl: () => productUrl.value,
+  robots: () => error.value ? 'noindex, nofollow' : undefined,
   twitterCard: 'summary_large_image',
   twitterTitle: () => product.value?.name ?? 'المنتج',
   twitterDescription: () => seoDescription.value,
@@ -174,7 +177,7 @@ useHead({
       <section aria-label="صور المنتج" class="min-w-0 motion-safe:animate-fade-in-up">
         <div class="relative grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-(--radius-card) border border-lavender bg-gradient-to-b from-lavender/60 to-cream shadow-(--shadow-soft)">
           <img v-if="currentImage && !failedImages.includes(currentImage)" :key="currentImage"
-            :src="currentImage" :srcset="srcsetFor(currentImage)" sizes="(min-width: 768px) 50vw, 100vw"
+            :src="srcsetFor(currentImage) ? productImageSrc(currentImage) : currentImage" :srcset="srcsetFor(currentImage)" sizes="(min-width: 768px) 50vw, 100vw"
             :alt="product.name + ' - صورة ' + (selectedImage + 1)"
             class="absolute inset-0 size-full object-contain p-4"
             :class="{ 'gallery-image-selected': imageSelectedByUser }"
@@ -194,7 +197,7 @@ useHead({
             class="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border-2 bg-white p-1.5 hover:border-brand-soft sm:size-20"
             :class="selectedImage === index ? 'border-brand ring-2 ring-brand/40' : 'border-lavender'"
             @click="selectedImage = index; imageSelectedByUser = true">
-            <img v-if="!failedImages.includes(image)" :src="image" :srcset="srcsetFor(image)" sizes="80px" alt="" class="size-full rounded-full object-contain"
+            <img v-if="!failedImages.includes(image)" :src="srcsetFor(image) ? productImageSrc(image, 400) : image" :srcset="srcsetFor(image)" sizes="80px" alt="" class="size-full rounded-full object-contain"
               width="80" height="80" loading="lazy" @vue:mounted="checkLoadedImage($event.el, image)"
               @error="onImageError(image)">
             <span v-else aria-hidden="true" class="text-sm text-ink-soft">{{ index + 1 }}</span>

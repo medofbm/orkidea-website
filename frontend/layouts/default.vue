@@ -258,7 +258,7 @@ onUnmounted(() => {
         </section>
       </div>
       <div class="relative mx-auto max-w-6xl border-t border-white/20 px-4 py-4">
-        <p class="text-center text-xs text-white/75">Orkidea {{ year }} جميع الحقوق محفوظة · صنع بـ ❤ في ليبيا</p>
+        <p class="text-center text-xs text-white/75">© {{ year }} أوركيديا — جميع الحقوق محفوظة · صنع بـ ❤ في ليبيا</p>
       </div>
     </footer>
   </div>

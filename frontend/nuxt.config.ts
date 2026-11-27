@@ -20,6 +20,9 @@ export default defineNuxtConfig({
       instagramUrl: 'https://www.instagram.com/_orkidea_1/'
     }
   },
+  routeRules: {
+    '/contact': { redirect: { to: '/#contact', statusCode: 301 } }
+  },
   app: {
     head: {
       htmlAttrs: { lang: 'ar', dir: 'rtl' },
@@ -27,7 +30,7 @@ export default defineNuxtConfig({
       meta: [
         { name: 'theme-color', content: '#751D82' },
         { property: 'og:site_name', content: 'أوركيديا' },
-        { property: 'og:image', content: '/brand/og-cover.webp' }
+        { property: 'og:image', content: 'https://orkidea.ly/brand/og-cover.webp' }
       ],
       link: [
         { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/brand/favicon-32.png' },
