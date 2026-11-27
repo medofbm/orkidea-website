@@ -94,6 +94,8 @@ public sealed class AccountController(SignInManager<IdentityUser> signInManager,
             var message = result.Errors.Any(e => e.Code == "InvalidToken") ? InvalidTokenMessage : "كلمة المرور لا تحقق الشروط.";
             return BadRequest(new { message, errors });
         }
+        // The reset link was emailed to this address, so using it proves the address (accounts made after ordering start unconfirmed).
+        if (!user.EmailConfirmed) { user.EmailConfirmed = true; await userManager.UpdateAsync(user); }
         return Ok(new { message = "تم تغيير كلمة المرور. تقدري تسجلي دخولك الحين." });
     }
 
