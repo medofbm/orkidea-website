@@ -1,8 +1,11 @@
 <script setup lang="ts">
 useSeoMeta({
   title: 'عن أوركيديا',
-  description: 'أوركيديا متجر ليبي للزيوت والصابون الطبيعي، معصور على البارد وصنع يدوي، والدفع عند الاستلام مع توصيل لكل ليبيا.'
+  description: 'أوركيديا متجر ليبي للزيوت والصابون الطبيعي، معصور على البارد وصنع يدوي، والدفع عند الاستلام مع توصيل لكل ليبيا.',
+  ogTitle: 'عن أوركيديا',
+  ogUrl: useRuntimeConfig().public.siteUrl + '/about'
 })
+useHead({ link: [{ rel: 'canonical', href: useRuntimeConfig().public.siteUrl + '/about' }] })
 const points = [
   { icon: 'cash', title: 'الدفع عند الاستلام', text: 'ما فيش دفع مسبق، تدفعي وقت ما يوصلك طلبك.' },
   { icon: 'truck', title: 'توصيل لكل ليبيا', text: 'نوصّل لين باب بيتك في كل المدن.' },

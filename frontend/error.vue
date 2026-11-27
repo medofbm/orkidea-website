@@ -2,7 +2,7 @@
 interface ErrorProps { statusCode?: number, statusMessage?: string, message?: string }
 const props = defineProps<{ error: ErrorProps }>()
 const isNotFound = computed(() => props.error?.statusCode === 404)
-const title = computed(() => isNotFound.value ? 'الصفحة اللي تدوري عليها مش موجودة' : 'صار خطأ غير متوقع')
+const title = computed(() => isNotFound.value ? 'الصفحة هذي مش موجودة' : 'صار خطأ، حاولي مرة ثانية')
 const hint = computed(() => isNotFound.value
   ? 'يمكن الرابط تغيّر أو انحذفت الصفحة. ارجعي للرئيسية وكملي تسوقك.'
   : 'جرّبي مرة ثانية بعد لحظات، أو ارجعي للرئيسية.')

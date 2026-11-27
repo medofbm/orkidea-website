@@ -71,7 +71,7 @@ async function add() {
 <template>
   <article class="product-card card relative flex h-full min-w-0 flex-col overflow-hidden">
     <div class="relative aspect-[4/5] overflow-hidden rounded-t-2xl bg-gradient-to-br from-lavender to-white">
-      <img v-if="showImage" :src="product.images[0]" :srcset="imageSrcset" sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+      <img v-if="showImage" :src="variantFailed ? product.images[0] : productImageSrc(product.images[0])" :srcset="imageSrcset" sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
         :alt="'عبوة ' + product.name" loading="lazy" decoding="async"
         width="320" height="400" class="product-img absolute inset-0 size-full object-cover" @error="onImageError">
       <div v-else class="absolute inset-0 grid place-items-center bg-gradient-to-br from-lavender to-white" role="img" :aria-label="'صورة ' + product.name + ' غير متاحة حالياً'">

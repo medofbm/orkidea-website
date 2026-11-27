@@ -92,10 +92,17 @@ function onReviewClosed() {
   reviewOpen.value = false
   reviewOpener.value?.focus()
 }
+const siteUrl = useRuntimeConfig().public.siteUrl
+const homeDescription = 'أوركيديا للزيوت والمنتجات الطبيعية. منتجات طبيعية. اختاري منتجك واطلبي بسهولة والدفع عند الاستلام.'
 useSeoMeta({
   title: 'أوركيديا | زيوت ومنتجات طبيعية',
-  description: 'أوركيديا للزيوت والمنتجات الطبيعية. منتجات طبيعية. اختاري منتجك واطلبي بسهولة والدفع عند الاستلام.'
+  description: homeDescription,
+  ogTitle: 'أوركيديا | زيوت ومنتجات طبيعية',
+  ogDescription: homeDescription,
+  ogUrl: siteUrl + '/',
+  ogImage: siteUrl + '/brand/og-cover.webp'
 })
+useHead({ link: [{ rel: 'canonical', href: siteUrl + '/' }] })
 </script>
 
 <template>

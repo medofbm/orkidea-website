@@ -25,6 +25,6 @@ export default defineEventHandler(event => {
   // The dev server needs inline eval and websockets for HMR, so the CSP is enforced in production builds only.
   if (!import.meta.dev) setResponseHeader(event, 'Content-Security-Policy', csp)
   if (getRequestProtocol(event, { xForwardedProto: true }) === 'https') {
-    setResponseHeader(event, 'Strict-Transport-Security', 'max-age=15552000; includeSubDomains')
+    setResponseHeader(event, 'Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
   }
 })
