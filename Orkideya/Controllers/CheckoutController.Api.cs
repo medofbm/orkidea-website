@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
@@ -43,12 +44,38 @@ public partial class CheckoutController
             : CheckoutResponse(result);
     }
 
+    /// <summary>Name, phone and address from the signed-in customer's own latest order (never anyone else's). 204 when none.</summary>
+    [HttpGet("/api/v1/checkout/prefill")]
+    public async Task<IActionResult> ApiPrefill()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return NoContent();
+        var last = await _context.Orders.AsNoTracking().Where(order => order.CustomerUserId == userId)
+            .OrderByDescending(order => order.OrderDate).ThenByDescending(order => order.OrderId)
+            .Select(order => new { order.CustomerName, order.WhatsAppNumber, order.ShippingAddress })
+            .FirstOrDefaultAsync(HttpContext.RequestAborted);
+        if (last is null) return NoContent();
+        // Orders store "first last" in one column; the first word is the first name.
+        var name = last.CustomerName.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return Ok(new
+        {
+            firstName = name.Length > 0 ? name[0] : "", lastName = name.Length > 1 ? name[1] : "",
+            whatsAppNumber = last.WhatsAppNumber, shippingAddress = last.ShippingAddress
+        });
+    }
+
     [HttpGet("/api/v1/checkout/receipt")]
     public async Task<IActionResult> ApiReceipt()
     {
         if (await Confirmation() is not ViewResult { Model: CheckoutReceipt receipt }) return NotFound();
+        var notBefore = DateTime.UtcNow - Orkideya.Application.Accounts.PostOrderAccountService.OrderWindow;
+        // Offer "create an account" only to guests whose order is not linked yet (token was validated by Confirmation).
+        var canCreateAccount = User.Identity?.IsAuthenticated != true && Guid.TryParse(HttpContext.Session.GetString("CompletedCheckoutToken"), out var checkoutToken) &&
+            await _context.Orders.AsNoTracking().AnyAsync(order => order.CheckoutToken == checkoutToken && order.CustomerUserId == null &&
+                order.OrderDate >= notBefore, HttpContext.RequestAborted);
         return Ok(new
         {
+            canCreateAccount,
             receipt.OrderId, CreatedAtUtc = DateTime.SpecifyKind(receipt.CreatedAtUtc, DateTimeKind.Utc), receipt.Quantity, receipt.StatusLabel, receipt.PaymentMethod,
             productsTotal = Money(receipt.ProductsTotal), shippingFee = Money(receipt.ShippingCost),
             originalShippingFee = receipt.OriginalShippingCost is { } original ? Money(original) : null,

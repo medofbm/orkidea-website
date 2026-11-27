@@ -60,7 +60,7 @@ internal static class AdminUsersRegression
     }
 
     /// <summary>In-memory users with roles and passwords.</summary>
-    private sealed class MemoryUserStore : IUserEmailStore<IdentityUser>, IUserSecurityStampStore<IdentityUser>,
+    internal sealed class MemoryUserStore : IUserEmailStore<IdentityUser>, IUserSecurityStampStore<IdentityUser>,
         IUserRoleStore<IdentityUser>, IUserPasswordStore<IdentityUser>
     {
         public Dictionary<string, IdentityUser> Users { get; } = new();

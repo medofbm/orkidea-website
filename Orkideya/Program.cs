@@ -39,6 +39,10 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("account-recovery", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
+    // "Create an account after ordering" emails any address a guest types, so it gets its own tight per-IP budget.
+    options.AddPolicy("post-order-account", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
     // Sign-in (password and verification code) and sign-up get their own per-IP budgets against password spraying and
     // mass sign-ups. Only POSTs count, so opening or refreshing the login page never uses the budget.
     var signInLimit = builder.Configuration.GetValue("RateLimits:SignInPerFiveMinutes", 15);
@@ -183,6 +187,8 @@ builder.Services.AddScoped<Orkideya.Application.Orders.OrderStatusService>();
 builder.Services.AddScoped<Orkideya.Application.Inventory.StockService>();
 builder.Services.AddScoped<Orkideya.Application.Delivery.DeliveryService>();
 builder.Services.AddScoped<Orkideya.Application.Accounts.IAccountActivityRecorder, Orkideya.Application.Accounts.AccountActivityRecorder>();
+builder.Services.AddScoped<Orkideya.Application.Accounts.IOrderAccountLinks, Orkideya.Application.Accounts.OrderAccountLinks>();
+builder.Services.AddScoped<Orkideya.Application.Accounts.PostOrderAccountService>();
 
 // Determine cookie security policy based on environment
 var cookieSecurePolicy = builder.Environment.IsDevelopment() 
