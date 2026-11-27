@@ -36,7 +36,7 @@ public sealed class ManualOrderService(ApplicationDbContext db, OrderService ord
         if (grouped.Any(l => l.Quantity > 99)) return new(null, "مجموع كمية الحجم نفسه لا يتجاوز 99؛راجع الصفوف المتكررة.");
         var ids = grouped.Select(l => l.VariantId).ToArray();
         var variants = await db.ProductVariants.AsNoTracking().Include(v => v.Product).Where(v => ids.Contains(v.ProductVariantId)).ToDictionaryAsync(v => v.ProductVariantId, ct);
-        if (variants.Count != ids.Length || variants.Values.Any(v => v.Product is null || string.IsNullOrWhiteSpace(v.Size) || v.Price <= 0 || decimal.Round(v.Price, 2) != v.Price))
+        if (variants.Count != ids.Length || variants.Values.Any(v => v.Product is null || v.IsArchived || v.Product.IsArchived || string.IsNullOrWhiteSpace(v.Size) || v.Price <= 0 || decimal.Round(v.Price, 2) != v.Price))
             return new(null, "أحد الأحجام غير متاح أو سعره غير صالح؛راجع اختيار المنتجات.");
         var rate = await db.ShippingRates.AsNoTracking().SingleOrDefaultAsync(r => r.ShippingRateId == input.ShippingRateId, ct);
         if (rate is null || rate.Price < 0 || string.IsNullOrWhiteSpace(rate.CityName)) return new(null, "مدينة التوصيل غير متاحة؛اختر مدينة من القائمة.");
